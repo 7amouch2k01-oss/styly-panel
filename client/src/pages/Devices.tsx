@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Plus, MoreHorizontal } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { useState } from "react";
+import { DeviceFormDialog } from "@/components/DeviceFormDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,9 +20,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 export default function Devices() {
   const { data: devices, isLoading } = trpc.devices.list.useQuery();
+  const [formDialogOpen, setFormDialogOpen] = useState(false);
+  const [selectedDevice, setSelectedDevice] = useState<any>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deviceToDelete, setDeviceToDelete] = useState<any>(null);
+  const deleteMutation = trpc.devices.delete.useMutation();
+  const utils = trpc.useUtils();
 
   const getStockBadge = (stock: number) => {
     if (stock > 10) {
@@ -29,6 +47,33 @@ export default function Devices() {
       return <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">Low Stock</Badge>;
     } else {
       return <Badge className="bg-red-500/20 text-red-400 border-red-500/30">Out of Stock</Badge>;
+    }
+  };
+
+  const handleAddDevice = () => {
+    setSelectedDevice(null);
+    setFormDialogOpen(true);
+  };
+
+  const handleEditDevice = (device: any) => {
+    setSelectedDevice(device);
+    setFormDialogOpen(true);
+  };
+
+  const handleDeleteDevice = (device: any) => {
+    setDeviceToDelete(device);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    try {
+      await deleteMutation.mutateAsync({ id: deviceToDelete.id });
+      await utils.devices.list.invalidate();
+      toast.success("Device deleted successfully");
+      setDeleteDialogOpen(false);
+      setDeviceToDelete(null);
+    } catch (error) {
+      toast.error("Failed to delete device");
     }
   };
 
@@ -64,7 +109,7 @@ export default function Devices() {
             <SelectItem value="xiaomi">Xiaomi</SelectItem>
           </SelectContent>
         </Select>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={handleAddDevice}>
           <Plus className="h-4 w-4" />
           Add Device
         </Button>
@@ -102,9 +147,14 @@ export default function Devices() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem>Edit Device</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleEditDevice(device)}>
+                        Edit Device
+                      </DropdownMenuItem>
                       <DropdownMenuItem>Update Stock</DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive">
+                      <DropdownMenuItem
+                        className="text-destructive"
+                        onClick={() => handleDeleteDevice(device)}
+                      >
                         Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -133,6 +183,31 @@ export default function Devices() {
           </div>
         )}
       </div>
+
+      {/* Device Form Dialog */}
+      <DeviceFormDialog
+        open={formDialogOpen}
+        onOpenChange={setFormDialogOpen}
+        device={selectedDevice}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Device</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {deviceToDelete?.name}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex gap-3 justify-end">
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

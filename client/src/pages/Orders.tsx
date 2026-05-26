@@ -6,6 +6,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, MoreHorizontal, Eye } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { useState } from "react";
+import { OrderDetailDialog } from "@/components/OrderDetailDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +24,8 @@ import {
 
 export default function Orders() {
   const { data: orders, isLoading } = trpc.orders.list.useQuery();
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -36,6 +40,11 @@ export default function Orders() {
       default:
         return null;
     }
+  };
+
+  const handleViewDetails = (order: any) => {
+    setSelectedOrder(order);
+    setDialogOpen(true);
   };
 
   return (
@@ -130,11 +139,13 @@ export default function Orders() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem className="gap-2">
+                            <DropdownMenuItem
+                              className="gap-2"
+                              onClick={() => handleViewDetails(order)}
+                            >
                               <Eye className="h-4 w-4" />
                               View Details
                             </DropdownMenuItem>
-                            <DropdownMenuItem>Update Status</DropdownMenuItem>
                             <DropdownMenuItem>Send Notification</DropdownMenuItem>
                             <DropdownMenuItem className="text-destructive">
                               Cancel Order
@@ -156,6 +167,13 @@ export default function Orders() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Order Detail Dialog */}
+      <OrderDetailDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        order={selectedOrder}
+      />
     </div>
   );
 }

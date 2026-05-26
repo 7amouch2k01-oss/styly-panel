@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Plus, MoreHorizontal } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { useState } from "react";
+import { UserDetailDialog } from "@/components/UserDetailDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +17,13 @@ import {
 
 export default function Users() {
   const { data: users, isLoading } = trpc.users.list.useQuery();
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  const handleViewDetails = (user: any) => {
+    setSelectedUser(user);
+    setDialogOpen(true);
+  };
 
   return (
     <div className="space-y-8">
@@ -100,7 +109,9 @@ export default function Users() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>View Details</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleViewDetails(user)}>
+                              View Details
+                            </DropdownMenuItem>
                             <DropdownMenuItem>Edit User</DropdownMenuItem>
                             <DropdownMenuItem>Change Role</DropdownMenuItem>
                             <DropdownMenuItem className="text-destructive">
@@ -123,6 +134,13 @@ export default function Users() {
           </div>
         </CardContent>
       </Card>
+
+      {/* User Detail Dialog */}
+      <UserDetailDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        user={selectedUser}
+      />
     </div>
   );
 }

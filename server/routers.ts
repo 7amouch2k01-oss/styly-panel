@@ -37,6 +37,18 @@ export const appRouter = router({
       // Placeholder - would fetch from DB
       return null;
     }),
+    updateRole: adminProcedure
+      .input(z.object({ userId: z.number(), role: z.enum(["admin", "user"]) }))
+      .mutation(async ({ input }) => {
+        // Placeholder - would update DB
+        return { success: true, message: "User role updated" };
+      }),
+    updateStatus: adminProcedure
+      .input(z.object({ userId: z.number(), status: z.enum(["active", "inactive", "banned"]) }))
+      .mutation(async ({ input }) => {
+        // Placeholder - would update DB
+        return { success: true, message: "User status updated" };
+      }),
   }),
 
   // Devices management
@@ -48,6 +60,35 @@ export const appRouter = router({
       // Placeholder - would fetch from DB
       return null;
     }),
+    create: adminProcedure
+      .input(z.object({
+        name: z.string().min(1),
+        category: z.string().min(1),
+        price: z.number().positive(),
+        stock: z.number().nonnegative(),
+      }))
+      .mutation(async ({ input }) => {
+        // Placeholder - would create in DB
+        return { success: true, message: "Device created", id: 1 };
+      }),
+    update: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().min(1),
+        category: z.string().min(1),
+        price: z.number().positive(),
+        stock: z.number().nonnegative(),
+      }))
+      .mutation(async ({ input }) => {
+        // Placeholder - would update DB
+        return { success: true, message: "Device updated" };
+      }),
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        // Placeholder - would delete from DB
+        return { success: true, message: "Device deleted" };
+      }),
   }),
 
   // Orders management
@@ -59,6 +100,15 @@ export const appRouter = router({
       // Placeholder - would fetch from DB
       return null;
     }),
+    updateStatus: adminProcedure
+      .input(z.object({
+        orderId: z.number(),
+        status: z.enum(["pending", "processing", "shipped", "delivered"]),
+      }))
+      .mutation(async ({ input }) => {
+        // Placeholder - would update DB
+        return { success: true, message: "Order status updated" };
+      }),
   }),
 
   // Analytics
