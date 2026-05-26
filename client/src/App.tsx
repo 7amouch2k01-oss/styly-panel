@@ -4,32 +4,44 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import Home from "./pages/Home";
+import DashboardLayout from "./components/DashboardLayout";
+import AdminGuard from "./components/AdminGuard";
+import Unauthorized from "./pages/Unauthorized";
+import Overview from "./pages/Overview";
+import Users from "./pages/Users";
+import Devices from "./pages/Devices";
+import Orders from "./pages/Orders";
+import Analytics from "./pages/Analytics";
+import Settings from "./pages/Settings";
 
 function Router() {
-  // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
-      <Route path={"/"} component={Home} />
-      <Route path={"/404"} component={NotFound} />
-      {/* Final fallback route */}
-      <Route component={NotFound} />
+      <Route path="/unauthorized" component={Unauthorized} />
+      <Route path="/404" component={NotFound} />
+      <Route path="*">
+        <AdminGuard>
+          <DashboardLayout>
+            <Switch>
+              <Route path="/" component={Overview} />
+              <Route path="/users" component={Users} />
+              <Route path="/devices" component={Devices} />
+              <Route path="/orders" component={Orders} />
+              <Route path="/analytics" component={Analytics} />
+              <Route path="/settings" component={Settings} />
+              <Route component={NotFound} />
+            </Switch>
+          </DashboardLayout>
+        </AdminGuard>
+      </Route>
     </Switch>
   );
 }
 
-// NOTE: About Theme
-// - First choose a default theme according to your design style (dark or light bg), than change color palette in index.css
-//   to keep consistent foreground/background color across components
-// - If you want to make theme switchable, pass `switchable` ThemeProvider and use `useTheme` hook
-
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider
-        defaultTheme="light"
-        // switchable
-      >
+      <ThemeProvider defaultTheme="dark">
         <TooltipProvider>
           <Toaster />
           <Router />

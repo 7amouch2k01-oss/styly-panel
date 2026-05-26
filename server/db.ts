@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, devices, orders, orderItems, activityLogs, analyticsSnapshots } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,71 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// User queries
+export async function getAllUsers() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(users);
+}
+
+// Device queries
+export async function getAllDevices() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(devices).where(eq(devices.isActive, true));
+}
+
+export async function getDeviceById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(devices).where(eq(devices.id, id)).limit(1);
+  return result[0] || null;
+}
+
+// Order queries
+export async function getAllOrders() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(orders).orderBy(desc(orders.createdAt));
+}
+
+export async function getOrderById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(orders).where(eq(orders.id, id)).limit(1);
+  return result[0] || null;
+}
+
+export async function getOrderItems(orderId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
+}
+
+// Activity log queries
+export async function getRecentActivity(limit: number = 10) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(activityLogs).orderBy(desc(activityLogs.createdAt)).limit(limit);
+}
+
+// Analytics queries
+export async function getDashboardMetrics() {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const totalUsers = await db.select().from(users);
+  const activeOrders = await db.select().from(orders);
+  const allDevices = await db.select().from(devices);
+  
+  const totalRevenue = activeOrders.reduce((sum, order) => {
+    return sum + (parseFloat(order.totalAmount.toString()) || 0);
+  }, 0);
+  
+  return {
+    totalUsers: totalUsers.length,
+    activeDevices: allDevices.filter(d => d.stock > 0).length,
+    totalRevenue: totalRevenue.toFixed(2),
+    totalOrders: activeOrders.length,
+  };
+}
