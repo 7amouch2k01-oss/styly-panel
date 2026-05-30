@@ -1,43 +1,53 @@
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useState } from "react";
-import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
 
 interface DeviceFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  device?: {
-    id: number;
-    name: string;
-    category: string;
-    price: number;
-    stock: number;
-  } | null;
+  device?: any;
 }
 
 export function DeviceFormDialog({ open, onOpenChange, device }: DeviceFormDialogProps) {
   const [formData, setFormData] = useState({
-    name: device?.name || "",
-    category: device?.category || "",
-    price: device?.price || 0,
-    stock: device?.stock || 0,
+    name: "",
+    category: "",
+    price: 0,
+    stock: 0,
+    description: "",
   });
   const [isSaving, setIsSaving] = useState(false);
+
   const createMutation = trpc.devices.create.useMutation();
   const updateMutation = trpc.devices.update.useMutation();
   const utils = trpc.useUtils();
 
-  const handleSave = async () => {
+  useEffect(() => {
+    if (device) {
+      setFormData({
+        name: device.name || "",
+        category: device.category || "",
+        price: device.price || 0,
+        stock: device.stock || 0,
+        description: device.description || "",
+      });
+    } else {
+      setFormData({
+        name: "",
+        category: "",
+        price: 0,
+        stock: 0,
+        description: "",
+      });
+    }
+  }, [device, open]);
+
+  const handleSubmit = async () => {
     if (!formData.name || !formData.category || formData.price <= 0) {
       toast.error("Please fill in all required fields");
       return;
@@ -62,11 +72,11 @@ export function DeviceFormDialog({ open, onOpenChange, device }: DeviceFormDialo
         });
       }
       await utils.devices.list.invalidate();
-      toast.success(device ? "Device updated successfully" : "Device created successfully");
+      toast.success(device ? "Product updated successfully" : "Product created successfully");
       onOpenChange(false);
-      setFormData({ name: "", category: "", price: 0, stock: 0 });
+      setFormData({ name: "", category: "", price: 0, stock: 0, description: "" });
     } catch (error) {
-      toast.error("Failed to save device");
+      toast.error("Failed to save product");
     } finally {
       setIsSaving(false);
     }
@@ -74,76 +84,68 @@ export function DeviceFormDialog({ open, onOpenChange, device }: DeviceFormDialo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle>{device ? "Edit Device" : "Add New Device"}</DialogTitle>
-          <DialogDescription>
-            {device ? "Update device information" : "Create a new device entry"}
-          </DialogDescription>
+          <DialogTitle>{device ? "Edit Product" : "Add New Product"}</DialogTitle>
         </DialogHeader>
-
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Device Name</Label>
+          <div>
+            <Label htmlFor="name">Product Name</Label>
             <Input
               id="name"
-              placeholder="e.g., iPhone 15 Pro"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="Enter product name"
             />
           </div>
-
-          <div className="space-y-2">
+          <div>
             <Label htmlFor="category">Category</Label>
-            <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
-              <SelectTrigger id="category">
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Apple">Apple</SelectItem>
-                <SelectItem value="Samsung">Samsung</SelectItem>
-                <SelectItem value="Google">Google</SelectItem>
-                <SelectItem value="OnePlus">OnePlus</SelectItem>
-                <SelectItem value="Xiaomi">Xiaomi</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="price">Price ($)</Label>
             <Input
-              id="price"
-              type="number"
-              placeholder="0.00"
-              value={formData.price}
-              onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
+              id="category"
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              placeholder="e.g., Clothing, Shoes, Accessories"
             />
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="stock">Stock Quantity</Label>
-            <Input
-              id="stock"
-              type="number"
-              placeholder="0"
-              value={formData.stock}
-              onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="price">Price</Label>
+              <Input
+                id="price"
+                type="number"
+                step="0.01"
+                value={formData.price}
+                onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
+                placeholder="0.00"
+              />
+            </div>
+            <div>
+              <Label htmlFor="stock">Stock</Label>
+              <Input
+                id="stock"
+                type="number"
+                value={formData.stock}
+                onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) })}
+                placeholder="0"
+              />
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Enter product description"
+              rows={3}
             />
           </div>
-
-          <div className="flex gap-3 pt-4">
-            <Button
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isSaving}
-            >
+          <div className="flex gap-3 justify-end pt-4">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button
-              onClick={handleSave}
-              disabled={isSaving}
-            >
-              {isSaving ? "Saving..." : "Save Device"}
+            <Button onClick={handleSubmit} disabled={isSaving}>
+              {isSaving ? "Saving..." : "Save"}
             </Button>
           </div>
         </div>

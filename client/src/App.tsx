@@ -13,6 +13,7 @@ import Devices from "./pages/Devices";
 import Orders from "./pages/Orders";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
+import Brands from "./pages/Brands";
 
 function Router() {
   return (
@@ -25,9 +26,10 @@ function Router() {
             <Switch>
               <Route path="/" component={Overview} />
               <Route path="/users" component={Users} />
-              <Route path="/devices" component={Devices} />
+              <Route path="/products" component={Devices} />
               <Route path="/orders" component={Orders} />
               <Route path="/analytics" component={Analytics} />
+              <Route path="/brands" component={Brands} />
               <Route path="/settings" component={Settings} />
               <Route component={NotFound} />
             </Switch>
@@ -41,7 +43,7 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="dark">
+      <ThemeProvider defaultTheme="dark" switchable>
         <TooltipProvider>
           <Toaster />
           <Router />

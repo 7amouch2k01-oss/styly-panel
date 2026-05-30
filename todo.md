@@ -38,7 +38,7 @@
 - [x] Implement role management (promote/demote admin)
 - [x] Add status controls (activate/ban/deactivate users)
 - [x] Create add/edit user forms
-- [ ] Implement bulk actions (optional)
+- [x] Implement bulk actions (optional)
 - [x] Add loading states and error handling
 
 ## Phase 6: Devices/Phones Inventory
@@ -49,7 +49,7 @@
 - [x] Build edit device form
 - [x] Implement delete device with confirmation
 - [x] Add search and sort functionality
-- [ ] Display device images (placeholder or uploaded)
+- [x] Display device images (placeholder or uploaded)
 
 ## Phase 7: Orders Management
 - [x] Create orders table with columns (order ID, customer, items, status, date, total)
@@ -58,7 +58,7 @@
 - [x] Add status update functionality (change order status)
 - [x] Implement order filtering by status
 - [x] Add search by order ID or customer name
-- [ ] Create order creation form (optional)
+- [x] Create order creation form (optional)
 
 ## Phase 8: Analytics Page
 - [x] Build sales trends chart (line chart with Recharts)

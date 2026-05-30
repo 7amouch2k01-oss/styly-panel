@@ -81,9 +81,9 @@ export default function Devices() {
     <div className="space-y-8">
       {/* Header */}
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Devices Inventory</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Products Inventory</h1>
         <p className="text-muted-foreground">
-          Manage phone inventory, stock levels, and product information
+          Manage fashion products, stock levels, and inventory information
         </p>
       </div>
 
@@ -102,11 +102,10 @@ export default function Devices() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
-            <SelectItem value="apple">Apple</SelectItem>
-            <SelectItem value="samsung">Samsung</SelectItem>
-            <SelectItem value="google">Google</SelectItem>
-            <SelectItem value="oneplus">OnePlus</SelectItem>
-            <SelectItem value="xiaomi">Xiaomi</SelectItem>
+            <SelectItem value="clothing">Clothing</SelectItem>
+            <SelectItem value="shoes">Shoes</SelectItem>
+            <SelectItem value="accessories">Accessories</SelectItem>
+            <SelectItem value="mixed">Mixed</SelectItem>
           </SelectContent>
         </Select>
         <Button className="gap-2" onClick={handleAddDevice}>
@@ -138,7 +137,7 @@ export default function Devices() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <CardTitle className="text-lg">{device.name}</CardTitle>
-                    <CardDescription>{device.category}</CardDescription>
+                    <CardDescription>Fashion Product</CardDescription>
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>

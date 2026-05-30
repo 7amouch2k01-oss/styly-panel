@@ -26,7 +26,40 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
 /**
- * Devices/Products table for Styly phone inventory.
+ * Brands table for fashion brands.
+ */
+export const brands = mysqlTable("brands", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull().unique(),
+  logoUrl: varchar("logoUrl", { length: 500 }),
+  country: varchar("country", { length: 100 }).notNull(),
+  category: varchar("category", { length: 100 }).notNull(), // Clothing, Shoes, Accessories, Mixed
+  description: text("description"),
+  website: varchar("website", { length: 500 }),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Brand = typeof brands.$inferSelect;
+export type InsertBrand = typeof brands.$inferInsert;
+
+/**
+ * Product categories table.
+ */
+export const productCategories = mysqlTable("productCategories", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 100 }).notNull().unique(), // Clothing, Shoes, Accessories
+  description: text("description"),
+  iconUrl: varchar("iconUrl", { length: 500 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ProductCategory = typeof productCategories.$inferSelect;
+export type InsertProductCategory = typeof productCategories.$inferInsert;
+
+/**
+ * Devices/Products table for Styly fashion products.
  */
 export const devices = mysqlTable("devices", {
   id: int("id").autoincrement().primaryKey(),
@@ -101,12 +134,52 @@ export const analyticsSnapshots = mysqlTable("analyticsSnapshots", {
   id: int("id").autoincrement().primaryKey(),
   date: timestamp("date").defaultNow().notNull(),
   totalUsers: int("totalUsers").default(0).notNull(),
-  activeDevices: int("activeDevices").default(0).notNull(),
+  activeProducts: int("activeProducts").default(0).notNull(),
   totalRevenue: decimal("totalRevenue", { precision: 12, scale: 2 }).default("0").notNull(),
   totalOrders: int("totalOrders").default(0).notNull(),
   newOrders: int("newOrders").default(0).notNull(),
+  topBrand: varchar("topBrand", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
 export type AnalyticsSnapshot = typeof analyticsSnapshots.$inferSelect;
 export type InsertAnalyticsSnapshot = typeof analyticsSnapshots.$inferInsert;
+
+/**
+ * Product sizes table for size variants.
+ */
+export const productSizes = mysqlTable("productSizes", {
+  id: int("id").autoincrement().primaryKey(),
+  deviceId: int("deviceId").notNull(),
+  size: varchar("size", { length: 50 }).notNull(),
+  stock: int("stock").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [{
+  deviceFk: foreignKey({
+    columns: [table.deviceId],
+    foreignColumns: [devices.id],
+  }),
+}]);
+
+export type ProductSize = typeof productSizes.$inferSelect;
+export type InsertProductSize = typeof productSizes.$inferInsert;
+
+/**
+ * Product colors table for color variants.
+ */
+export const productColors = mysqlTable("productColors", {
+  id: int("id").autoincrement().primaryKey(),
+  deviceId: int("deviceId").notNull(),
+  color: varchar("color", { length: 100 }).notNull(),
+  hexCode: varchar("hexCode", { length: 7 }),
+  stock: int("stock").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [{
+  deviceFk: foreignKey({
+    columns: [table.deviceId],
+    foreignColumns: [devices.id],
+  }),
+}]);
+
+export type ProductColor = typeof productColors.$inferSelect;
+export type InsertProductColor = typeof productColors.$inferInsert;

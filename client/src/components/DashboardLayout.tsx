@@ -1,4 +1,3 @@
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/_core/hooks/useAuth";
 import {
   DropdownMenu,
@@ -19,20 +18,23 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users, Smartphone, ShoppingCart, BarChart3, Settings } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, Users, Smartphone, ShoppingCart, BarChart3, Settings, Moon, Sun, Package } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Overview", path: "/" },
   { icon: Users, label: "Users", path: "/users" },
-  { icon: Smartphone, label: "Devices", path: "/devices" },
+  { icon: Smartphone, label: "Products", path: "/products" },
   { icon: ShoppingCart, label: "Orders", path: "/orders" },
   { icon: BarChart3, label: "Analytics", path: "/analytics" },
+  { icon: Package, label: "Brands", path: "/brands" },
   { icon: Settings, label: "Settings", path: "/settings" },
 ];
 
@@ -105,6 +107,26 @@ type DashboardLayoutContentProps = {
   children: React.ReactNode;
   setSidebarWidth: (width: number) => void;
 };
+
+function ThemeToggleButton() {
+  const { theme, toggleTheme } = useTheme();
+  
+  if (!toggleTheme) return null;
+  
+  return (
+    <button
+      onClick={toggleTheme}
+      className="h-9 w-9 flex items-center justify-center hover:bg-accent rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      aria-label="Toggle theme"
+    >
+      {theme === "dark" ? (
+        <Sun className="h-4 w-4 text-muted-foreground" />
+      ) : (
+        <Moon className="h-4 w-4 text-muted-foreground" />
+      )}
+    </button>
+  );
+}
 
 function DashboardLayoutContent({
   children,
@@ -258,6 +280,9 @@ function DashboardLayoutContent({
                   </span>
                 </div>
               </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <ThemeToggleButton />
             </div>
           </div>
         )}

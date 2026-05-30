@@ -64,9 +64,11 @@ describe("Admin Access Control", () => {
 
     try {
       const result = await caller.dashboard.metrics();
-      expect(result).toBeDefined();
-    } catch (error) {
-      expect.fail("Admin should be able to access dashboard metrics");
+      // Result can be null if database is not available, but the call should not throw
+      expect(result === null || typeof result === 'object').toBe(true);
+    } catch (error: any) {
+      console.error("Dashboard metrics error:", error);
+      expect.fail(`Admin should be able to access dashboard metrics: ${error?.message}`);
     }
   });
 
@@ -127,10 +129,11 @@ describe("Admin Access Control", () => {
 
     try {
       const result = await caller.devices.list();
-      expect(result).toBeDefined();
+      // Result should be an array (empty if database is not available)
       expect(Array.isArray(result)).toBe(true);
-    } catch (error) {
-      expect.fail("Admin should be able to access devices list");
+    } catch (error: any) {
+      console.error("Devices list error:", error);
+      expect.fail(`Admin should be able to access devices list: ${error?.message}`);
     }
   });
 
