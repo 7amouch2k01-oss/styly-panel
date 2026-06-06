@@ -1,0 +1,18 @@
+- [ ] 1. Environment Variable Setup
+    - [ ] Add `syncSecret` to `server/_core/env.ts`
+- [ ] 2. Sync Router Protection
+    - [ ] Create `syncProcedure` middleware in `server/_core/trpc.ts`
+    - [ ] Update `server/routers.ts` to use `syncProcedure` for the `sync` router
+- [ ] 3. Storage Proxy Authentication
+    - [ ] Add auth checks to `/manus-storage/*` in `server/_core/storageProxy.ts`
+- [ ] 4. HTTP Security Headers, CORS & Cookies
+    - [ ] Add custom CORS and secure HTTP headers middleware in `server/_core/index.ts`
+    - [ ] Update cookie `sameSite` to `"lax"` in `server/_core/cookies.ts`
+- [ ] 5. Advanced Password Hashing
+    - [ ] Update `hashPassword` & `verifyPassword` in `server/authHelpers.ts` to support `pbkdf2:600000:` format with legacy fallback
+- [ ] 6. Rate Limiting
+    - [ ] Create in-memory rate-limiter middleware in `server/_core/rateLimiter.ts`
+    - [ ] Apply rate limiting to auth routes in `server/_core/index.ts`
+- [ ] 7. Verification & Testing
+    - [ ] Run `pnpm check` to ensure all files compile without errors
+    - [ ] Manually verify security headers, sync authentication, storage proxy auth, and password backward-compatibility

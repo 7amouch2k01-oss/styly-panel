@@ -6,7 +6,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Plus, MoreHorizontal } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useState } from "react";
-import { DeviceFormDialog } from "@/components/DeviceFormDialog";
+import { ProductFormDialog } from "@/components/ProductFormDialog";
+import { UpdateStockDialog } from "@/components/UpdateStockDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,14 +32,27 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
-export default function Devices() {
-  const { data: devices, isLoading } = trpc.devices.list.useQuery();
+export default function Products() {
+  const { data: products = [], isLoading } = trpc.devices.list.useQuery();
+  const { data: brands = [] } = trpc.brands.list.useQuery();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [formDialogOpen, setFormDialogOpen] = useState(false);
-  const [selectedDevice, setSelectedDevice] = useState<any>(null);
+  const [stockDialogOpen, setStockDialogOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deviceToDelete, setDeviceToDelete] = useState<any>(null);
+  const [productToDelete, setProductToDelete] = useState<any>(null);
+  
   const deleteMutation = trpc.devices.delete.useMutation();
   const utils = trpc.useUtils();
+
+  const filteredProducts = products.filter(product => {
+    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (product.description || "").toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = categoryFilter === "all" || 
+                            product.category.toLowerCase() === categoryFilter.toLowerCase();
+    return matchesSearch && matchesCategory;
+  });
 
   const getStockBadge = (stock: number) => {
     if (stock > 10) {
@@ -50,30 +64,35 @@ export default function Devices() {
     }
   };
 
-  const handleAddDevice = () => {
-    setSelectedDevice(null);
+  const handleAddProduct = () => {
+    setSelectedProduct(null);
     setFormDialogOpen(true);
   };
 
-  const handleEditDevice = (device: any) => {
-    setSelectedDevice(device);
+  const handleEditProduct = (product: any) => {
+    setSelectedProduct(product);
     setFormDialogOpen(true);
   };
 
-  const handleDeleteDevice = (device: any) => {
-    setDeviceToDelete(device);
+  const handleUpdateStock = (product: any) => {
+    setSelectedProduct(product);
+    setStockDialogOpen(true);
+  };
+
+  const handleDeleteProduct = (product: any) => {
+    setProductToDelete(product);
     setDeleteDialogOpen(true);
   };
 
   const confirmDelete = async () => {
     try {
-      await deleteMutation.mutateAsync({ id: deviceToDelete.id });
+      await deleteMutation.mutateAsync({ id: productToDelete.id });
       await utils.devices.list.invalidate();
-      toast.success("Device deleted successfully");
+      toast.success("Product deleted successfully");
       setDeleteDialogOpen(false);
-      setDeviceToDelete(null);
+      setProductToDelete(null);
     } catch (error) {
-      toast.error("Failed to delete device");
+      toast.error("Failed to delete product");
     }
   };
 
@@ -92,11 +111,13 @@ export default function Devices() {
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search devices..."
+            placeholder="Search products..."
             className="pl-10"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <Select>
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
           <SelectTrigger className="w-full sm:w-48">
             <SelectValue placeholder="Filter by category" />
           </SelectTrigger>
@@ -108,13 +129,13 @@ export default function Devices() {
             <SelectItem value="mixed">Mixed</SelectItem>
           </SelectContent>
         </Select>
-        <Button className="gap-2" onClick={handleAddDevice}>
+        <Button className="gap-2" onClick={handleAddProduct}>
           <Plus className="h-4 w-4" />
-          Add Device
+          Add Product
         </Button>
       </div>
 
-      {/* Devices Grid */}
+      {/* Products Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {isLoading ? (
           [...Array(6)].map((_, i) => (
@@ -130,14 +151,16 @@ export default function Devices() {
               </CardContent>
             </Card>
           ))
-        ) : devices && devices.length > 0 ? (
-          devices.map((device) => (
-            <Card key={device.id} className="border-border/50 bg-card/50 backdrop-blur hover:bg-card/80 transition-colors">
+                ) : filteredProducts && filteredProducts.length > 0 ? (
+          filteredProducts.map((product) => (
+            <Card key={product.id} className="border-border/50 bg-card/50 backdrop-blur hover:bg-card/80 transition-colors">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <CardTitle className="text-lg">{device.name}</CardTitle>
-                    <CardDescription>Fashion Product</CardDescription>
+                    <CardTitle className="text-lg">{product.name}</CardTitle>
+                    <CardDescription>
+                      {product.brandId ? (brands.find((b: any) => b.id === product.brandId)?.name || "Fashion Product") : "No Brand"}
+                    </CardDescription>
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -146,13 +169,15 @@ export default function Devices() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleEditDevice(device)}>
-                        Edit Device
+                      <DropdownMenuItem onClick={() => handleEditProduct(product)}>
+                        Edit Product
                       </DropdownMenuItem>
-                      <DropdownMenuItem>Update Stock</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleUpdateStock(product)}>
+                        Update Stock
+                      </DropdownMenuItem>
                       <DropdownMenuItem
                         className="text-destructive"
-                        onClick={() => handleDeleteDevice(device)}
+                        onClick={() => handleDeleteProduct(product)}
                       >
                         Delete
                       </DropdownMenuItem>
@@ -163,40 +188,47 @@ export default function Devices() {
               <CardContent className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Price</span>
-                  <span className="font-semibold">${device.price}</span>
+                  <span className="font-semibold">${product.price}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Stock</span>
-                  <span className="font-semibold">{device.stock} units</span>
+                  <span className="font-semibold">{product.stock} units</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Status</span>
-                  {getStockBadge(device.stock)}
+                  {getStockBadge(product.stock)}
                 </div>
               </CardContent>
             </Card>
           ))
         ) : (
           <div className="col-span-full text-center text-muted-foreground py-8">
-            No devices found
+            No products found
           </div>
         )}
       </div>
 
-      {/* Device Form Dialog */}
-      <DeviceFormDialog
+      {/* Product Form Dialog */}
+      <ProductFormDialog
         open={formDialogOpen}
         onOpenChange={setFormDialogOpen}
-        device={selectedDevice}
+        product={selectedProduct}
+      />
+
+      {/* Update Stock Dialog */}
+      <UpdateStockDialog
+        open={stockDialogOpen}
+        onOpenChange={setStockDialogOpen}
+        product={selectedProduct}
       />
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Device</AlertDialogTitle>
+            <AlertDialogTitle>Delete Product</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete {deviceToDelete?.name}? This action cannot be undone.
+              Are you sure you want to delete {productToDelete?.name}? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="flex gap-3 justify-end">

@@ -23,9 +23,21 @@ import {
 } from "@/components/ui/select";
 
 export default function Orders() {
-  const { data: orders, isLoading } = trpc.orders.list.useQuery();
+  const { data: orders = [], isLoading } = trpc.orders.list.useQuery();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  const filteredOrders = orders.filter(order => {
+    const matchesSearch = 
+      String(order.id).includes(searchQuery) ||
+      order.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (order.customerEmail || "").toLowerCase().includes(searchQuery.toLowerCase());
+      
+    const matchesStatus = statusFilter === "all" || order.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -64,9 +76,11 @@ export default function Orders() {
           <Input
             placeholder="Search orders by ID or customer..."
             className="pl-10"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <Select>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-full sm:w-48">
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
@@ -85,7 +99,7 @@ export default function Orders() {
         <CardHeader>
           <CardTitle>All Orders</CardTitle>
           <CardDescription>
-            Total: {orders?.length || 0} orders
+            Total: {isLoading ? "..." : filteredOrders.length} orders
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -115,8 +129,8 @@ export default function Orders() {
                       <TableCell className="text-right"><Skeleton className="h-4 w-8" /></TableCell>
                     </TableRow>
                   ))
-                ) : orders && orders.length > 0 ? (
-                  orders.map((order) => (
+                                ) : filteredOrders && filteredOrders.length > 0 ? (
+                  filteredOrders.map((order) => (
                     <TableRow key={order.id} className="border-border/50 hover:bg-accent/5">
                       <TableCell className="font-medium">#{order.id}</TableCell>
                       <TableCell>

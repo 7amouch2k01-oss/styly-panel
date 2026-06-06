@@ -10,13 +10,15 @@ export const users = mysqlTable("users", {
    * Surrogate primary key. Auto-incremented numeric value managed by the database.
    * Use this for relations between tables.
    */
-  id: int("id").autoincrement().primaryKey(),
+  id: int("id").primaryKey(),
   /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
-  email: varchar("email", { length: 320 }),
+  email: varchar("email", { length: 320 }).unique(),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  status: mysqlEnum("status", ["active", "inactive", "banned"]).default("active").notNull(),
+  passwordHash: varchar("passwordHash", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -29,7 +31,7 @@ export type InsertUser = typeof users.$inferInsert;
  * Brands table for fashion brands.
  */
 export const brands = mysqlTable("brands", {
-  id: int("id").autoincrement().primaryKey(),
+  id: int("id").primaryKey(),
   name: varchar("name", { length: 255 }).notNull().unique(),
   logoUrl: varchar("logoUrl", { length: 500 }),
   country: varchar("country", { length: 100 }).notNull(),
@@ -62,17 +64,23 @@ export type InsertProductCategory = typeof productCategories.$inferInsert;
  * Devices/Products table for Styly fashion products.
  */
 export const devices = mysqlTable("devices", {
-  id: int("id").autoincrement().primaryKey(),
+  id: int("id").primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
   category: varchar("category", { length: 100 }).notNull(),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   stock: int("stock").default(0).notNull(),
   description: text("description"),
   imageUrl: varchar("imageUrl", { length: 500 }),
+  brandId: int("brandId"),
   isActive: boolean("isActive").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (table) => [{
+  brandFk: foreignKey({
+    columns: [table.brandId],
+    foreignColumns: [brands.id],
+  }),
+}]);
 
 export type Device = typeof devices.$inferSelect;
 export type InsertDevice = typeof devices.$inferInsert;
@@ -81,7 +89,7 @@ export type InsertDevice = typeof devices.$inferInsert;
  * Orders table for tracking customer orders.
  */
 export const orders = mysqlTable("orders", {
-  id: int("id").autoincrement().primaryKey(),
+  id: int("id").primaryKey(),
   customerId: int("customerId").notNull(),
   customerName: varchar("customerName", { length: 255 }).notNull(),
   customerEmail: varchar("customerEmail", { length: 320 }),

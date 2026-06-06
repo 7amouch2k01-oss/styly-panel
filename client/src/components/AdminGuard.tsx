@@ -8,8 +8,12 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    if (!loading && user && user.role !== "admin") {
-      setLocation("/unauthorized");
+    if (!loading) {
+      if (!user) {
+        setLocation("/auth");
+      } else if (user.role !== "admin") {
+        setLocation("/unauthorized");
+      }
     }
   }, [user, loading, setLocation]);
 

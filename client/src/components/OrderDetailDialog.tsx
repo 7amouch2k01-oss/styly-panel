@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 
@@ -29,10 +29,16 @@ interface OrderDetailDialogProps {
 }
 
 export function OrderDetailDialog({ open, onOpenChange, order }: OrderDetailDialogProps) {
-  const [status, setStatus] = useState(order?.status || "pending");
+  const [status, setStatus] = useState("pending");
   const [isSaving, setIsSaving] = useState(false);
   const updateStatusMutation = trpc.orders.updateStatus.useMutation();
   const utils = trpc.useUtils();
+
+  useEffect(() => {
+    if (order) {
+      setStatus(order.status);
+    }
+  }, [order, open]);
 
   if (!order) return null;
 

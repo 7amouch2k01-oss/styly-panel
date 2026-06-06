@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 
@@ -21,16 +21,25 @@ interface UserDetailDialogProps {
     name: string | null;
     email: string | null;
     role: "admin" | "user";
+    status?: string;
     createdAt: Date;
   } | null;
 }
 
 export function UserDetailDialog({ open, onOpenChange, user }: UserDetailDialogProps) {
-  const [role, setRole] = useState<"admin" | "user">(user?.role || "user");
+  const [role, setRole] = useState<"admin" | "user">("user");
   const [status, setStatus] = useState("active");
   const [isSaving, setIsSaving] = useState(false);
   const updateRoleMutation = trpc.users.updateRole.useMutation();
   const updateStatusMutation = trpc.users.updateStatus.useMutation();
+  const utils = trpc.useUtils();
+
+  useEffect(() => {
+    if (user) {
+      setRole(user.role);
+      setStatus(user.status || "active");
+    }
+  }, [user, open]);
 
   if (!user) return null;
 
@@ -43,12 +52,13 @@ export function UserDetailDialog({ open, onOpenChange, user }: UserDetailDialogP
           role: role as "admin" | "user",
         });
       }
-      if (status !== "active") {
+      if (status !== (user.status || "active")) {
         await updateStatusMutation.mutateAsync({
           userId: user.id,
           status: status as "active" | "inactive" | "banned",
         });
       }
+      await utils.users.list.invalidate();
       toast.success("User updated successfully");
       onOpenChange(false);
     } catch (error) {

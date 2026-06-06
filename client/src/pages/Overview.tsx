@@ -96,8 +96,11 @@ export default function Overview() {
               activity.map((log) => (
                 <div key={log.id} className="flex items-center justify-between py-3 border-b border-border/50 last:border-0">
                   <div className="flex flex-col gap-1">
-                    <p className="text-sm font-medium">{log.action}</p>
-                    <p className="text-xs text-muted-foreground">{log.entityType}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium">{log.action}</p>
+                      <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground uppercase tracking-wider">{log.entityType}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{log.description || `${log.entityType} action`}</p>
                   </div>
                   <p className="text-xs text-muted-foreground whitespace-nowrap ml-4">
                     {new Date(log.createdAt).toLocaleDateString()}

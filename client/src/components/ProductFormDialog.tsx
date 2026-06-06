@@ -3,38 +3,48 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 
-interface DeviceFormDialogProps {
+interface ProductFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  device?: any;
+  product?: any;
 }
 
-export function DeviceFormDialog({ open, onOpenChange, device }: DeviceFormDialogProps) {
+export function ProductFormDialog({ open, onOpenChange, product }: ProductFormDialogProps) {
   const [formData, setFormData] = useState({
     name: "",
     category: "",
     price: 0,
     stock: 0,
+    brandId: "" as string | number,
     description: "",
   });
   const [isSaving, setIsSaving] = useState(false);
 
+  const { data: brands = [] } = trpc.brands.list.useQuery();
   const createMutation = trpc.devices.create.useMutation();
   const updateMutation = trpc.devices.update.useMutation();
   const utils = trpc.useUtils();
 
   useEffect(() => {
-    if (device) {
+    if (product) {
       setFormData({
-        name: device.name || "",
-        category: device.category || "",
-        price: device.price || 0,
-        stock: device.stock || 0,
-        description: device.description || "",
+        name: product.name || "",
+        category: product.category || "",
+        price: typeof product.price === "string" ? parseFloat(product.price) : (product.price || 0),
+        stock: typeof product.stock === "string" ? parseInt(product.stock, 10) : (product.stock || 0),
+        brandId: product.brandId ? String(product.brandId) : "",
+        description: product.description || "",
       });
     } else {
       setFormData({
@@ -42,39 +52,44 @@ export function DeviceFormDialog({ open, onOpenChange, device }: DeviceFormDialo
         category: "",
         price: 0,
         stock: 0,
+        brandId: "",
         description: "",
       });
     }
-  }, [device, open]);
+  }, [product, open]);
 
   const handleSubmit = async () => {
-    if (!formData.name || !formData.category || formData.price <= 0) {
-      toast.error("Please fill in all required fields");
+    const parsedPrice = Number(formData.price);
+    const parsedStock = Number(formData.stock);
+
+    if (!formData.name || !formData.category || parsedPrice <= 0) {
+      toast.error("Please fill in all required fields and ensure price is positive");
       return;
     }
 
     setIsSaving(true);
     try {
-      if (device) {
+      const payload: any = {
+        name: formData.name,
+        category: formData.category,
+        price: parsedPrice,
+        stock: parsedStock,
+        brandId: formData.brandId ? Number(formData.brandId) : null,
+        description: formData.description,
+      };
+
+      if (product) {
         await updateMutation.mutateAsync({
-          id: device.id,
-          name: formData.name,
-          category: formData.category,
-          price: formData.price,
-          stock: formData.stock,
+          id: product.id,
+          ...payload,
         });
       } else {
-        await createMutation.mutateAsync({
-          name: formData.name,
-          category: formData.category,
-          price: formData.price,
-          stock: formData.stock,
-        });
+        await createMutation.mutateAsync(payload);
       }
       await utils.devices.list.invalidate();
-      toast.success(device ? "Product updated successfully" : "Product created successfully");
+      toast.success(product ? "Product updated successfully" : "Product created successfully");
       onOpenChange(false);
-      setFormData({ name: "", category: "", price: 0, stock: 0, description: "" });
+      setFormData({ name: "", category: "", price: 0, stock: 0, brandId: "", description: "" });
     } catch (error) {
       toast.error("Failed to save product");
     } finally {
@@ -86,7 +101,7 @@ export function DeviceFormDialog({ open, onOpenChange, device }: DeviceFormDialo
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{device ? "Edit Product" : "Add New Product"}</DialogTitle>
+          <DialogTitle>{product ? "Edit Product" : "Add New Product"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div>
@@ -106,6 +121,25 @@ export function DeviceFormDialog({ open, onOpenChange, device }: DeviceFormDialo
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
               placeholder="e.g., Clothing, Shoes, Accessories"
             />
+          </div>
+          <div>
+            <Label htmlFor="brandId">Brand (Optional)</Label>
+            <Select
+              value={formData.brandId ? String(formData.brandId) : "none"}
+              onValueChange={(val) => setFormData({ ...formData, brandId: val === "none" ? "" : val })}
+            >
+              <SelectTrigger id="brandId">
+                <SelectValue placeholder="Select a brand" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None / No Brand</SelectItem>
+                {brands.map((b: any) => (
+                  <SelectItem key={b.id} value={String(b.id)}>
+                    {b.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>

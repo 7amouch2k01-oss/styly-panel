@@ -9,15 +9,17 @@ import AdminGuard from "./components/AdminGuard";
 import Unauthorized from "./pages/Unauthorized";
 import Overview from "./pages/Overview";
 import Users from "./pages/Users";
-import Devices from "./pages/Devices";
+import Products from "./pages/Products";
 import Orders from "./pages/Orders";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
 import Brands from "./pages/Brands";
+import Auth from "./pages/Auth";
 
 function Router() {
   return (
     <Switch>
+      <Route path="/auth" component={Auth} />
       <Route path="/unauthorized" component={Unauthorized} />
       <Route path="/404" component={NotFound} />
       <Route path="*">
@@ -26,7 +28,7 @@ function Router() {
             <Switch>
               <Route path="/" component={Overview} />
               <Route path="/users" component={Users} />
-              <Route path="/products" component={Devices} />
+              <Route path="/products" component={Products} />
               <Route path="/orders" component={Orders} />
               <Route path="/analytics" component={Analytics} />
               <Route path="/brands" component={Brands} />

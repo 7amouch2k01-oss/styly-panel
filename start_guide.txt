@@ -1,0 +1,21 @@
+========================================================================
+HOW TO LOCALLY START THE STYLY ADMIN DASHBOARD WITH COMMAND PROMPT (CMD)
+========================================================================
+
+Follow these steps to start the development environment:
+
+1. Open Windows Command Prompt (cmd.exe):
+   - Press Win + R, type "cmd", and press Enter.
+
+2. Navigate to the project directory:
+   cd "C:\Users\mosma\OneDrive\Desktop\GoMyCode\my personal projects\styly pannel"
+
+3. Install dependencies (if not already done):
+   pnpm install
+
+4. Start the local development server:
+   pnpm dev
+
+5. Access the application:
+   - Open your browser and go to: http://localhost:5173
+   - You can sign in using one of the pre-seeded accounts in `server/db_fallback.json` or create a new account via the register screen.

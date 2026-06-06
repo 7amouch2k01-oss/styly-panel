@@ -195,8 +195,11 @@ function DashboardLayoutContent({
                 <PanelLeft className="h-4 w-4 text-muted-foreground" />
               </button>
               {!isCollapsed ? (
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-bold tracking-tight truncate text-primary">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="h-6 w-6 rounded-full overflow-hidden shrink-0 shadow-sm border border-neutral-200/20">
+                    <img src="/logo.png" alt="Styly Logo" className="h-full w-full object-cover" />
+                  </div>
+                  <span className="font-extrabold tracking-tight truncate text-primary text-base bg-gradient-to-r from-red-500 to-orange-500 bg-clip-text text-transparent">
                     Styly
                   </span>
                 </div>
@@ -227,7 +230,13 @@ function DashboardLayoutContent({
             </SidebarMenu>
           </SidebarContent>
 
-          <SidebarFooter className="p-3">
+          <SidebarFooter className="p-3 gap-2">
+            {!isMobile && (
+              <div className="flex items-center justify-between px-2 py-1.5 rounded-lg border border-border/40 bg-accent/10 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:border-none group-data-[collapsible=icon]:bg-transparent">
+                <span className="text-xs font-medium text-muted-foreground group-data-[collapsible=icon]:hidden">Theme</span>
+                <ThemeToggleButton />
+              </div>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">

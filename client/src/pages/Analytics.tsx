@@ -50,12 +50,12 @@ export default function Analytics() {
     { month: "Jun", revenue: 38000 },
   ];
 
-  const topDevices = [
-    { name: "iPhone 15 Pro", sales: 2400 },
-    { name: "Samsung S24", sales: 1398 },
-    { name: "Google Pixel 8", sales: 1800 },
-    { name: "OnePlus 12", sales: 1200 },
-    { name: "Xiaomi 14", sales: 980 },
+  const topBrands = [
+    { name: "Nike", sales: 2400 },
+    { name: "Adidas", sales: 1800 },
+    { name: "Zara", sales: 1398 },
+    { name: "Gucci", sales: 1200 },
+    { name: "Zen", sales: 980 },
   ];
 
   return (
@@ -194,24 +194,24 @@ export default function Analytics() {
           </CardContent>
         </Card>
 
-        {/* Top Selling Devices */}
+        {/* Top Selling Brands */}
         <Card className="border-border/50 bg-card/50 backdrop-blur">
           <CardHeader>
-            <CardTitle>Top Selling Devices</CardTitle>
+            <CardTitle>Top Selling Brands</CardTitle>
             <CardDescription>
-              Best performing products
+              Best performing fashion brands
             </CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart
-                data={topDevices}
+                data={topBrands}
                 layout="vertical"
-                margin={{ top: 5, right: 30, left: 200, bottom: 5 }}
+                margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                 <XAxis type="number" stroke="rgba(255,255,255,0.5)" />
-                <YAxis dataKey="name" type="category" stroke="rgba(255,255,255,0.5)" width={190} />
+                <YAxis dataKey="name" type="category" stroke="rgba(255,255,255,0.5)" width={90} />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: "rgba(20, 20, 40, 0.9)",
