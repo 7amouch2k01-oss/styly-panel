@@ -1,8 +1,23 @@
 import { Button } from "@/components/ui/button";
 import { getLoginUrl } from "@/const";
 import { Lock } from "lucide-react";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { useState } from "react";
 
 export default function Unauthorized() {
+  const { logout } = useAuth();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleSignInAsAdmin = async () => {
+    setIsLoggingOut(true);
+    try {
+      await logout();
+    } catch (e) {
+      // Ignore logout errors, proceed to login page
+    }
+    window.location.href = getLoginUrl();
+  };
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="flex flex-col items-center gap-8 max-w-md w-full">
@@ -22,16 +37,16 @@ export default function Unauthorized() {
             variant="outline"
             className="flex-1"
             onClick={() => window.history.back()}
+            disabled={isLoggingOut}
           >
             Go Back
           </Button>
           <Button
             className="flex-1"
-            onClick={() => {
-              window.location.href = getLoginUrl();
-            }}
+            onClick={handleSignInAsAdmin}
+            disabled={isLoggingOut}
           >
-            Sign in as Admin
+            {isLoggingOut ? "Loading..." : "Sign in as Admin"}
           </Button>
         </div>
       </div>

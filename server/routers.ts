@@ -1,7 +1,8 @@
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { sendVerificationEmail } from "./email";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router, adminProcedure, syncProcedure } from "./_core/trpc";
+import { publicProcedure, router, adminProcedure, syncProcedure, protectedProcedure } from "./_core/trpc";
 import {
   getAllUsers,
   getAllDevices,
@@ -23,7 +24,20 @@ import {
   createBrand,
   updateBrand,
   deleteBrand,
-  logActivity
+  logActivity,
+  getPosts,
+  getFallbackData,
+  // Grade & Level
+  getUserGrade,
+  addStylePoints,
+  getGradeLeaderboard,
+  getBrandLevel,
+  addBrandXP,
+  // Commissions
+  getUserCommissions,
+  getBrandCommissions,
+  createCommission,
+  updateCommissionStatus,
 } from "./db";
 import { hashPassword, verifyPassword } from "./authHelpers";
 import { sdk } from "./_core/sdk";
@@ -60,6 +74,7 @@ export const appRouter = router({
           });
         }
 
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
         const openId = `local_${crypto.randomUUID()}`;
         const pwdHash = hashPassword(input.password);
 
@@ -70,7 +85,17 @@ export const appRouter = router({
           loginMethod: "local",
           role: input.role,
           passwordHash: pwdHash,
+          isEmailVerified: false,
+          verificationCode: code,
         };
+
+        // Send verification email — non-blocking so signup succeeds even if email fails
+        try {
+          await sendVerificationEmail(input.email, code);
+        } catch (emailErr: any) {
+          console.error("[Auth] Email send failed (non-fatal):", emailErr.message);
+          console.log(`[Auth] ⚠️  Verification code for ${input.email}: ${code}`);
+        }
 
         await upsertUser(newUserPayload);
 
@@ -149,6 +174,82 @@ export const appRouter = router({
           user,
         };
       }),
+    verifyEmail: protectedProcedure
+      .input(
+        z.object({
+          code: z.string().length(6, "Code must be exactly 6 digits"),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const user = ctx.user;
+        if (!user) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "You must be logged in to verify email",
+          });
+        }
+
+        if (!user.verificationCode) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "No verification pending for this user",
+          });
+        }
+
+        if (user.verificationCode !== input.code) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Invalid verification code",
+          });
+        }
+
+        await upsertUser({
+          openId: user.openId,
+          isEmailVerified: true,
+          verificationCode: null,
+        });
+
+        await logActivity(user.id, "Email Verified", "user", user.id, `User verified email successfully`);
+
+        return {
+          success: true,
+        };
+      }),
+    resendVerificationCode: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        const user = ctx.user;
+        if (!user) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "You must be logged in",
+          });
+        }
+
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+        await upsertUser({
+          openId: user.openId,
+          verificationCode: code,
+        });
+
+        if (!user.email) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "User email address is missing",
+          });
+        }
+
+        try {
+          await sendVerificationEmail(user.email, code);
+        } catch (emailErr: any) {
+          console.error("[Auth] Resend verification email failed (non-fatal):", emailErr.message);
+          console.log(`[Auth] ⚠️  New verification code for ${user.email}: ${code}`);
+        }
+
+        return {
+          success: true,
+        };
+      }),
   }),
 
   // Dashboard metrics
@@ -225,7 +326,7 @@ export const appRouter = router({
 
   // Products/Devices management
   devices: router({
-    list: adminProcedure.query(async () => {
+    list: publicProcedure.query(async () => {
       return await getAllDevices();
     }),
     create: adminProcedure
@@ -271,6 +372,42 @@ export const appRouter = router({
     list: adminProcedure.query(async () => {
       return await getAllOrders();
     }),
+    create: publicProcedure
+      .input(z.object({
+        items: z.array(z.object({
+          id: z.number(),
+          name: z.string(),
+          price: z.number(),
+          image: z.string(),
+          size: z.string(),
+          qty: z.number(),
+        })),
+        total: z.number(),
+        userId: z.number().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const userId = ctx.user?.id ?? input.userId ?? 1;
+        const customerName = ctx.user?.name ?? "Styly User";
+        const customerEmail = ctx.user?.email ?? undefined;
+
+        const order = await createOrder({
+          customerId: userId,
+          customerName,
+          customerEmail,
+          status: "pending",
+          totalAmount: input.total,
+          itemCount: input.items.reduce((acc, i) => acc + i.qty, 0),
+          notes: JSON.stringify(input.items.map(i => ({ name: i.name, size: i.size, qty: i.qty, price: i.price }))),
+          items: input.items.map(i => ({
+            deviceId: i.id,
+            quantity: i.qty,
+            priceAtPurchase: i.price,
+          })),
+        });
+        await logActivity(userId, "Order Placed", "order", order.id,
+          `${customerName} placed order with ${input.items.length} item(s) — total $${input.total.toFixed(2)}`);
+        return { success: true, message: "Order placed", orderId: order.id };
+      }),
     updateStatus: adminProcedure
       .input(z.object({
         orderId: z.number(),
@@ -285,9 +422,17 @@ export const appRouter = router({
 
   // Brands management
   brands: router({
-    list: adminProcedure.query(async () => {
+    list: publicProcedure.query(async () => {
       return await getAllBrands();
     }),
+    storefront: publicProcedure
+      .input(z.object({
+        brandId: z.number()
+      }))
+      .query(async ({ input }) => {
+        const { getBrandStorefrontData } = await import("./db");
+        return await getBrandStorefrontData(input.brandId);
+      }),
     create: adminProcedure
       .input(z.object({
         name: z.string().min(1),
@@ -427,6 +572,478 @@ export const appRouter = router({
         return { success: true, message: "Order synced", id: order.id };
       }),
   }),
+
+  // =============================================================================
+  // CONSUMER APP PROCEDURES (PHASE 3)
+  // =============================================================================
+
+  mannequin: router({
+    save: publicProcedure
+      .input(z.object({
+        slot: z.number().optional().default(1),
+        name: z.string().optional(),
+        gender: z.string().optional(),
+        height: z.number().optional(),
+        weight: z.number().optional(),
+        bodyShape: z.string().optional(),
+        bust: z.number().optional(),
+        waist: z.number().optional(),
+        hips: z.number().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const userId = ctx.user?.id || 1;
+        const { saveMannequinProfile } = await import("./db");
+        await saveMannequinProfile(userId, input);
+        return { success: true, message: "Mannequin profile saved" };
+      }),
+    get: publicProcedure
+      .input(z.object({ slot: z.number().optional().default(1) }))
+      .query(async ({ input, ctx }) => {
+        const userId = ctx.user?.id || 1;
+        const { getMannequinProfile } = await import("./db");
+        return await getMannequinProfile(userId, input.slot);
+      }),
+    getAll: publicProcedure
+      .query(async ({ ctx }) => {
+        const userId = ctx.user?.id || 1;
+        const { getAllMannequinProfiles } = await import("./db");
+        return await getAllMannequinProfiles(userId);
+      }),
+  }),
+
+  brandStore: router({
+    register: publicProcedure
+      .input(z.object({
+        brandName: z.string(),
+        ownerName: z.string(),
+        email: z.string().email(),
+        phone: z.string(),
+        idFile: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const userId = ctx.user?.id || 1;
+        const { registerBrandStore } = await import("./db");
+        await registerBrandStore(userId, input);
+        return { success: true, message: "Brand store registered" };
+      }),
+    get: publicProcedure
+      .query(async ({ ctx }) => {
+        const userId = ctx.user?.id || 1;
+        const { getBrandStore } = await import("./db");
+        return await getBrandStore(userId);
+      }),
+  }),
+
+  posts: router({
+    list: publicProcedure
+      .query(async () => {
+        const { getPosts } = await import("./db");
+        return await getPosts();
+      }),
+    adminList: adminProcedure
+      .query(async () => {
+        const posts = await getPosts();
+        const users = await getAllUsers();
+        return posts.map((p: any) => ({
+          ...p,
+          author: users.find((u: any) => u.id === p.userId) || null,
+        }));
+      }),
+    updateStatus: adminProcedure
+      .input(z.object({
+        postId: z.number(),
+        status: z.enum(["active", "hidden", "flagged"]),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { updatePostStatus } = await import("./db");
+        await updatePostStatus(input.postId, input.status);
+        await logActivity(ctx.user.id, "Post Status Updated", "post", input.postId, `Updated post #${input.postId} to ${input.status}`);
+        return { success: true, message: "Post status updated" };
+      }),
+    delete: adminProcedure
+      .input(z.object({ postId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const { deletePost } = await import("./db");
+        await deletePost(input.postId);
+        await logActivity(ctx.user.id, "Post Deleted", "post", input.postId, `Deleted post #${input.postId}`);
+        return { success: true, message: "Post deleted" };
+      }),
+    create: publicProcedure
+      .input(z.object({
+        imageUrl: z.string(),
+        caption: z.string(),
+        category: z.string(),
+        taggedProduct: z.object({
+          id: z.number(),
+          name: z.string(),
+          price: z.number(),
+          image: z.string(),
+          brandId: z.number().nullable().optional()
+        }),
+        hotspots: z.array(z.object({
+          x: z.number(),
+          y: z.number(),
+          brandId: z.number(),
+          productId: z.number()
+        })).optional(),
+        mediaType: z.enum(["image", "video"]).default("image")
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const userId = ctx.user?.id || 1;
+        const { createPost } = await import("./db");
+        
+        // Find or build user details for creator profile
+        const creatorObj = ctx.user 
+          ? {
+              name: ctx.user.name || "Aria F.",
+              username: `@${(ctx.user.name || "ariaf").toLowerCase().replace(/\s+/g, "")}`,
+              avatar: "/logo.png",
+              isBrand: false,
+              verified: false
+            }
+          : {
+              name: "Aria F.",
+              username: "@ariaf",
+              avatar: "/logo.png",
+              isBrand: false,
+              verified: false
+            };
+
+        await createPost(userId, {
+          image: input.imageUrl,
+          caption: input.caption,
+          category: input.category,
+          mediaType: input.mediaType,
+          creator: creatorObj,
+          taggedProduct: input.taggedProduct,
+          hotspots: input.hotspots
+        });
+        return { success: true, message: "Post created successfully" };
+      }),
+    getBrandTaggedPosts: publicProcedure
+      .input(z.object({
+        brandName: z.string()
+      }))
+      .query(async ({ input }) => {
+        const { getPosts, getAllUsers } = await import("./db");
+        const posts = await getPosts();
+        const users = await getAllUsers();
+        
+        const normalizedBrand = input.brandName.toLowerCase();
+        
+        // Filter posts tagging this brand in caption or product name
+        const tagged = posts.filter((post: any) => {
+          const captionMatch = (post.caption || "").toLowerCase().includes(`@${normalizedBrand}`);
+          const wordMatch = (post.caption || "").toLowerCase().includes(normalizedBrand);
+          const productMatch = post.taggedProduct && post.taggedProduct.name.toLowerCase().includes(normalizedBrand);
+          return captionMatch || wordMatch || productMatch;
+        });
+
+        // Map to TaggedPost interface expected by BrandDashboard
+        return tagged.map((post: any) => {
+          const poster = users.find((u: any) => u.id === post.userId);
+          const likesCount = post.likes || 0;
+          
+          return {
+            id: String(post.id),
+            posterName: (poster && poster.name) || "Aria Fenix",
+            posterAvatar: "/logo.png",
+            postImage: post.image || post.imageUrl || "/product_dress_1.png",
+            likes: likesCount,
+            shares: Math.floor(likesCount * 0.12),
+            comments: post.comments || 0,
+            interactions: likesCount + (post.comments || 0) + 24,
+            clicks: Math.floor(likesCount * 0.45),
+            orders: Math.floor(likesCount * 0.05),
+            revenue: Math.floor(likesCount * 0.05) * (post.taggedProduct?.price || 150),
+            commissionEarned: Math.floor(likesCount * 0.05) * (post.taggedProduct?.price || 150) * 0.1,
+            taggedProducts: post.taggedProduct ? [post.taggedProduct.name] : [],
+            lockType: post.approvalStatus || "black",
+            postText: post.caption,
+            taggedAt: post.createdAt || new Date().toISOString()
+          };
+        });
+      }),
+    updateApprovalStatus: publicProcedure
+      .input(z.object({
+        postId: z.number(),
+        approvalStatus: z.enum(["pending", "green", "red", "grey"])
+      }))
+      .mutation(async ({ input }) => {
+        const { updatePostApproval } = await import("./db");
+        await updatePostApproval(input.postId, input.approvalStatus);
+        return { success: true };
+      })
+  }),
+
+  bag: router({
+    list: publicProcedure
+      .query(async ({ ctx }) => {
+        const userId = ctx.user?.id || 1;
+        const { getBagItems } = await import("./db");
+        return await getBagItems(userId);
+      }),
+    add: publicProcedure
+      .input(z.object({
+        productId: z.number(),
+        name: z.string(),
+        price: z.number(),
+        image: z.string(),
+        size: z.string(),
+        qty: z.number().default(1),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const userId = ctx.user?.id || 1;
+        const { addToBag } = await import("./db");
+        await addToBag(userId, input);
+        return { success: true, message: "Added to bag" };
+      }),
+    remove: publicProcedure
+      .input(z.object({
+        id: z.number(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const userId = ctx.user?.id || 1;
+        const { removeFromBag } = await import("./db");
+        await removeFromBag(userId, input.id);
+        return { success: true, message: "Removed from bag" };
+      }),
+    clear: publicProcedure
+      .mutation(async ({ ctx }) => {
+        const userId = ctx.user?.id || 1;
+        const { clearBag } = await import("./db");
+        await clearBag(userId);
+        return { success: true, message: "Bag cleared" };
+      }),
+  }),
+
+  // ─────────────────────────────────────────────────────────────
+  // USER GRADE SYSTEM
+  // ─────────────────────────────────────────────────────────────
+  userGrade: router({
+    get: publicProcedure.query(async ({ ctx }) => {
+      const userId = ctx.user?.id || 1;
+      return await getUserGrade(userId);
+    }),
+    addPoints: adminProcedure
+      .input(z.object({ userId: z.number(), points: z.number(), reason: z.string().optional() }))
+      .mutation(async ({ input }) => {
+        const result = await addStylePoints(input.userId, input.points, input.reason);
+        return { success: true, ...result };
+      }),
+    leaderboard: publicProcedure
+      .input(z.object({ limit: z.number().default(10) }))
+      .query(async ({ input }) => {
+        return await getGradeLeaderboard(input.limit);
+      }),
+  }),
+
+  // ─────────────────────────────────────────────────────────────
+  // BRAND LEVEL SYSTEM
+  // ─────────────────────────────────────────────────────────────
+  brandLevel: router({
+    get: publicProcedure
+      .input(z.object({ brandId: z.number() }))
+      .query(async ({ input }) => {
+        return await getBrandLevel(input.brandId);
+      }),
+    addXP: adminProcedure
+      .input(z.object({ brandId: z.number(), xp: z.number(), reason: z.string().optional() }))
+      .mutation(async ({ input }) => {
+        const result = await addBrandXP(input.brandId, input.xp, input.reason);
+        return { success: true, ...result };
+      }),
+  }),
+
+  // ─────────────────────────────────────────────────────────────
+  // COMMISSIONS
+  // ─────────────────────────────────────────────────────────────
+  commissions: router({
+    myCommissions: publicProcedure.query(async ({ ctx }) => {
+      const userId = ctx.user?.id || 1;
+      return await getUserCommissions(userId);
+    }),
+    brandCommissions: publicProcedure
+      .input(z.object({ brandId: z.number() }))
+      .query(async ({ input }) => {
+        return await getBrandCommissions(input.brandId);
+      }),
+    requestPayout: publicProcedure
+      .input(z.object({ brandId: z.number().optional(), postId: z.number().optional(), amount: z.number(), description: z.string().optional() }))
+      .mutation(async ({ input, ctx }) => {
+        const userId = ctx.user?.id || 1;
+        await createCommission({ userId, ...input });
+        return { success: true, message: "Payout request submitted" };
+      }),
+    updateStatus: adminProcedure
+      .input(z.object({ id: z.number(), status: z.enum(["approved", "paid", "rejected"]) }))
+      .mutation(async ({ input }) => {
+        await updateCommissionStatus(input.id, input.status);
+        return { success: true };
+      }),
+  }),
+
+  // ─────────────────────────────────────────────────────────────
+  // DEV SIMULATION
+  // ─────────────────────────────────────────────────────────────
+  devSimulation: router({
+    simulateOrder: publicProcedure
+      .input(z.object({
+        brandId: z.number(),
+        amount: z.number()
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const userId = ctx.user?.id || 1;
+        const { createOrder, addBrandXP, createCommission } = await import("./db");
+        
+        await createOrder({
+          customerId: userId,
+          customerName: ctx.user?.name || "Styly Tester",
+          customerEmail: ctx.user?.email || "test@styly.com",
+          status: "delivered",
+          totalAmount: input.amount,
+          itemCount: 1,
+          notes: "Dev Simulation Order",
+          items: [{ deviceId: 1, quantity: 1, priceAtPurchase: input.amount }]
+        });
+        
+        await addBrandXP(input.brandId, 50, "Dev Simulation order");
+        
+        await createCommission({
+          userId,
+          brandId: input.brandId,
+          amount: Math.round(input.amount * 0.1 * 100) / 100,
+          description: `Dev Simulation sale`
+        });
+        
+        return { success: true, message: "Order and XP simulated!" };
+      }),
+      
+    simulateXP: publicProcedure
+      .input(z.object({
+        brandId: z.number(),
+        xp: z.number()
+      }))
+      .mutation(async ({ input }) => {
+        const { addBrandXP } = await import("./db");
+        await addBrandXP(input.brandId, input.xp, "Dev Switcher XP reward");
+        return { success: true, message: `Awarded ${input.xp} XP!` };
+      })
+  }),
+
+  // ─── CHECKOUT (full order placement with shipments) ───────────────────────
+  checkout: router({
+    placeOrder: publicProcedure
+      .input(z.object({
+        items: z.array(z.object({
+          id: z.number(),
+          name: z.string(),
+          price: z.number(),
+          image: z.string().optional(),
+          size: z.string().optional(),
+          qty: z.number(),
+          brandId: z.number().optional(),
+          brandName: z.string().optional(),
+        })),
+        total: z.number(),
+        address: z.object({
+          fullName: z.string(),
+          phone: z.string(),
+          address: z.string(),
+          city: z.string(),
+          postCode: z.string(),
+          country: z.string(),
+        }),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { createFullOrder } = await import("./db");
+        const userId = ctx.user?.id ?? 1;
+        const email = ctx.user?.email ?? undefined;
+        const order = await createFullOrder(userId, email, input.address, input.items, input.total);
+        await logActivity(userId, "Order Placed", "order", order.id,
+          `${input.address.fullName} placed order #${order.id} — $${input.total.toFixed(2)}`);
+        return { success: true, orderId: order.id };
+      }),
+  }),
+
+  // ─── DELIVERY (admin + brand + customer) ─────────────────────────────────
+  delivery: router({
+    /** Admin: see ALL shipments across all brands */
+    adminListShipments: adminProcedure.query(async () => {
+      const { getAllShipments } = await import("./db");
+      return await getAllShipments();
+    }),
+
+    /** Admin: list all orders with their shipments */
+    adminListOrders: adminProcedure.query(async () => {
+      const { getAllOrders, getShipmentsByOrder } = await import("./db");
+      const ords = await getAllOrders();
+      const result = [];
+      for (const ord of ords) {
+        const shs = await getShipmentsByOrder(ord.id);
+        result.push({ ...ord, shipments: shs });
+      }
+      return result;
+    }),
+
+    /** Brand: see shipments for their brand */
+    brandListShipments: publicProcedure
+      .input(z.object({ brandId: z.number() }))
+      .query(async ({ input }) => {
+        const { getShipmentsByBrand } = await import("./db");
+        const { OrderItemModel, toPlain } = await import("./mongodb");
+        const shs = await getShipmentsByBrand(input.brandId);
+        const result = [];
+        for (const s of shs) {
+          const items = toPlain(await OrderItemModel.find({ shipmentId: s.id }));
+          result.push({ ...s, items });
+        }
+        return result;
+      }),
+
+    /** Brand or Admin: update a shipment's fulfillment status / tracking */
+    updateShipment: publicProcedure
+      .input(z.object({
+        shipmentId: z.number(),
+        status: z.enum(["pending", "preparing", "ready_for_pickup", "shipped", "delivered", "canceled"]),
+        carrier: z.string().optional(),
+        trackingNumber: z.string().optional(),
+        estimatedDeliveryDate: z.string().optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { updateShipmentStatus } = await import("./db");
+        await updateShipmentStatus(input.shipmentId, {
+          status: input.status,
+          carrier: input.carrier,
+          trackingNumber: input.trackingNumber,
+          estimatedDeliveryDate: input.estimatedDeliveryDate,
+          notes: input.notes,
+        });
+        const userId = ctx.user?.id ?? 1;
+        await logActivity(userId, "Shipment Updated", "shipment", input.shipmentId,
+          `Shipment #${input.shipmentId} status → ${input.status}`);
+        return { success: true, message: "Shipment updated" };
+      }),
+
+    /** Customer: get their orders with full shipment tracking */
+    myOrders: publicProcedure.query(async ({ ctx }) => {
+      const { getOrdersByCustomer } = await import("./db");
+      const userId = ctx.user?.id ?? 0;
+      if (!userId) return [];
+      return await getOrdersByCustomer(userId);
+    }),
+
+    /** Customer: track a specific order by ID */
+    trackOrder: publicProcedure
+      .input(z.object({ orderId: z.number() }))
+      .query(async ({ input }) => {
+        const { getShipmentsByOrder } = await import("./db");
+        return await getShipmentsByOrder(input.orderId);
+      }),
+  }),
 });
 
+
 export type AppRouter = typeof appRouter;
+

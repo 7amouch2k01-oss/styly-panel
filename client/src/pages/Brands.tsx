@@ -31,7 +31,9 @@ export default function Brands() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [brandToDelete, setBrandToDelete] = useState<any>(null);
 
-  const { data: brands = [], isLoading } = trpc.brands.list.useQuery();
+  const { data: brands = [], isLoading: brandsLoading } = trpc.brands.list.useQuery();
+  const { data: devices = [], isLoading: devicesLoading } = trpc.devices.list.useQuery();
+  const isLoading = brandsLoading || devicesLoading;
   const deleteMutation = trpc.brands.delete.useMutation();
   const utils = trpc.useUtils();
 
@@ -41,8 +43,8 @@ export default function Brands() {
   );
 
   const totalBrands = brands.length;
-  const activeBrands = brands.filter(b => b.status === "active").length;
-  const totalProducts = brands.reduce((sum, b) => sum + (b.productsCount || 0), 0);
+  const activeBrands = brands.filter(b => b.isActive).length;
+  const totalProducts = devices.filter(d => d.brandId !== null).length;
 
   const handleAddBrand = () => {
     setSelectedBrand(null);
@@ -175,10 +177,10 @@ export default function Brands() {
                           {brand.category}
                         </Badge>
                       </td>
-                      <td className="px-6 py-3 text-sm font-medium">{brand.productsCount}</td>
+                      <td className="px-6 py-3 text-sm font-medium">{devices.filter(d => d.brandId === brand.id).length}</td>
                       <td className="px-6 py-3 text-sm">
-                        <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
-                          {brand.status.charAt(0).toUpperCase() + brand.status.slice(1)}
+                        <Badge className={brand.isActive ? "bg-green-500/20 text-green-400 border-green-500/30" : "bg-red-500/20 text-red-400 border-red-500/30"}>
+                          {brand.isActive ? "Active" : "Inactive"}
                         </Badge>
                       </td>
                       <td className="px-6 py-3 text-right">

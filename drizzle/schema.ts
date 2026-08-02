@@ -1,193 +1,302 @@
-import { decimal, int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, foreignKey } from "drizzle-orm/mysql-core";
+import {
+  integer,
+  real,
+  sqliteTable,
+  text,
+} from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
 
-/**
- * Core user table backing auth flow.
- * Extend this file with additional tables as your product grows.
- * Columns use camelCase to match both database fields and generated types.
- */
-export const users = mysqlTable("users", {
-  /**
-   * Surrogate primary key. Auto-incremented numeric value managed by the database.
-   * Use this for relations between tables.
-   */
-  id: int("id").primaryKey(),
-  /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
-  openId: varchar("openId", { length: 64 }).notNull().unique(),
-  name: text("name"),
-  email: varchar("email", { length: 320 }).unique(),
-  loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
-  status: mysqlEnum("status", ["active", "inactive", "banned"]).default("active").notNull(),
-  passwordHash: varchar("passwordHash", { length: 255 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
+// ─────────────────────────────────────────────────────────────
+// USERS
+// ─────────────────────────────────────────────────────────────
+export const users = sqliteTable("users", {
+  id:           integer("id").primaryKey({ autoIncrement: true }),
+  openId:       text("openId").notNull().unique(),
+  name:         text("name"),
+  email:        text("email").unique(),
+  loginMethod:  text("loginMethod"),
+  role:         text("role", { enum: ["user", "admin"] }).default("user").notNull(),
+  status:       text("status", { enum: ["active", "inactive", "banned"] }).default("active").notNull(),
+  passwordHash: text("passwordHash"),
+  avatarUrl:    text("avatarUrl"),
+  bio:          text("bio"),
+  createdAt:    text("createdAt").default(sql`(datetime('now'))`).notNull(),
+  updatedAt:    text("updatedAt").default(sql`(datetime('now'))`).notNull(),
+  lastSignedIn: text("lastSignedIn").default(sql`(datetime('now'))`).notNull(),
+  isEmailVerified: integer("isEmailVerified", { mode: "boolean" }).default(false).notNull(),
+  verificationCode: text("verificationCode"),
 });
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-/**
- * Brands table for fashion brands.
- */
-export const brands = mysqlTable("brands", {
-  id: int("id").primaryKey(),
-  name: varchar("name", { length: 255 }).notNull().unique(),
-  logoUrl: varchar("logoUrl", { length: 500 }),
-  country: varchar("country", { length: 100 }).notNull(),
-  category: varchar("category", { length: 100 }).notNull(), // Clothing, Shoes, Accessories, Mixed
+// ─────────────────────────────────────────────────────────────
+// BRANDS
+// ─────────────────────────────────────────────────────────────
+export const brands = sqliteTable("brands", {
+  id:          integer("id").primaryKey({ autoIncrement: true }),
+  name:        text("name").notNull().unique(),
+  logoUrl:     text("logoUrl"),
+  country:     text("country").notNull(),
+  category:    text("category").notNull(),
   description: text("description"),
-  website: varchar("website", { length: 500 }),
-  isActive: boolean("isActive").default(true).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  website:     text("website"),
+  isActive:    integer("isActive", { mode: "boolean" }).default(true).notNull(),
+  createdAt:   text("createdAt").default(sql`(datetime('now'))`).notNull(),
+  updatedAt:   text("updatedAt").default(sql`(datetime('now'))`).notNull(),
 });
 
 export type Brand = typeof brands.$inferSelect;
 export type InsertBrand = typeof brands.$inferInsert;
 
-/**
- * Product categories table.
- */
-export const productCategories = mysqlTable("productCategories", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 100 }).notNull().unique(), // Clothing, Shoes, Accessories
+// ─────────────────────────────────────────────────────────────
+// PRODUCTS / DEVICES
+// ─────────────────────────────────────────────────────────────
+export const devices = sqliteTable("devices", {
+  id:          integer("id").primaryKey({ autoIncrement: true }),
+  name:        text("name").notNull(),
+  category:    text("category").notNull(),
+  price:       real("price").notNull(),
+  stock:       integer("stock").default(0).notNull(),
   description: text("description"),
-  iconUrl: varchar("iconUrl", { length: 500 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  imageUrl:    text("imageUrl"),
+  brandId:     integer("brandId").references(() => brands.id),
+  isActive:    integer("isActive", { mode: "boolean" }).default(true).notNull(),
+  createdAt:   text("createdAt").default(sql`(datetime('now'))`).notNull(),
+  updatedAt:   text("updatedAt").default(sql`(datetime('now'))`).notNull(),
 });
-
-export type ProductCategory = typeof productCategories.$inferSelect;
-export type InsertProductCategory = typeof productCategories.$inferInsert;
-
-/**
- * Devices/Products table for Styly fashion products.
- */
-export const devices = mysqlTable("devices", {
-  id: int("id").primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  category: varchar("category", { length: 100 }).notNull(),
-  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
-  stock: int("stock").default(0).notNull(),
-  description: text("description"),
-  imageUrl: varchar("imageUrl", { length: 500 }),
-  brandId: int("brandId"),
-  isActive: boolean("isActive").default(true).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, (table) => [{
-  brandFk: foreignKey({
-    columns: [table.brandId],
-    foreignColumns: [brands.id],
-  }),
-}]);
 
 export type Device = typeof devices.$inferSelect;
 export type InsertDevice = typeof devices.$inferInsert;
 
-/**
- * Orders table for tracking customer orders.
- */
-export const orders = mysqlTable("orders", {
-  id: int("id").primaryKey(),
-  customerId: int("customerId").notNull(),
-  customerName: varchar("customerName", { length: 255 }).notNull(),
-  customerEmail: varchar("customerEmail", { length: 320 }),
-  status: mysqlEnum("status", ["pending", "processing", "shipped", "delivered"]).default("pending").notNull(),
-  totalAmount: decimal("totalAmount", { precision: 12, scale: 2 }).notNull(),
-  itemCount: int("itemCount").default(0).notNull(),
-  notes: text("notes"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+// ─────────────────────────────────────────────────────────────
+// ORDERS
+// ─────────────────────────────────────────────────────────────
+export const orders = sqliteTable("orders", {
+  id:              integer("id").primaryKey({ autoIncrement: true }),
+  customerId:      integer("customerId").notNull(),
+  customerName:    text("customerName").notNull(),
+  customerEmail:   text("customerEmail"),
+  phone:           text("phone"),
+  shippingAddress: text("shippingAddress"),
+  city:            text("city"),
+  postCode:        text("postCode"),
+  country:         text("country"),
+  status:          text("status", { enum: ["pending", "processing", "shipped", "delivered"] }).default("pending").notNull(),
+  totalAmount:     real("totalAmount").notNull(),
+  itemCount:       integer("itemCount").default(0).notNull(),
+  notes:           text("notes"),
+  createdAt:       text("createdAt").default(sql`(datetime('now'))`).notNull(),
+  updatedAt:       text("updatedAt").default(sql`(datetime('now'))`).notNull(),
 });
 
 export type Order = typeof orders.$inferSelect;
 export type InsertOrder = typeof orders.$inferInsert;
 
-/**
- * Order items junction table (many-to-many between orders and devices).
- */
-export const orderItems = mysqlTable("orderItems", {
-  id: int("id").autoincrement().primaryKey(),
-  orderId: int("orderId").notNull(),
-  deviceId: int("deviceId").notNull(),
-  quantity: int("quantity").default(1).notNull(),
-  priceAtPurchase: decimal("priceAtPurchase", { precision: 10, scale: 2 }).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+// ─────────────────────────────────────────────────────────────
+// ORDER ITEMS
+// ─────────────────────────────────────────────────────────────
+export const orderItems = sqliteTable("orderItems", {
+  id:              integer("id").primaryKey({ autoIncrement: true }),
+  orderId:         integer("orderId").notNull().references(() => orders.id),
+  shipmentId:      integer("shipmentId"),
+  deviceId:        integer("deviceId").notNull(),
+  brandId:         integer("brandId"),
+  productName:     text("productName"),
+  productImage:    text("productImage"),
+  size:            text("size"),
+  quantity:        integer("quantity").default(1).notNull(),
+  priceAtPurchase: real("priceAtPurchase").notNull(),
+  createdAt:       text("createdAt").default(sql`(datetime('now'))`).notNull(),
 });
 
 export type OrderItem = typeof orderItems.$inferSelect;
 export type InsertOrderItem = typeof orderItems.$inferInsert;
 
-/**
- * Activity logs table for tracking user actions and recent activity feed.
- */
-export const activityLogs = mysqlTable("activityLogs", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  action: varchar("action", { length: 100 }).notNull(),
-  entityType: varchar("entityType", { length: 50 }).notNull(),
-  entityId: int("entityId"),
+// ─────────────────────────────────────────────────────────────
+// ACTIVITY LOGS
+// ─────────────────────────────────────────────────────────────
+export const activityLogs = sqliteTable("activityLogs", {
+  id:          integer("id").primaryKey({ autoIncrement: true }),
+  userId:      integer("userId").notNull(),
+  action:      text("action").notNull(),
+  entityType:  text("entityType").notNull(),
+  entityId:    integer("entityId"),
   description: text("description"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  createdAt:   text("createdAt").default(sql`(datetime('now'))`).notNull(),
 });
 
 export type ActivityLog = typeof activityLogs.$inferSelect;
 export type InsertActivityLog = typeof activityLogs.$inferInsert;
 
-/**
- * Analytics snapshots for historical data tracking.
- */
-export const analyticsSnapshots = mysqlTable("analyticsSnapshots", {
-  id: int("id").autoincrement().primaryKey(),
-  date: timestamp("date").defaultNow().notNull(),
-  totalUsers: int("totalUsers").default(0).notNull(),
-  activeProducts: int("activeProducts").default(0).notNull(),
-  totalRevenue: decimal("totalRevenue", { precision: 12, scale: 2 }).default("0").notNull(),
-  totalOrders: int("totalOrders").default(0).notNull(),
-  newOrders: int("newOrders").default(0).notNull(),
-  topBrand: varchar("topBrand", { length: 255 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+// ─────────────────────────────────────────────────────────────
+// ANALYTICS SNAPSHOTS
+// ─────────────────────────────────────────────────────────────
+export const analyticsSnapshots = sqliteTable("analyticsSnapshots", {
+  id:             integer("id").primaryKey({ autoIncrement: true }),
+  date:           text("date").default(sql`(datetime('now'))`).notNull(),
+  totalUsers:     integer("totalUsers").default(0).notNull(),
+  activeProducts: integer("activeProducts").default(0).notNull(),
+  totalRevenue:   real("totalRevenue").default(0).notNull(),
+  totalOrders:    integer("totalOrders").default(0).notNull(),
+  newOrders:      integer("newOrders").default(0).notNull(),
+  topBrand:       text("topBrand"),
+  createdAt:      text("createdAt").default(sql`(datetime('now'))`).notNull(),
 });
 
-export type AnalyticsSnapshot = typeof analyticsSnapshots.$inferSelect;
-export type InsertAnalyticsSnapshot = typeof analyticsSnapshots.$inferInsert;
+// ─────────────────────────────────────────────────────────────
+// POSTS (consumer social posts)
+// ─────────────────────────────────────────────────────────────
+export const posts = sqliteTable("posts", {
+  id:             integer("id").primaryKey({ autoIncrement: true }),
+  userId:         integer("userId").notNull().references(() => users.id),
+  image:          text("image"),
+  caption:        text("caption"),
+  category:       text("category"),
+  likes:          integer("likes").default(0).notNull(),
+  comments:       integer("comments").default(0).notNull(),
+  status:         text("status", { enum: ["active", "hidden", "flagged"] }).default("active").notNull(),
+  approvalStatus: text("approvalStatus", { enum: ["pending", "green", "red", "grey"] }).default("pending").notNull(),
+  taggedProduct:  text("taggedProduct"),  // JSON string
+  creatorJson:    text("creatorJson"),    // JSON string
+  hotspots:       text("hotspots"),       // JSON string: array of hotspots [{x, y, brandId, productId}]
+  createdAt:      text("createdAt").default(sql`(datetime('now'))`).notNull(),
+  updatedAt:      text("updatedAt").default(sql`(datetime('now'))`).notNull(),
+  mediaType:      text("mediaType", { enum: ["image", "video"] }).default("image").notNull(),
+});
 
-/**
- * Product sizes table for size variants.
- */
-export const productSizes = mysqlTable("productSizes", {
-  id: int("id").autoincrement().primaryKey(),
-  deviceId: int("deviceId").notNull(),
-  size: varchar("size", { length: 50 }).notNull(),
-  stock: int("stock").default(0).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, (table) => [{
-  deviceFk: foreignKey({
-    columns: [table.deviceId],
-    foreignColumns: [devices.id],
-  }),
-}]);
+export type Post = typeof posts.$inferSelect;
+export type InsertPost = typeof posts.$inferInsert;
 
-export type ProductSize = typeof productSizes.$inferSelect;
-export type InsertProductSize = typeof productSizes.$inferInsert;
+// ─────────────────────────────────────────────────────────────
+// BAG ITEMS
+// ─────────────────────────────────────────────────────────────
+export const bagItems = sqliteTable("bagItems", {
+  id:        integer("id").primaryKey({ autoIncrement: true }),
+  userId:    integer("userId").notNull().references(() => users.id),
+  productId: integer("productId").notNull(),
+  name:      text("name").notNull(),
+  price:     real("price").notNull(),
+  image:     text("image"),
+  size:      text("size"),
+  qty:       integer("qty").default(1).notNull(),
+  addedAt:   text("addedAt").default(sql`(datetime('now'))`).notNull(),
+});
 
-/**
- * Product colors table for color variants.
- */
-export const productColors = mysqlTable("productColors", {
-  id: int("id").autoincrement().primaryKey(),
-  deviceId: int("deviceId").notNull(),
-  color: varchar("color", { length: 100 }).notNull(),
-  hexCode: varchar("hexCode", { length: 7 }),
-  stock: int("stock").default(0).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, (table) => [{
-  deviceFk: foreignKey({
-    columns: [table.deviceId],
-    foreignColumns: [devices.id],
-  }),
-}]);
+export type BagItem = typeof bagItems.$inferSelect;
+export type InsertBagItem = typeof bagItems.$inferInsert;
 
-export type ProductColor = typeof productColors.$inferSelect;
-export type InsertProductColor = typeof productColors.$inferInsert;
+// ─────────────────────────────────────────────────────────────
+// MANNEQUIN PROFILES
+// ─────────────────────────────────────────────────────────────
+export const mannequinProfiles = sqliteTable("mannequinProfiles", {
+  id:        integer("id").primaryKey({ autoIncrement: true }),
+  userId:    integer("userId").notNull().references(() => users.id),
+  slot:      integer("slot").default(1).notNull(),
+  name:      text("name"),
+  gender:    text("gender"),
+  height:    real("height"),
+  weight:    real("weight"),
+  bodyShape: text("bodyShape"),
+  bust:      real("bust"),
+  waist:     real("waist"),
+  hips:      real("hips"),
+  imageUrl:  text("imageUrl"),
+  createdAt: text("createdAt").default(sql`(datetime('now'))`).notNull(),
+  updatedAt: text("updatedAt").default(sql`(datetime('now'))`).notNull(),
+});
+
+export type MannequinProfile = typeof mannequinProfiles.$inferSelect;
+export type InsertMannequinProfile = typeof mannequinProfiles.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// BRAND STORES
+// ─────────────────────────────────────────────────────────────
+export const brandStores = sqliteTable("brandStores", {
+  id:        integer("id").primaryKey({ autoIncrement: true }),
+  userId:    integer("userId").notNull().references(() => users.id),
+  brandId:   integer("brandId").references(() => brands.id),
+  brandName: text("brandName").notNull(),
+  ownerName: text("ownerName").notNull(),
+  email:     text("email").notNull(),
+  phone:     text("phone"),
+  idFile:    text("idFile"),
+  status:    text("status", { enum: ["pending", "approved", "rejected"] }).default("pending").notNull(),
+  createdAt: text("createdAt").default(sql`(datetime('now'))`).notNull(),
+  updatedAt: text("updatedAt").default(sql`(datetime('now'))`).notNull(),
+});
+
+export type BrandStore = typeof brandStores.$inferSelect;
+export type InsertBrandStore = typeof brandStores.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// USER GRADES (SP — style points)
+// ─────────────────────────────────────────────────────────────
+export const userGrades = sqliteTable("userGrades", {
+  id:             integer("id").primaryKey({ autoIncrement: true }),
+  userId:         integer("userId").notNull().unique().references(() => users.id),
+  stylePoints:    integer("stylePoints").default(0).notNull(),
+  grade:          integer("grade").default(1).notNull(),
+  gradeTitle:     text("gradeTitle").default("Newcomer").notNull(),
+  commissionRate: real("commissionRate").default(0.02).notNull(),
+  totalEarned:    real("totalEarned").default(0).notNull(),
+  totalPaid:      real("totalPaid").default(0).notNull(),
+  updatedAt:      text("updatedAt").default(sql`(datetime('now'))`).notNull(),
+});
+
+export type UserGrade = typeof userGrades.$inferSelect;
+export type InsertUserGrade = typeof userGrades.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// BRAND LEVELS (XP system)
+// ─────────────────────────────────────────────────────────────
+export const brandLevels = sqliteTable("brandLevels", {
+  id:         integer("id").primaryKey({ autoIncrement: true }),
+  brandId:    integer("brandId").notNull().unique().references(() => brands.id),
+  xp:         integer("xp").default(0).notNull(),
+  level:      integer("level").default(1).notNull(),
+  levelTitle: text("levelTitle").default("Starter").notNull(),
+  updatedAt:  text("updatedAt").default(sql`(datetime('now'))`).notNull(),
+});
+
+export type BrandLevel = typeof brandLevels.$inferSelect;
+export type InsertBrandLevel = typeof brandLevels.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// COMMISSIONS
+// ─────────────────────────────────────────────────────────────
+export const commissions = sqliteTable("commissions", {
+  id:          integer("id").primaryKey({ autoIncrement: true }),
+  userId:      integer("userId").notNull().references(() => users.id),
+  brandId:     integer("brandId").references(() => brands.id),
+  postId:      integer("postId").references(() => posts.id),
+  amount:      real("amount").notNull(),
+  status:      text("status", { enum: ["pending", "approved", "paid", "rejected"] }).default("pending").notNull(),
+  description: text("description"),
+  createdAt:   text("createdAt").default(sql`(datetime('now'))`).notNull(),
+  updatedAt:   text("updatedAt").default(sql`(datetime('now'))`).notNull(),
+});
+
+export type Commission = typeof commissions.$inferSelect;
+export type InsertCommission = typeof commissions.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────
+// SHIPMENTS (per-brand fulfillment units within an order)
+// ─────────────────────────────────────────────────────────────
+export const shipments = sqliteTable("shipments", {
+  id:                    integer("id").primaryKey({ autoIncrement: true }),
+  orderId:               integer("orderId").notNull().references(() => orders.id),
+  brandId:               integer("brandId").notNull().references(() => brands.id),
+  brandName:             text("brandName").notNull(),
+  status:                text("status", { enum: ["pending", "preparing", "ready_for_pickup", "shipped", "delivered", "canceled"] }).default("pending").notNull(),
+  carrier:               text("carrier"),
+  trackingNumber:        text("trackingNumber"),
+  estimatedDeliveryDate: text("estimatedDeliveryDate"),
+  shippingAddress:       text("shippingAddress").notNull(),
+  notes:                 text("notes"),
+  createdAt:             text("createdAt").default(sql`(datetime('now'))`).notNull(),
+  updatedAt:             text("updatedAt").default(sql`(datetime('now'))`).notNull(),
+});
+
+export type Shipment = typeof shipments.$inferSelect;
+export type InsertShipment = typeof shipments.$inferInsert;

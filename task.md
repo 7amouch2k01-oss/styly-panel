@@ -1,18 +1,53 @@
-- [ ] 1. Environment Variable Setup
-    - [ ] Add `syncSecret` to `server/_core/env.ts`
-- [ ] 2. Sync Router Protection
-    - [ ] Create `syncProcedure` middleware in `server/_core/trpc.ts`
-    - [ ] Update `server/routers.ts` to use `syncProcedure` for the `sync` router
-- [ ] 3. Storage Proxy Authentication
-    - [ ] Add auth checks to `/manus-storage/*` in `server/_core/storageProxy.ts`
-- [ ] 4. HTTP Security Headers, CORS & Cookies
-    - [ ] Add custom CORS and secure HTTP headers middleware in `server/_core/index.ts`
-    - [ ] Update cookie `sameSite` to `"lax"` in `server/_core/cookies.ts`
-- [ ] 5. Advanced Password Hashing
-    - [ ] Update `hashPassword` & `verifyPassword` in `server/authHelpers.ts` to support `pbkdf2:600000:` format with legacy fallback
-- [ ] 6. Rate Limiting
-    - [ ] Create in-memory rate-limiter middleware in `server/_core/rateLimiter.ts`
-    - [ ] Apply rate limiting to auth routes in `server/_core/index.ts`
-- [ ] 7. Verification & Testing
-    - [ ] Run `pnpm check` to ensure all files compile without errors
-    - [ ] Manually verify security headers, sync authentication, storage proxy auth, and password backward-compatibility
+- [x] 1. Security Upgrade Setup
+    - [x] Add syncSecret and implement trpc procedures
+    - [x] Enable cookie sameSite Lax
+    - [x] Apply custom rate limiters and HSTS/CSP headers
+    - [x] Upgraded password hashing iterations
+- [x] 2. Social E-Commerce Web App
+    - [x] Refactor routes (move admin panel to /admin)
+    - [x] Create HomeFeed with social posts and tagged items
+    - [x] Add dynamic "Try On" outfit overlay
+- [x] 3. Mannequin Customizer Wizard
+    - [x] Create 6-step creation flow
+    - [x] Draw dynamic SVG body preview
+    - [x] Add advanced measurements page
+- [x] 4. Brand Dashboard Integration
+    - [x] Backup BrandDashboard.tsx → BrandDashboard.backup.tsx
+    - [x] Write implementation plan
+    - [x] Install docx + file-saver packages
+    - [x] Write new BrandDashboard.tsx
+      - [x] New types (TaggedPost, TagApprovalRequest, LockType, BrandPlan)
+      - [x] Updated mock data (ORDERS with real IDs, TAGGED_POSTS, TAG_APPROVAL_REQUESTS)
+      - [x] LockIcon component (red/green/black)
+      - [x] PostDetailModal component
+      - [x] TagApprovalCard component
+      - [x] TaggedPostRow component
+      - [x] LevelCard + UpgradeProCard components
+      - [x] generateFacture() Word download helper
+      - [x] Updated StoreTab (5 filters: in-stock, out-of-stock, pending, approved-posts, unapproved-posts)
+      - [x] Updated OrdersTab (unique SLY-XXXXXX IDs + proper labels)
+      - [x] Updated ProfitsTab (level card + tagged posts section)
+      - [x] Updated BrandDashboard header (Pro badge)
+    - [x] Verify build compiles
+- [x] 5. Profile Switching & Notifications Upgrades
+    - [x] Build search/filter top bar and view toggles (3-column grid vs list)
+    - [x] Add heart and notification dropdown lists (social like/shop activities)
+    - [x] Implement User Profile page with created, wardrobe, loved, and stylista tabs
+    - [x] Create Brand Registration form (ID upload + details) and Switcher dropdowns
+- [x] 6. Premium Design Upgrades
+    - [x] Integrated Google Font Outfit for clean typography
+    - [x] Configured transparent glassmorphism borders and frosted overlays
+    - [x] Added transit-all smooth cubic-bezier transitions for cards and buttons- [x] 7. Local Storage Synchronization & Switcher Logic
+    - [x] Persist Shopping Bag items to `styly_shopping_bag` in localStorage
+    - [x] Persist Order logs to `styly_orders` during checkout
+    - [x] Persist liked posts to `styly_liked_posts` dynamically
+    - [x] Build dynamic Switcher toggle card and menus linked to profile mode state
+- [x] 8. Smart virtual Try-On & Morphing SVG
+    - [x] Load mannequin waist/hips/chest/height stats from customizer config
+    - [x] Build morphing SVG silhouette stretching based on scaling factors
+    - [x] Implement dynamic Fit Score percentage matching and recommendations
+- [x] 9. Social Feed & UserProfile Upgrades
+    - [x] Add 10 rich posts (Kenzo, Sofi, Amina, Lumière) to looking pool
+    - [x] Upgrade Loved tab to render actual liked post cards
+    - [x] Upgrade Wardrobe tab to render bag contents with checkout trigger
+    - [x] Upgrade Orders tab to render checkout logs history

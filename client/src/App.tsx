@@ -4,40 +4,40 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import DashboardLayout from "./components/DashboardLayout";
-import AdminGuard from "./components/AdminGuard";
 import Unauthorized from "./pages/Unauthorized";
-import Overview from "./pages/Overview";
-import Users from "./pages/Users";
-import Products from "./pages/Products";
-import Orders from "./pages/Orders";
-import Analytics from "./pages/Analytics";
-import Settings from "./pages/Settings";
-import Brands from "./pages/Brands";
 import Auth from "./pages/Auth";
+import BrandDashboard from "./pages/BrandDashboard";
+import HomeFeed from "./pages/HomeFeed";
+import Landing from "./pages/Landing";
+import MannequinCustomizer from "./pages/MannequinCustomizer";
+import UserProfile from "./pages/UserProfile";
+import Explore from "./pages/Explore";
+import Shop from "./pages/Shop";
+import Checkout from "./pages/Checkout";
+import BrandStorefront from "./pages/BrandStorefront";
+
+import { AppShellProvider } from "./components/AppShell";
 
 function Router() {
   return (
     <Switch>
+      {/* ── Consumer App Routes ── */}
+      <Route path="/" component={Landing} />
+      <Route path="/feed" component={HomeFeed} />
+      <Route path="/explore" component={Explore} />
+      <Route path="/shop" component={Shop} />
+      <Route path="/checkout" component={Checkout} />
+      <Route path="/mannequin" component={MannequinCustomizer} />
+      <Route path="/profile" component={UserProfile} />
+      <Route path="/brand" component={BrandDashboard} />
+      <Route path="/brand-store/:brandId" component={BrandStorefront} />
+
+      {/* ── Auth ── */}
       <Route path="/auth" component={Auth} />
       <Route path="/unauthorized" component={Unauthorized} />
       <Route path="/404" component={NotFound} />
-      <Route path="*">
-        <AdminGuard>
-          <DashboardLayout>
-            <Switch>
-              <Route path="/" component={Overview} />
-              <Route path="/users" component={Users} />
-              <Route path="/products" component={Products} />
-              <Route path="/orders" component={Orders} />
-              <Route path="/analytics" component={Analytics} />
-              <Route path="/brands" component={Brands} />
-              <Route path="/settings" component={Settings} />
-              <Route component={NotFound} />
-            </Switch>
-          </DashboardLayout>
-        </AdminGuard>
-      </Route>
+
+      <Route component={NotFound} />
     </Switch>
   );
 }
@@ -46,10 +46,12 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="dark" switchable>
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
+        <AppShellProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </AppShellProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );

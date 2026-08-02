@@ -30,10 +30,10 @@ const GET_USER_INFO_WITH_JWT_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserI
 
 class OAuthService {
   constructor(private client: ReturnType<typeof axios.create>) {
-    console.log("[OAuth] Initialized with baseURL:", ENV.oAuthServerUrl);
+    console.log("[OAuth] Initialized with baseURL:", ENV.oAuthServerUrl || "(not set — external OAuth disabled)");
     if (!ENV.oAuthServerUrl) {
-      console.error(
-        "[OAuth] ERROR: OAUTH_SERVER_URL is not configured! Set OAUTH_SERVER_URL environment variable."
+      console.warn(
+        "[OAuth] OAUTH_SERVER_URL not set — external OAuth (Google/Apple) is disabled. Local email auth still works."
       );
     }
   }
@@ -321,7 +321,7 @@ export type AuthenticatedUser = User & {
 function buildCronUser(
   userInfo: GetUserInfoWithJwtResponse
 ): AuthenticatedUser {
-  const now = new Date();
+  const nowStr = new Date().toISOString();
   return {
     id: -1,
     openId: userInfo.openId,
@@ -329,9 +329,13 @@ function buildCronUser(
     email: null,
     loginMethod: null,
     role: "user",
-    createdAt: now,
-    updatedAt: now,
-    lastSignedIn: now,
+    status: "active",
+    passwordHash: null,
+    avatarUrl: null,
+    bio: null,
+    createdAt: nowStr,
+    updatedAt: nowStr,
+    lastSignedIn: nowStr,
     taskUid: userInfo.taskUid ?? undefined,
     isCron: true,
   } as AuthenticatedUser;

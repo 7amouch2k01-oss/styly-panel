@@ -7,6 +7,19 @@ import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
 
 export async function setupVite(app: Express, server: Server) {
+  // Redirect /admin requests on consumer port to the admin port (3001) in development
+  app.use((req, res, next) => {
+    if (
+      process.env.APP_TYPE !== "admin" &&
+      (req.originalUrl === "/admin" || req.originalUrl.startsWith("/admin/"))
+    ) {
+      const host = req.headers.host || "localhost";
+      const hostname = host.split(":")[0];
+      return res.redirect(`http://${hostname}:3001${req.originalUrl}`);
+    }
+    next();
+  });
+
   const serverOptions = {
     middlewareMode: true,
     hmr: { server },
@@ -25,11 +38,12 @@ export async function setupVite(app: Express, server: Server) {
     const url = req.originalUrl;
 
     try {
+      const htmlFile = process.env.APP_TYPE === "admin" ? "admin.html" : "index.html";
       const clientTemplate = path.resolve(
         import.meta.dirname,
         "../..",
         "client",
-        "index.html"
+        htmlFile
       );
 
       // always reload the index.html file from disk incase it changes
@@ -37,6 +51,11 @@ export async function setupVite(app: Express, server: Server) {
       template = template.replace(
         `src="/src/main.tsx"`,
         `src="/src/main.tsx?v=${nanoid()}"`
+      );
+      // If we are admin, transform targeting admin-main.tsx
+      template = template.replace(
+        `src="/src/admin-main.tsx"`,
+        `src="/src/admin-main.tsx?v=${nanoid()}"`
       );
       const page = await vite.transformIndexHtml(url, template);
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
@@ -59,9 +78,21 @@ export function serveStatic(app: Express) {
   }
 
   app.use(express.static(distPath));
+  
+  // Intercept /admin on consumer port in production to serve admin.html
+  app.use((req, res, next) => {
+    if (
+      process.env.APP_TYPE !== "admin" &&
+      (req.originalUrl === "/admin" || req.originalUrl.startsWith("/admin/"))
+    ) {
+      return res.sendFile(path.resolve(distPath, "admin.html"));
+    }
+    next();
+  });
 
-  // fall through to index.html if the file doesn't exist
+  // fall through to index.html/admin.html if the file doesn't exist
   app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
+    const htmlFile = process.env.APP_TYPE === "admin" ? "admin.html" : "index.html";
+    res.sendFile(path.resolve(distPath, htmlFile));
   });
 }

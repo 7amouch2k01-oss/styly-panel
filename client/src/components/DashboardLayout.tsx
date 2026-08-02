@@ -21,7 +21,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users, Smartphone, ShoppingCart, BarChart3, Settings, Moon, Sun, Package } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, Users, ImageIcon, ShoppingCart, BarChart3, Settings, Moon, Sun, Package } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -29,13 +29,13 @@ import { Button } from "./ui/button";
 import { useTheme } from "@/contexts/ThemeContext";
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "Overview", path: "/" },
-  { icon: Users, label: "Users", path: "/users" },
-  { icon: Smartphone, label: "Products", path: "/products" },
-  { icon: ShoppingCart, label: "Orders", path: "/orders" },
-  { icon: BarChart3, label: "Analytics", path: "/analytics" },
-  { icon: Package, label: "Brands", path: "/brands" },
-  { icon: Settings, label: "Settings", path: "/settings" },
+  { icon: LayoutDashboard, label: "Overview", path: "/admin" },
+  { icon: Users, label: "Users", path: "/admin/users" },
+  { icon: ImageIcon, label: "Posts", path: "/admin/products" },
+  { icon: ShoppingCart, label: "Orders", path: "/admin/orders" },
+  { icon: BarChart3, label: "Analytics", path: "/admin/analytics" },
+  { icon: Package, label: "Brands", path: "/admin/brands" },
+  { icon: Settings, label: "Settings", path: "/admin/settings" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
