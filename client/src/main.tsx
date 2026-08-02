@@ -8,6 +8,17 @@ import App from "./App";
 import { getLoginUrl } from "./const";
 import "./index.css";
 
+// Dynamically initialize Umami analytics if configured and active
+const analyticsEndpoint = import.meta.env.VITE_ANALYTICS_ENDPOINT;
+const analyticsWebsiteId = import.meta.env.VITE_ANALYTICS_WEBSITE_ID;
+if (analyticsEndpoint && analyticsEndpoint !== "/analytics-disabled" && analyticsWebsiteId && analyticsWebsiteId !== "disabled") {
+  const script = document.createElement("script");
+  script.src = `${analyticsEndpoint}/umami`;
+  script.defer = true;
+  script.setAttribute("data-website-id", analyticsWebsiteId);
+  document.head.appendChild(script);
+}
+
 const queryClient = new QueryClient();
 
 const redirectToLoginIfUnauthorized = (error: unknown) => {
