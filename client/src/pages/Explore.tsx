@@ -225,7 +225,7 @@ export default function Explore() {
                         <p className="text-[9px] text-muted-foreground truncate">{item.brand}</p>
                         <p className="font-bold text-xs leading-tight truncate mt-0.5">{item.name}</p>
                         <div className="flex items-center justify-between mt-2">
-                          <p className="text-primary font-black text-sm">${item.price}</p>
+                          <p className="text-primary font-black text-sm">{item.price} TND</p>
                           <button
                             onClick={() => addToBag({ id: item.id, name: item.name, price: item.price, image: item.image, size: "M" })}
                             className="h-7 w-7 rounded-full bg-primary text-white flex items-center justify-center hover:bg-primary/90 transit-all shadow-sm"
@@ -324,7 +324,7 @@ export default function Explore() {
                         <div>
                           <p className="text-[10px] text-muted-foreground truncate">{item.brand}</p>
                           <p className="font-bold text-xs leading-tight truncate mt-0.5">{item.name}</p>
-                          <p className="text-primary font-black text-sm mt-1">${item.price}</p>
+                          <p className="text-primary font-black text-sm mt-1">{item.price} TND</p>
                         </div>
                         <div className="flex items-center gap-1.5 mt-auto">
                           <button

@@ -590,7 +590,7 @@ function ProductDetailModal({ product, open, onClose }: ProductDetailModalProps)
               <span className="text-xs text-muted-foreground bg-muted px-2.5 py-1 rounded-full font-semibold">{product.category}</span>
             </div>
             
-            <p className="text-primary font-black text-xl">${product.price.toLocaleString()}</p>
+            <p className="text-primary font-black text-xl">{product.price.toLocaleString()} TND</p>
             <p className="text-sm text-muted-foreground leading-relaxed">{product.description || "No description available for this item."}</p>
             
             <div className="pt-3 border-t border-border/40 flex justify-between items-center text-xs font-bold">
@@ -825,7 +825,7 @@ function AddItemModal({ open, onClose, onAdd }: AddItemModalProps) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label htmlFor="item-price" className="text-sm font-semibold flex items-center gap-1.5 mb-2">
-                <DollarSign className="h-4 w-4 text-primary" /> Price ($) *
+                <DollarSign className="h-4 w-4 text-primary" /> Price (TND) *
               </label>
               <input
                 id="item-price"
@@ -983,7 +983,7 @@ function ProductCard({ product, onSelect }: ProductCardProps) {
       <div className="p-3">
         <p className="font-semibold text-sm truncate">{product.name}</p>
         <div className="flex items-center justify-between mt-0.5">
-          <p className="text-primary font-bold text-sm">${product.price.toLocaleString()}</p>
+          <p className="text-primary font-bold text-sm">{product.price.toLocaleString()} TND</p>
           {product.category && (
             <span className="text-[10px] text-muted-foreground bg-muted rounded-full px-2 py-0.5">{product.category}</span>
           )}
@@ -2610,7 +2610,7 @@ function ShipmentCard({ shipment, onUpdate }: { shipment: any; onUpdate: (s: any
                 <p className="font-semibold truncate">{item.productName ?? "Product"}</p>
                 <p className="text-muted-foreground">×{item.quantity}{item.size ? ` · ${item.size}` : ""}</p>
               </div>
-              <p className="font-bold text-primary shrink-0">${(item.priceAtPurchase * item.quantity).toLocaleString()}</p>
+              <p className="font-bold text-primary shrink-0">{(item.priceAtPurchase * item.quantity).toLocaleString()} TND</p>
             </div>
           ))}
         </div>

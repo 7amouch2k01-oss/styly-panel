@@ -588,7 +588,7 @@ export default function AppShell({
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold leading-tight truncate">{item.name}</p>
-                        <p className="text-primary font-bold text-xs mt-0.5">${item.price}</p>
+                        <p className="text-primary font-bold text-xs mt-0.5">{item.price} TND</p>
                         <div className="flex items-center gap-1 mt-0.5">
                           <Heart className="h-2.5 w-2.5 text-rose-400 fill-rose-400" />
                           <span className="text-[10px] text-muted-foreground">{item.likes} likes</span>
@@ -919,7 +919,7 @@ export default function AppShell({
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-semibold truncate">{item.name}</p>
                             <p className="text-[10px] text-muted-foreground mt-0.5">Size: {item.size}</p>
-                            <p className="text-primary font-bold text-xs mt-1">${(item.price * item.qty).toLocaleString()}</p>
+                            <p className="text-primary font-bold text-xs mt-1">{(item.price * item.qty).toLocaleString()} TND</p>
                             {/* Qty controls */}
                             <div className="flex items-center gap-2 mt-1.5">
                               <button
@@ -955,16 +955,16 @@ export default function AppShell({
                       <div className="space-y-1.5 pb-2 border-b border-border/20">
                         <div className="flex items-center justify-between text-xs">
                           <span className="text-muted-foreground">Subtotal ({bagCount} item{bagCount !== 1 ? "s" : ""})</span>
-                          <span className="font-semibold">${bagTotal.toLocaleString()}</span>
+                          <span className="font-semibold">{bagTotal.toLocaleString()} TND</span>
                         </div>
                         <div className="flex items-center justify-between text-xs">
                           <span className="text-muted-foreground flex items-center gap-1"><Truck className="h-3 w-3" /> Shipping</span>
-                          <span className="font-semibold">${shipping.toFixed(2)}</span>
+                          <span className="font-semibold">{shipping.toFixed(2)} TND</span>
                         </div>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-bold">Total</span>
-                        <span className="text-xl font-black text-primary">${orderTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <span className="text-xl font-black text-primary">{orderTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TND</span>
                       </div>
                       <button
                         onClick={handlePlaceOrder}
@@ -974,7 +974,7 @@ export default function AppShell({
                         {isPlacingOrder ? (
                           <><div className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" /> Placing Order…</>
                         ) : (
-                          <><Package className="h-4 w-4" /> Place Order — ${orderTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>
+                          <><Package className="h-4 w-4" /> Place Order — {orderTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TND</>
                         )}
                       </button>
                       <button

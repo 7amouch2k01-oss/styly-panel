@@ -6,6 +6,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { DUMMY_POSTS, Post } from "./HomeFeed";
 import { trpc } from "@/lib/trpc";
 import { GradePanel, GradeBadge } from "@/components/GradePanel";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Dialog,
   DialogContent,
@@ -49,6 +50,7 @@ import {
   MapPin,
   Clock,
   CheckCircle2,
+  Globe,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -168,7 +170,7 @@ function OrdersTrackingPanel() {
               </p>
             </div>
             <div className="text-right">
-              <p className="text-xs font-black text-primary">${order.totalAmount?.toLocaleString()}</p>
+              <p className="text-xs font-black text-primary">{order.totalAmount?.toLocaleString()} TND</p>
               <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1 justify-end">
                 <MapPin className="h-2.5 w-2.5" /> {order.city || order.shippingAddress || "—"}
               </p>
@@ -243,7 +245,7 @@ function OrdersTrackingPanel() {
                               ×{item.quantity}{item.size ? ` · ${item.size}` : ""}
                             </p>
                           </div>
-                          <p className="font-bold text-primary shrink-0">${(item.priceAtPurchase * item.quantity).toLocaleString()}</p>
+                          <p className="font-bold text-primary shrink-0">{(item.priceAtPurchase * item.quantity).toLocaleString()} TND</p>
                         </div>
                       ))}
                     </div>
@@ -264,6 +266,7 @@ export default function UserProfile() {
   const [, setLocation] = useLocation();
   const { theme, toggleTheme } = useTheme();
   const { user, loading, logout } = useAuth();
+  const { language, setLanguage, t } = useLanguage();
 
   // Active view states
   const [activeTab, setActiveTab] = useState<ProfileTab>("outfits");
@@ -290,6 +293,7 @@ export default function UserProfile() {
   const [showHelp, setShowHelp] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
 
   // Edit profile form
   const [editName, setEditName] = useState("Aria F.");
@@ -877,11 +881,12 @@ export default function UserProfile() {
             <div className="bg-white dark:bg-[#1A1A1A] border border-border/40 rounded-2xl overflow-hidden shadow-sm divide-y divide-border/20">
               
               {[
-                { label: "Edit profile",     icon: User,          action: () => setShowEditProfile(true) },
-                { label: "Your grade",       icon: Star,          action: () => setShowGrade(true) },
-                { label: "Help",             icon: AlertCircle,   action: () => setShowHelp(true) },
-                { label: "General condition",icon: FileText,       action: () => setShowTerms(true) },
-                { label: "Privacy policy",   icon: CheckCircle,   action: () => setShowPrivacy(true) },
+                { label: t("editProfile"),       icon: User,          action: () => setShowEditProfile(true) },
+                { label: t("languageLabel"),     icon: Globe,         action: () => setShowLanguageModal(true) },
+                { label: t("yourGrade"),         icon: Star,          action: () => setShowGrade(true) },
+                { label: t("help"),              icon: AlertCircle,   action: () => setShowHelp(true) },
+                { label: t("generalCondition"),  icon: FileText,       action: () => setShowTerms(true) },
+                { label: t("privacyPolicy"),     icon: CheckCircle,   action: () => setShowPrivacy(true) },
               ].map(({ label, icon: Icon, action }) => (
                 <button
                   key={label}
@@ -1326,6 +1331,43 @@ export default function UserProfile() {
     {/* ═══════════════════════════════════════════════════════════════════════
         SETTINGS MODALS — rendered inside AppShell so they layer correctly
     ══════════════════════════════════════════════════════════════════════════ */}
+
+  {/* ── Language Selection Modal ── */}
+  {showLanguageModal && (
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowLanguageModal(false)} />
+      <div className="relative w-full sm:max-w-md bg-white dark:bg-[#1A1A1A] rounded-t-3xl sm:rounded-2xl shadow-2xl border border-border/60 max-h-[90vh] flex flex-col animate-in slide-in-from-bottom-4 duration-300">
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border/30 shrink-0">
+          <h2 className="font-black text-base flex items-center gap-2"><Globe className="h-4 w-4 text-primary" /> {t("languageLabel")}</h2>
+          <button onClick={() => setShowLanguageModal(false)} className="h-8 w-8 rounded-full hover:bg-accent flex items-center justify-center"><X className="h-4 w-4" /></button>
+        </div>
+        <div className="overflow-y-auto p-5 space-y-3">
+          {[
+            { code: "en", name: "English" },
+            { code: "fr", name: "Français" },
+            { code: "ar", name: "العربية" }
+          ].map((lang) => (
+            <button
+              key={lang.code}
+              onClick={() => {
+                setLanguage(lang.code as any);
+                toast.success(`Language updated to ${lang.name}!`);
+                setShowLanguageModal(false);
+              }}
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-xs font-bold transition-all ${
+                language === lang.code
+                  ? "bg-primary/10 border-primary text-primary"
+                  : "border-border/40 hover:bg-accent/40"
+              }`}
+            >
+              <span>{lang.name}</span>
+              {language === lang.code && <CheckCircle2 className="h-4 w-4 text-primary" />}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )}
 
   {/* ── Edit Profile Modal ── */}
   {showEditProfile && (

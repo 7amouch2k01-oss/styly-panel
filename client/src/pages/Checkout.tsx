@@ -318,7 +318,7 @@ export default function Checkout() {
                     Processing…
                   </div>
                 ) : (
-                  <><Lock className="h-4 w-4" /> Place Order — ${total.toLocaleString()}</>
+                  <><Lock className="h-4 w-4" /> Place Order — {total.toLocaleString()} TND</>
                 )}
               </button>
             </div>
@@ -407,26 +407,26 @@ export default function Checkout() {
                         <p className="text-xs font-semibold truncate">{item.name}</p>
                         <p className="text-[10px] text-muted-foreground">Size: {item.size} · ×{item.qty}</p>
                       </div>
-                      <p className="text-xs font-bold text-primary shrink-0">${(item.price * item.qty).toLocaleString()}</p>
+                      <p className="text-xs font-bold text-primary shrink-0">{(item.price * item.qty).toLocaleString()} TND</p>
                     </div>
                   ))
                 )}
               </div>
               <div className="pt-3 border-t border-border/20 space-y-2">
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Subtotal</span><span>${subtotal.toLocaleString()}</span>
+                  <span>Subtotal</span><span>{subtotal.toLocaleString()} TND</span>
                 </div>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>Shipping</span>
                   <span className={shipping === 0 ? "text-emerald-500 font-bold" : ""}>
-                    {shipping === 0 ? "Free" : `$${shipping}`}
+                    {shipping === 0 ? "Free" : `${shipping} TND`}
                   </span>
                 </div>
                 {shipping === 0 && (
-                  <p className="text-[10px] text-emerald-500 font-semibold">✓ Free shipping on orders over $500</p>
+                  <p className="text-[10px] text-emerald-500 font-semibold">✓ Free shipping on orders over 500 TND</p>
                 )}
                 <div className="flex items-center justify-between font-black text-base pt-1 border-t border-border/20">
-                  <span>Total</span><span className="text-primary">${total.toLocaleString()}</span>
+                  <span>Total</span><span className="text-primary">{total.toLocaleString()} TND</span>
                 </div>
               </div>
             </div>

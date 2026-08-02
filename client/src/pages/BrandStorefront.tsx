@@ -71,7 +71,7 @@ function ImageWithHotspots({ image, caption, hotspotsJson, taggedProduct, onTryO
                   <img src={taggedProduct.image} className="w-8 h-8 rounded object-cover shrink-0" />
                   <div className="min-w-0">
                     <p className="font-extrabold text-[10px] truncate leading-tight text-foreground">{taggedProduct.name}</p>
-                    <p className="text-[11px] font-black text-primary leading-tight">${taggedProduct.price}</p>
+                    <p className="text-[11px] font-black text-primary leading-tight">{taggedProduct.price} TND</p>
                   </div>
                 </div>
                 <button
@@ -261,7 +261,7 @@ export default function BrandStorefront() {
                   </div>
 
                   <div className="pt-3 border-t border-border/20 mt-4 flex items-center justify-between gap-2">
-                    <span className="font-black text-sm text-primary">${p.price}</span>
+                    <span className="font-black text-sm text-primary">{p.price} TND</span>
                     <div className="flex gap-1">
                       <button
                         onClick={() => {

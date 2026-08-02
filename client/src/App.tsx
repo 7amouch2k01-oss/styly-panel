@@ -17,6 +17,7 @@ import Checkout from "./pages/Checkout";
 import BrandStorefront from "./pages/BrandStorefront";
 
 import { AppShellProvider } from "./components/AppShell";
+import { LanguageProvider } from "./contexts/LanguageContext";
 
 function Router() {
   return (
@@ -46,12 +47,14 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="dark" switchable>
-        <AppShellProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Router />
-          </TooltipProvider>
-        </AppShellProvider>
+        <LanguageProvider>
+          <AppShellProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Router />
+            </TooltipProvider>
+          </AppShellProvider>
+        </LanguageProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );

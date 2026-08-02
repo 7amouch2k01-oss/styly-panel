@@ -145,7 +145,7 @@ export default function Shop() {
                     <p className="text-[9px] text-muted-foreground">{item.brand}</p>
                     <p className="font-bold text-xs leading-tight mt-0.5 truncate">{item.name}</p>
                     <div className="flex items-center justify-between mt-2">
-                      <p className="text-primary font-black text-sm">${item.price}</p>
+                      <p className="text-primary font-black text-sm">{item.price} TND</p>
                       <button
                         onClick={() => addToBag({ id: item.id, name: item.name, price: item.price, image: item.image, size: "M" })}
                         className="h-7 px-3 rounded-full bg-primary text-white text-[9px] font-bold hover:bg-primary/90 transit-all shadow-sm shadow-primary/20 flex items-center gap-1"
@@ -187,8 +187,8 @@ export default function Shop() {
                   <div className="p-3">
                     <p className="font-bold text-xs leading-tight truncate">{item.name}</p>
                     <div className="flex items-center gap-1.5 mt-1">
-                      <p className="text-primary font-black text-sm">${item.price}</p>
-                      <p className="text-muted-foreground line-through text-[10px]">${item.originalPrice}</p>
+                      <p className="text-primary font-black text-sm">{item.price} TND</p>
+                      <p className="text-muted-foreground line-through text-[10px]">{item.originalPrice} TND</p>
                     </div>
                     <button
                       onClick={() => addToBag({ id: item.id, name: item.name, price: item.price, image: item.image, size: "M" })}
