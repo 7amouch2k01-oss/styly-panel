@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "type": "module",
   "license": "MIT",
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "scripts": {
     "dev": "concurrently \"pnpm dev:consumer\" \"pnpm dev:admin\"",
     "dev:consumer": "cross-env NODE_ENV=development APP_TYPE=consumer tsx server/_core/index.ts",
