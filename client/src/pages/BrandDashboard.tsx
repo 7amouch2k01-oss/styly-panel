@@ -10,7 +10,7 @@ import {
   Building2, Banknote, TrendingUp, Star, Package, Clock, RefreshCw,
   AlertCircle, X, Upload, ImagePlus, Tag, Layers, User as UserIcon, User, Mail, LogOut,
   Download, FileText, Check, Ban, Sparkles, Award, ShieldAlert, Calculator, LogIn,
-  Truck, MapPin, Phone, ExternalLink
+  Truck, MapPin, Phone, ExternalLink, Bell, BellRing
 } from "lucide-react";
 import { toast } from "sonner";
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, AlignmentType, WidthType, HeadingLevel } from "docx";
@@ -1996,6 +1996,7 @@ function BrandDashboardInner({ userId, appUser }: { userId: number; appUser: any
   const { theme, toggleTheme } = useTheme();
   const [showDropdown, setShowDropdown] = useState(false);
   const { logout } = useAuth();
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
 
   // Helper to scope every localStorage key to this user's account
   const key = (name: string) => `${name}_${userId}`;
@@ -2029,6 +2030,20 @@ function BrandDashboardInner({ userId, appUser }: { userId: number; appUser: any
   const { data: allBrands = [] } = trpc.brands.list.useQuery();
   const matchedBrand = allBrands.find(b => b.name.toLowerCase() === brandName.toLowerCase());
   const brandId = matchedBrand?.id || 1;
+
+  const notificationsQuery = trpc.notifications.brandNotifications.useQuery(
+    { brandId: brandId! },
+    { enabled: !!brandId, refetchInterval: 15000 }
+  );
+  const markReadMutation = trpc.notifications.markRead.useMutation({
+    onSuccess: () => notificationsQuery.refetch()
+  });
+  const unreadNotifs = notificationsQuery.data?.filter(n => !n.read) || [];
+  const handleMarkAllRead = () => {
+    if (unreadNotifs.length > 0) {
+      markReadMutation.mutate({ ids: unreadNotifs.map(n => n.id) });
+    }
+  };
 
   // Query server database for live tagged posts
   const { data: dbTaggedPosts = [], refetch: refetchTaggedPosts } = trpc.posts.getBrandTaggedPosts.useQuery(
@@ -2293,6 +2308,19 @@ function BrandDashboardInner({ userId, appUser }: { userId: number; appUser: any
             ))}
           </nav>
 
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowNotifPanel(true)}
+              className="relative h-9 w-9 flex items-center justify-center hover:bg-accent rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
+              aria-label="Notifications"
+            >
+              <Bell className="h-4 w-4 text-muted-foreground" />
+              {unreadNotifs.length > 0 && (
+                <span className="absolute top-1 right-1 h-3.5 w-3.5 bg-red-500 text-white text-[9px] font-bold flex items-center justify-center rounded-full border-2 border-background">
+                  {unreadNotifs.length}
+                </span>
+              )}
+            </button>
           {toggleTheme && (
             <button
               onClick={toggleTheme}
@@ -2302,6 +2330,7 @@ function BrandDashboardInner({ userId, appUser }: { userId: number; appUser: any
               {theme === "dark" ? <Sun className="h-4 w-4 text-muted-foreground" /> : <Moon className="h-4 w-4 text-muted-foreground" />}
             </button>
           )}
+          </div>
         </div>
       </header>
 
@@ -2356,6 +2385,48 @@ function BrandDashboardInner({ userId, appUser }: { userId: number; appUser: any
         open={productModalOpen}
         onClose={() => setProductModalOpen(false)}
       />
+
+      {/* Notifications Panel */}
+      {showNotifPanel && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowNotifPanel(false)} />
+          <div className="relative w-full max-w-sm h-full bg-background border-l border-border/50 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+            <div className="flex items-center justify-between p-4 border-b border-border/50">
+              <h3 className="font-bold flex items-center gap-2">
+                <Bell className="h-4 w-4 text-primary" /> Notifications
+              </h3>
+              <div className="flex items-center gap-2">
+                {unreadNotifs.length > 0 && (
+                  <button onClick={handleMarkAllRead} className="text-xs font-semibold text-primary hover:underline">Mark all read</button>
+                )}
+                <button onClick={() => setShowNotifPanel(false)} className="h-8 w-8 rounded-full hover:bg-accent flex items-center justify-center">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              {notificationsQuery.data?.length === 0 ? (
+                <div className="text-center text-muted-foreground text-sm mt-10">No notifications yet.</div>
+              ) : (
+                notificationsQuery.data?.map(n => (
+                  <div key={n.id} className={`p-3 rounded-xl border ${!n.read ? 'bg-primary/5 border-primary/20' : 'bg-muted/30 border-border/20'}`}>
+                    <div className="flex gap-2">
+                      <span className="text-xl shrink-0">{n.type === "new_order" ? "📦" : n.type === "brand_approval" ? "🏷️" : "🔔"}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold">{n.title || n.message}</p>
+                        {n.title && <p className="text-xs text-muted-foreground mt-0.5">{n.message}</p>}
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          {new Date(n.createdAt || n.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2578,8 +2649,28 @@ function ShipmentsTab({ brandId }: { brandId: number }) {
 
 function ShipmentCard({ shipment, onUpdate }: { shipment: any; onUpdate: (s: any) => void }) {
   const cfg = SHIPMENT_STATUS_CONFIG[shipment.status] ?? SHIPMENT_STATUS_CONFIG.pending;
+  const updateMutation = trpc.delivery.updateShipment.useMutation();
+  const utils = trpc.useUtils();
+
+  const handleQuickUpdate = (newStatus: string) => {
+    updateMutation.mutate({ shipmentId: shipment.id, status: newStatus as any }, {
+      onSuccess: () => {
+        toast.success(`Shipment updated to ${newStatus}`);
+        utils.delivery.brandListShipments.invalidate();
+      }
+    });
+  };
+
   return (
     <div className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-border/30 p-4 space-y-3">
+      {/* Customer Info Card */}
+      <div className="p-3 bg-muted/50 rounded-xl border border-border/30 text-xs">
+         <p className="font-semibold text-foreground flex items-center gap-1.5 mb-1"><UserIcon className="h-3.5 w-3.5" /> Customer Details</p>
+         <p className="text-muted-foreground"><span className="font-medium text-foreground">Name:</span> {shipment.deliveryAddress?.split(',')[0] || "Customer Name"}</p>
+         <p className="text-muted-foreground"><span className="font-medium text-foreground">Phone:</span> {shipment.order?.phone || "N/A"}</p>
+         <p className="text-muted-foreground"><span className="font-medium text-foreground">Address:</span> {shipment.deliveryAddress || shipment.shippingAddress}</p>
+      </div>
+
       {/* Header row */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -2632,12 +2723,24 @@ function ShipmentCard({ shipment, onUpdate }: { shipment: any; onUpdate: (s: any
 
       {/* Actions */}
       {!["delivered", "canceled"].includes(shipment.status) && (
-        <button
-          onClick={() => onUpdate(shipment)}
-          className="w-full h-9 rounded-xl border border-primary/30 text-primary text-xs font-bold hover:bg-primary/5 transit-all flex items-center justify-center gap-1.5"
-        >
-          <Truck className="h-3.5 w-3.5" /> Update Status & Tracking
-        </button>
+        <div className="flex flex-col gap-2 mt-2">
+          {shipment.status === 'pending' && (
+            <button onClick={() => handleQuickUpdate('preparing')} className="w-full bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-xl text-xs font-bold transition-all">
+              Prepare Order
+            </button>
+          )}
+          {shipment.status === 'preparing' && (
+            <button onClick={() => handleQuickUpdate('ready_for_pickup')} className="w-full bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded-xl text-xs font-bold transition-all">
+              Ready for Pickup
+            </button>
+          )}
+          <button
+            onClick={() => onUpdate(shipment)}
+            className="w-full h-9 rounded-xl border border-primary/30 text-primary text-xs font-bold hover:bg-primary/5 transit-all flex items-center justify-center gap-1.5"
+          >
+            <Truck className="h-3.5 w-3.5" /> Update Status & Tracking
+          </button>
+        </div>
       )}
     </div>
   );

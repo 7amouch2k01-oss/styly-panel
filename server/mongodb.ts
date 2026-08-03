@@ -48,21 +48,30 @@ export async function nextId(collection: string): Promise<number> {
 // ─── USERS ────────────────────────────────────────────────────────────────────
 
 const UserSchema = new Schema({
-  id:               { type: Number, unique: true, index: true },
-  openId:           { type: String, required: true, unique: true },
-  name:             String,
-  email:            { type: String, sparse: true },
-  loginMethod:      String,
-  role:             { type: String, enum: ["user", "admin"], default: "user" },
-  status:           { type: String, enum: ["active", "inactive", "banned"], default: "active" },
-  passwordHash:     String,
-  avatarUrl:        String,
-  bio:              String,
-  isEmailVerified:  { type: Boolean, default: false },
-  verificationCode: String,
-  createdAt:        { type: String, default: () => new Date().toISOString() },
-  updatedAt:        { type: String, default: () => new Date().toISOString() },
-  lastSignedIn:     { type: String, default: () => new Date().toISOString() },
+  id:                   { type: Number, unique: true, index: true },
+  openId:               { type: String, required: true, unique: true },
+  name:                 String,
+  email:                { type: String, sparse: true },
+  loginMethod:          String,
+  role:                 { type: String, enum: ["user", "admin"], default: "user" },
+  status:               { type: String, enum: ["active", "inactive", "banned"], default: "active" },
+  passwordHash:         String,
+  avatarUrl:            String,
+  bio:                  String,
+  isEmailVerified:      { type: Boolean, default: false },
+  verificationCode:     String,
+  // Password reset
+  resetPasswordToken:   String,
+  resetPasswordExpiry:  String,
+  // Delivery profile
+  phone:                String,
+  deliveryAddress:      String,
+  deliveryCity:         String,
+  deliveryPostCode:     String,
+  deliveryCountry:      String,
+  createdAt:            { type: String, default: () => new Date().toISOString() },
+  updatedAt:            { type: String, default: () => new Date().toISOString() },
+  lastSignedIn:         { type: String, default: () => new Date().toISOString() },
 }, { collection: "users" });
 
 export const UserModel = mongoose.models.User || model("User", UserSchema);
@@ -114,6 +123,7 @@ const OrderSchema = new Schema({
   city:            String,
   postCode:        String,
   country:         String,
+  paymentMethod:   { type: String, enum: ["card", "d17", "flouci", "cod"], default: "cod" },
   status:          { type: String, enum: ["pending", "processing", "shipped", "delivered"], default: "pending" },
   totalAmount:     { type: Number, required: true },
   itemCount:       { type: Number, default: 0 },
@@ -322,3 +332,19 @@ export function toPlain(doc: any): any {
   delete obj.__v;
   return obj;
 }
+
+// ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
+
+const NotificationSchema = new Schema({
+  id:        { type: Number, unique: true, index: true },
+  userId:    Number,   // null for brand-only notifications
+  brandId:   Number,   // null for user-only notifications
+  orderId:   Number,
+  type:      { type: String, enum: ["order_placed", "order_confirmed", "order_shipped", "order_delivered", "new_order", "shipment_update"], default: "order_placed" },
+  title:     { type: String, required: true },
+  message:   { type: String, required: true },
+  isRead:    { type: Boolean, default: false },
+  createdAt: { type: String, default: () => new Date().toISOString() },
+}, { collection: "notifications" });
+
+export const NotificationModel = mongoose.models.Notification || model("Notification", NotificationSchema);

@@ -15,6 +15,7 @@ import Explore from "./pages/Explore";
 import Shop from "./pages/Shop";
 import Checkout from "./pages/Checkout";
 import BrandStorefront from "./pages/BrandStorefront";
+import ResetPassword from "./pages/ResetPassword";
 
 import { AppShellProvider } from "./components/AppShell";
 import { LanguageProvider } from "./contexts/LanguageContext";
@@ -35,6 +36,7 @@ function Router() {
 
       {/* ── Auth ── */}
       <Route path="/auth" component={Auth} />
+      <Route path="/reset-password" component={ResetPassword} />
       <Route path="/unauthorized" component={Unauthorized} />
       <Route path="/404" component={NotFound} />
 

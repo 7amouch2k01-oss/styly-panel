@@ -272,6 +272,21 @@ export default function UserProfile() {
   const [activeTab, setActiveTab] = useState<ProfileTab>("outfits");
   const [activeSubTab, setActiveSubTab] = useState<OutfitsSubTab>("created");
 
+  const deliveryProfileQuery = trpc.userProfile.getDeliveryProfile.useQuery(undefined, { enabled: !!user });
+  const updateDeliveryMutation = trpc.userProfile.updateDeliveryProfile.useMutation({
+    onSuccess: () => { toast.success('Delivery profile saved!'); deliveryProfileQuery.refetch(); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const [deliveryForm, setDeliveryForm] = useState({ phone: '', deliveryAddress: '', deliveryCity: '', deliveryPostCode: '', deliveryCountry: 'Tunisia' });
+
+  useEffect(() => {
+    if (deliveryProfileQuery.data) {
+      const p = deliveryProfileQuery.data;
+      setDeliveryForm({ phone: p.phone || '', deliveryAddress: p.deliveryAddress || '', deliveryCity: p.deliveryCity || '', deliveryPostCode: p.deliveryPostCode || '', deliveryCountry: p.deliveryCountry || 'Tunisia' });
+    }
+  }, [deliveryProfileQuery.data]);
+
   // Mannequin model state
   const [mannequin, setMannequin] = useState<{
     gender: "man" | "woman";
@@ -1423,6 +1438,51 @@ export default function UserProfile() {
           >
             Save Changes
           </button>
+
+          {/* Delivery Profile Section */}
+          <div className="p-4 rounded-2xl bg-black/80 dark:bg-black/40 backdrop-blur-md border border-white/10 shadow-lg space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-black text-white flex items-center gap-2">
+                🚨 Delivery Profile
+              </h3>
+              {deliveryProfileQuery.data?.isComplete ? (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 border border-green-500/30">
+                  ✅ Complete
+                </span>
+              ) : (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                  ⚠️ Incomplete
+                </span>
+              )}
+            </div>
+            
+            <div className="space-y-3">
+              {[
+                { label: 'Phone Number', key: 'phone' },
+                { label: 'Address', key: 'deliveryAddress' },
+                { label: 'City', key: 'deliveryCity' },
+                { label: 'Postal Code', key: 'deliveryPostCode' },
+                { label: 'Country', key: 'deliveryCountry' }
+              ].map(field => (
+                <div key={field.key}>
+                  <label className="text-[10px] font-bold text-white/70 uppercase tracking-wide mb-1 block">{field.label}</label>
+                  <input
+                    value={(deliveryForm as any)[field.key]}
+                    onChange={e => setDeliveryForm({ ...deliveryForm, [field.key]: e.target.value })}
+                    className="w-full h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/50 transit-all"
+                  />
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={() => updateDeliveryMutation.mutate(deliveryForm)}
+              disabled={updateDeliveryMutation.isPending}
+              className="w-full h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/20 transition-all flex items-center justify-center gap-2 mt-2 disabled:opacity-50"
+            >
+              {updateDeliveryMutation.isPending ? 'Saving...' : 'Save Delivery Profile'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

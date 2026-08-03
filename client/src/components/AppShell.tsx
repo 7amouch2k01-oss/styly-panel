@@ -2,6 +2,7 @@ import { useState, useEffect, createContext, useContext, useCallback } from "rea
 import { useLocation } from "wouter";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { trpc } from "@/lib/trpc";
 import DeveloperSwitcherHub from "./DeveloperSwitcherHub";
 import {
   Home,
@@ -13,6 +14,7 @@ import {
   Sun,
   Moon,
   Bell,
+  BellRing,
   Building,
   LogOut,
   X,
@@ -185,9 +187,12 @@ export default function AppShell({
   const [orderPlaced, setOrderPlaced] = useState(false);
 
   // Notification state
-  const [notifications, setNotifications] = useState<any[]>(() => {
-    try { return JSON.parse(localStorage.getItem("styly_notifications") || "[]"); } catch { return []; }
+  const notifQuery = trpc.notifications.myNotifications.useQuery(undefined, { enabled: !!user, refetchInterval: 20000 });
+  const notifications = notifQuery.data || [];
+  const markReadMutation = trpc.notifications.markRead.useMutation({
+    onSuccess: () => notifQuery.refetch()
   });
+
   const [showNotifDrawer, setShowNotifDrawer] = useState(false);
   const [showHeartDrawer, setShowHeartDrawer] = useState(false);
 
@@ -198,11 +203,11 @@ export default function AppShell({
   // Listen for new notifications pushed by HomeFeed
   useEffect(() => {
     const handler = () => {
-      try { setNotifications(JSON.parse(localStorage.getItem("styly_notifications") || "[]")); } catch { /* ignore */ }
+      notifQuery.refetch();
     };
     window.addEventListener("styly_notif_update", handler);
     return () => window.removeEventListener("styly_notif_update", handler);
-  }, []);
+  }, [notifQuery]);
 
   // Redirect logged-in unverified users to /auth (but not from landing or auth pages)
   useEffect(() => {
@@ -213,15 +218,17 @@ export default function AppShell({
   }, [user, setLocation]);
 
   const markAllRead = () => {
-    const updated = notifications.map((n: any) => ({ ...n, read: true, readHeart: true }));
-    setNotifications(updated);
-    localStorage.setItem("styly_notifications", JSON.stringify(updated));
+    const unreadIds = notifications.filter((n: any) => !n.read).map((n: any) => n.id);
+    if (unreadIds.length > 0) {
+      markReadMutation.mutate({ ids: unreadIds });
+    }
   };
 
   const markHeartsRead = () => {
-    const updated = notifications.map((n: any) => ({ ...n, readHeart: true }));
-    setNotifications(updated);
-    localStorage.setItem("styly_notifications", JSON.stringify(updated));
+    const unreadIds = heartNotifs.filter((n: any) => !n.readHeart).map((n: any) => n.id);
+    if (unreadIds.length > 0) {
+      markReadMutation.mutate({ ids: unreadIds });
+    }
   };
 
   const openBag = useCallback(() => setShowBag(true), []);

@@ -9,8 +9,11 @@ import { connectMongo, toPlain, nextId,
   UserModel, BrandModel, DeviceModel, OrderModel, OrderItemModel,
   ShipmentModel, PostModel, BagItemModel, MannequinProfileModel,
   BrandStoreModel, UserGradeModel, BrandLevelModel, CommissionModel,
-  ActivityLogModel
+  ActivityLogModel, NotificationModel
 } from "./mongodb.js";
+
+// Re-export Mongoose models and helpers needed by routers
+export { ShipmentModel, OrderModel, toPlain };
 
 // ─────────────────────────────────────────────────────────────
 // INIT (called once at server startup)
@@ -66,6 +69,11 @@ export async function updateUser(id: number, data: Partial<{
   passwordHash: string; role: string; status: string;
   isEmailVerified: boolean; verificationCode: string | null;
   lastSignedIn: string | Date; updatedAt: string | Date; loginMethod: string;
+  // Password reset
+  resetPasswordToken: string | null; resetPasswordExpiry: string | null;
+  // Delivery profile
+  phone: string; deliveryAddress: string; deliveryCity: string;
+  deliveryPostCode: string; deliveryCountry: string;
 }>) {
   const now = new Date().toISOString();
   const updateData: any = { ...data, updatedAt: now };
@@ -722,4 +730,95 @@ export async function getFallbackData() {
     orderItems:        toPlain(await OrderItemModel.find()),
     activityLogs:      toPlain(await ActivityLogModel.find()),
   };
+}
+
+// ─────────────────────────────────────────────────────────────
+// DELIVERY PROFILE
+// ─────────────────────────────────────────────────────────────
+
+export async function getUserDeliveryProfile(userId: number) {
+  const user = await UserModel.findOne({ id: userId });
+  if (!user) return null;
+  const plain = toPlain(user);
+  return {
+    phone: plain.phone || "",
+    deliveryAddress: plain.deliveryAddress || "",
+    deliveryCity: plain.deliveryCity || "",
+    deliveryPostCode: plain.deliveryPostCode || "",
+    deliveryCountry: plain.deliveryCountry || "Tunisia",
+    isComplete: !!(plain.phone && plain.deliveryAddress && plain.deliveryCity),
+  };
+}
+
+export async function updateDeliveryProfile(userId: number, data: {
+  phone?: string; deliveryAddress?: string; deliveryCity?: string;
+  deliveryPostCode?: string; deliveryCountry?: string;
+}) {
+  await UserModel.updateOne({ id: userId }, { ...data, updatedAt: new Date().toISOString() });
+  return getUserDeliveryProfile(userId);
+}
+
+// ─────────────────────────────────────────────────────────────
+// PASSWORD RESET
+// ─────────────────────────────────────────────────────────────
+
+export async function setPasswordResetToken(email: string, token: string, expiryMs = 3600000) {
+  const expiry = new Date(Date.now() + expiryMs).toISOString();
+  await UserModel.updateOne(
+    { email },
+    { resetPasswordToken: token, resetPasswordExpiry: expiry, updatedAt: new Date().toISOString() }
+  );
+}
+
+export async function getUserByResetToken(token: string) {
+  return toPlain(await UserModel.findOne({ resetPasswordToken: token }));
+}
+
+export async function resetUserPassword(token: string, newPasswordHash: string) {
+  const user = await getUserByResetToken(token);
+  if (!user) throw new Error("Invalid reset token");
+  if (!user.resetPasswordExpiry || new Date(user.resetPasswordExpiry) < new Date()) {
+    throw new Error("Reset token has expired");
+  }
+  await UserModel.updateOne(
+    { id: user.id },
+    { passwordHash: newPasswordHash, resetPasswordToken: null, resetPasswordExpiry: null, updatedAt: new Date().toISOString() }
+  );
+  return user;
+}
+
+// ─────────────────────────────────────────────────────────────
+// NOTIFICATIONS
+// ─────────────────────────────────────────────────────────────
+
+export async function createNotification(data: {
+  userId?: number; brandId?: number; orderId?: number;
+  type: "order_placed" | "order_confirmed" | "order_shipped" | "order_delivered" | "new_order" | "shipment_update";
+  title: string; message: string;
+}) {
+  const now = new Date().toISOString();
+  const id = await nextId("notifications");
+  const doc = new NotificationModel({ id, ...data, isRead: false, createdAt: now });
+  await doc.save();
+  return toPlain(doc);
+}
+
+export async function getNotificationsByUser(userId: number) {
+  return toPlain(await NotificationModel.find({ userId }).sort({ createdAt: -1 }).limit(50));
+}
+
+export async function getNotificationsByBrand(brandId: number) {
+  return toPlain(await NotificationModel.find({ brandId }).sort({ createdAt: -1 }).limit(50));
+}
+
+export async function markNotificationsRead(ids: number[]) {
+  await NotificationModel.updateMany({ id: { $in: ids } }, { isRead: true });
+}
+
+export async function getUnreadCountByUser(userId: number) {
+  return await NotificationModel.countDocuments({ userId, isRead: false });
+}
+
+export async function getUnreadCountByBrand(brandId: number) {
+  return await NotificationModel.countDocuments({ brandId, isRead: false });
 }

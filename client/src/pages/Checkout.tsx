@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import AppShell, { useAppShell } from "@/components/AppShell";
+import { useAuth } from "@/_core/hooks/useAuth";
 import {
   MapPin,
   CreditCard,
@@ -12,6 +13,10 @@ import {
   Sparkles,
   Package,
   Phone,
+  Smartphone,
+  Wallet,
+  Truck,
+  X
 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
@@ -40,6 +45,7 @@ interface PaymentForm {
 
 export default function Checkout() {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
   const { bagItems, clearBag } = useAppShell();
   const [step, setStep] = useState<Step>(1);
   const [placing, setPlacing] = useState(false);
@@ -53,6 +59,28 @@ export default function Checkout() {
     cardNumber: "", expiryDate: "", cvv: "", cardName: "",
   });
 
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'card' | 'd17' | 'flouci' | 'cod' | null>(null);
+
+  const [verificationCode, setVerificationCode] = useState("");
+
+  const resendCodeMutation = trpc.auth.resendVerificationCode.useMutation({
+    onSuccess: () => toast.success("Verification code sent!"),
+    onError: (err) => toast.error(err.message)
+  });
+
+  const verifyEmailMutation = trpc.auth.verifyEmail.useMutation({
+    onSuccess: () => {
+      toast.success("Email verified!");
+      window.location.reload();
+    },
+    onError: (err) => toast.error(err.message)
+  });
+
+  const { data: profile } = trpc.userProfile.getDeliveryProfile.useQuery(undefined, {
+    enabled: !!user,
+  });
+
   const subtotal = bagItems.reduce((acc, b) => acc + b.price * b.qty, 0);
   const shipping = subtotal > 500 ? 0 : 29;
   const total = subtotal + shipping;
@@ -61,6 +89,7 @@ export default function Checkout() {
     onSuccess: (data) => {
       setPlacedOrderId(data.orderId);
       setPlacing(false);
+      setShowPaymentModal(false);
       setStep(3);
       clearBag();
       toast.success("Order placed! 🎉 Your items are being prepared.");
@@ -82,11 +111,11 @@ export default function Checkout() {
         image: item.image,
         size: item.size,
         qty: item.qty,
-        // brandId & brandName are optional — include if bag item exposes them
         brandId: (item as any).brandId,
         brandName: (item as any).brandName,
       })),
       total,
+      paymentMethod: selectedPaymentMethod || 'card',
       address: {
         fullName: delivery.fullName,
         phone: delivery.phone,
@@ -103,6 +132,45 @@ export default function Checkout() {
     { n: 2, label: "Payment", icon: CreditCard },
     { n: 3, label: "Confirm", icon: CheckCircle },
   ];
+
+  if (user && !user.isEmailVerified) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-br from-orange-500 to-orange-700 text-white p-4">
+        <h1 className="text-3xl font-black mb-4 text-center">Verify your email to make a purchase</h1>
+        <div className="bg-white/20 p-6 rounded-2xl backdrop-blur-md max-w-sm w-full space-y-4 shadow-xl border border-white/20">
+          <button 
+            onClick={() => resendCodeMutation.mutate()} 
+            disabled={resendCodeMutation.isPending}
+            className="w-full bg-white text-orange-600 font-bold py-3 rounded-xl hover:bg-orange-50 transition"
+          >
+            {resendCodeMutation.isPending ? "Sending..." : "Send Verification Code"}
+          </button>
+          <div className="flex gap-2">
+            <input 
+              type="text" 
+              placeholder="Code" 
+              value={verificationCode}
+              onChange={(e) => setVerificationCode(e.target.value)}
+              className="flex-1 bg-black/10 border-0 rounded-xl px-4 py-3 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/50"
+            />
+            <button 
+              onClick={() => verifyEmailMutation.mutate({ code: verificationCode })}
+              disabled={verifyEmailMutation.isPending || !verificationCode}
+              className="bg-black/30 hover:bg-black/40 disabled:opacity-50 text-white font-bold px-6 py-3 rounded-xl transition"
+            >
+              Verify
+            </button>
+          </div>
+          <button 
+            onClick={() => setLocation("/feed")} 
+            className="w-full text-white/80 hover:text-white text-sm mt-4 transition text-center block"
+          >
+            Skip — Browse without buying
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AppShell activePath="/shop" showRightPanel={false}>
@@ -148,9 +216,30 @@ export default function Checkout() {
           {/* ── Step 1: Delivery ── */}
           {step === 1 && (
             <div className="space-y-6 animate-fade-up">
-              <h2 className="text-lg font-black flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-primary" /> Delivery Details
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-black flex items-center gap-2">
+                  <MapPin className="h-5 w-5 text-primary" /> Delivery Details
+                </h2>
+                {profile?.isComplete && (
+                  <button
+                    onClick={() => {
+                      setDelivery({
+                        fullName: profile.fullName || "",
+                        phone: profile.phone || "",
+                        address: profile.address || "",
+                        city: profile.city || "",
+                        postCode: profile.postCode || "",
+                        country: profile.country || "Morocco",
+                      });
+                      toast.success("Address auto-filled from profile!");
+                    }}
+                    className="text-xs font-bold text-primary bg-primary/10 px-3 py-1.5 rounded-full hover:bg-primary/20 transition-all flex items-center gap-1.5"
+                  >
+                    <Sparkles className="h-3 w-3" /> Use saved address
+                  </button>
+                )}
+              </div>
+              
               <div className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-border/30 p-5 space-y-4">
                 {/* Full Name */}
                 <div>
@@ -249,7 +338,7 @@ export default function Checkout() {
               <div className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-border/30 p-5 space-y-4">
                 <div className="p-3 rounded-xl bg-primary/5 border border-primary/15 flex items-center gap-2 text-xs text-muted-foreground">
                   <Lock className="h-3.5 w-3.5 text-primary shrink-0" />
-                  <span>Payments are encrypted and secure. This is a demo — no real charges.</span>
+                  <span>Payments are encrypted and secure. Select a payment method on the next step.</span>
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Name on Card</label>
@@ -302,24 +391,10 @@ export default function Checkout() {
                 </div>
               </div>
               <button
-                onClick={() => {
-                  if (!payment.cardName || payment.cardNumber.replace(/\s/g, "").length < 16) {
-                    toast.error("Please fill in valid card details");
-                    return;
-                  }
-                  handlePlaceOrder();
-                }}
-                disabled={placing}
-                className="w-full h-12 bg-gradient-to-r from-primary to-orange-500 text-white rounded-full font-bold hover:opacity-95 hover:scale-[1.01] transit-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                onClick={() => setShowPaymentModal(true)}
+                className="w-full h-12 bg-gradient-to-r from-primary to-orange-500 text-white rounded-full font-bold hover:opacity-95 hover:scale-[1.01] transit-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
               >
-                {placing ? (
-                  <div className="flex items-center gap-2">
-                    <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                    Processing…
-                  </div>
-                ) : (
-                  <><Lock className="h-4 w-4" /> Place Order — {total.toLocaleString()} TND</>
-                )}
+                <Lock className="h-4 w-4" /> Confirm Order — {total.toLocaleString()} TND
               </button>
             </div>
           )}
@@ -433,6 +508,74 @@ export default function Checkout() {
           )}
         </div>
       </div>
+
+      {/* ── Payment Method Modal ── */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#1A1A1A] border border-white/10 rounded-3xl p-6 w-full max-w-lg shadow-2xl relative">
+            <button 
+              onClick={() => setShowPaymentModal(false)} 
+              className="absolute top-5 right-5 text-white/50 hover:text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <h2 className="text-2xl font-black text-white mb-6">Select Payment Method</h2>
+            
+            <div className="grid grid-cols-2 gap-4 mb-8">
+              <div 
+                onClick={() => setSelectedPaymentMethod('card')} 
+                className={`cursor-pointer p-4 rounded-2xl border-2 transition-all ${selectedPaymentMethod === 'card' ? 'border-primary bg-primary/20' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
+              >
+                <CreditCard className={`w-8 h-8 mb-3 ${selectedPaymentMethod === 'card' ? 'text-primary' : 'text-white/70'}`} />
+                <h3 className="text-white font-bold text-sm">Bank Card</h3>
+                <p className="text-white/50 text-xs mt-1">Pay with credit/debit card</p>
+              </div>
+              
+              <div 
+                onClick={() => setSelectedPaymentMethod('d17')} 
+                className={`cursor-pointer p-4 rounded-2xl border-2 transition-all ${selectedPaymentMethod === 'd17' ? 'border-orange-500 bg-orange-500/20' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
+              >
+                <Smartphone className={`w-8 h-8 mb-3 ${selectedPaymentMethod === 'd17' ? 'text-orange-500' : 'text-white/70'}`} />
+                <h3 className="text-white font-bold text-sm">D17</h3>
+                <p className="text-white/50 text-xs mt-1">Pay via D17 mobile wallet</p>
+              </div>
+              
+              <div 
+                onClick={() => setSelectedPaymentMethod('flouci')} 
+                className={`cursor-pointer p-4 rounded-2xl border-2 transition-all ${selectedPaymentMethod === 'flouci' ? 'border-yellow-500 bg-yellow-500/20' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
+              >
+                <Wallet className={`w-8 h-8 mb-3 ${selectedPaymentMethod === 'flouci' ? 'text-yellow-500' : 'text-white/70'}`} />
+                <h3 className="text-white font-bold text-sm">Flouci</h3>
+                <p className="text-white/50 text-xs mt-1">Pay via Flouci app</p>
+              </div>
+              
+              <div 
+                onClick={() => setSelectedPaymentMethod('cod')} 
+                className={`cursor-pointer p-4 rounded-2xl border-2 transition-all ${selectedPaymentMethod === 'cod' ? 'border-emerald-500 bg-emerald-500/20' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
+              >
+                <Truck className={`w-8 h-8 mb-3 ${selectedPaymentMethod === 'cod' ? 'text-emerald-500' : 'text-white/70'}`} />
+                <h3 className="text-white font-bold text-sm">Cash on Delivery</h3>
+                <p className="text-white/50 text-xs mt-1">Pay when you receive your order</p>
+              </div>
+            </div>
+
+            <button 
+              disabled={!selectedPaymentMethod || placing}
+              onClick={handlePlaceOrder}
+              className="w-full h-14 bg-gradient-to-r from-primary to-orange-500 text-white rounded-full font-bold hover:opacity-95 transition-all flex items-center justify-center disabled:opacity-50 gap-2 shadow-lg shadow-primary/20"
+            >
+              {placing ? (
+                <>
+                  <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                  Processing…
+                </>
+              ) : (
+                "Confirm Payment"
+              )}
+            </button>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }

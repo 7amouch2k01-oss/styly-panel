@@ -1,5 +1,11 @@
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
-import { sendVerificationEmail } from "./email";
+import {
+  sendVerificationEmail,
+  sendPasswordResetEmail,
+  sendOrderConfirmationEmail,
+  sendBrandOrderEmail,
+  sendOrderDeliveredEmail,
+} from "./email";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, adminProcedure, syncProcedure, protectedProcedure } from "./_core/trpc";
@@ -38,6 +44,18 @@ import {
   getBrandCommissions,
   createCommission,
   updateCommissionStatus,
+  // Profile, Password Reset & Notifications
+  getUserDeliveryProfile,
+  updateDeliveryProfile,
+  setPasswordResetToken,
+  getUserByResetToken,
+  resetUserPassword,
+  createNotification,
+  getNotificationsByUser,
+  getNotificationsByBrand,
+  markNotificationsRead,
+  getUnreadCountByUser,
+  getUnreadCountByBrand,
 } from "./db";
 import { hashPassword, verifyPassword } from "./authHelpers";
 import { sdk } from "./_core/sdk";
@@ -249,6 +267,51 @@ export const appRouter = router({
         return {
           success: true,
         };
+      }),
+    requestPasswordReset: publicProcedure
+      .input(z.object({ email: z.string().email("Invalid email format") }))
+      .mutation(async ({ input, ctx }) => {
+        const user = await getUserByEmail(input.email);
+        if (!user) {
+          // Return success even if email not found to prevent user enumeration
+          return { success: true, message: "If an account with that email exists, a password reset link has been sent." };
+        }
+
+        const token = crypto.randomBytes(32).toString("hex");
+        await setPasswordResetToken(input.email.toLowerCase(), token);
+
+        // Origin for reset URL
+        const origin = ctx.req.headers.origin || "https://responsible-harmony-production-8371.up.railway.app";
+        const resetUrl = `${origin}/reset-password?token=${token}`;
+
+        try {
+          await sendPasswordResetEmail(input.email, resetUrl);
+        } catch (err: any) {
+          console.error("[Auth] Reset password email failed (non-fatal):", err.message);
+          console.log(`[Auth] ⚠️  Reset password link for ${input.email}: ${resetUrl}`);
+        }
+
+        return { success: true, message: "Password reset link sent to your email!" };
+      }),
+    resetPassword: publicProcedure
+      .input(
+        z.object({
+          token: z.string().min(1, "Reset token is required"),
+          newPassword: z.string().min(6, "Password must be at least 6 characters"),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const newPasswordHash = hashPassword(input.newPassword);
+        try {
+          const user = await resetUserPassword(input.token, newPasswordHash);
+          await logActivity(user.id, "Password Reset", "user", user.id, `User ${user.name} reset their password`);
+          return { success: true, message: "Password reset successfully! You can now log in with your new password." };
+        } catch (err: any) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: err.message || "Invalid or expired reset token",
+          });
+        }
       }),
   }),
 
@@ -931,37 +994,164 @@ export const appRouter = router({
       })
   }),
 
+  // ─── USER DELIVERY PROFILE ───────────────────────────────────────────────
+  userProfile: router({
+    getDeliveryProfile: protectedProcedure.query(async ({ ctx }) => {
+      return await getUserDeliveryProfile(ctx.user.id);
+    }),
+    updateDeliveryProfile: protectedProcedure
+      .input(
+        z.object({
+          phone: z.string().min(1, "Phone number is required"),
+          deliveryAddress: z.string().min(1, "Address is required"),
+          deliveryCity: z.string().min(1, "City is required"),
+          deliveryPostCode: z.string().optional(),
+          deliveryCountry: z.string().optional().default("Tunisia"),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const updated = await updateDeliveryProfile(ctx.user.id, input);
+        await logActivity(ctx.user.id, "Delivery Profile Updated", "user", ctx.user.id, `Updated delivery address for ${ctx.user.name}`);
+        return { success: true, profile: updated };
+      }),
+  }),
+
+  // ─── NOTIFICATIONS (Users & Brands) ──────────────────────────────────────
+  notifications: router({
+    myNotifications: protectedProcedure.query(async ({ ctx }) => {
+      const items = await getNotificationsByUser(ctx.user.id);
+      const unreadCount = await getUnreadCountByUser(ctx.user.id);
+      return { items, unreadCount };
+    }),
+    brandNotifications: publicProcedure
+      .input(z.object({ brandId: z.number() }))
+      .query(async ({ input }) => {
+        const items = await getNotificationsByBrand(input.brandId);
+        const unreadCount = await getUnreadCountByBrand(input.brandId);
+        return { items, unreadCount };
+      }),
+    markRead: publicProcedure
+      .input(z.object({ ids: z.array(z.number()) }))
+      .mutation(async ({ input }) => {
+        await markNotificationsRead(input.ids);
+        return { success: true };
+      }),
+  }),
+
   // ─── CHECKOUT (full order placement with shipments) ───────────────────────
   checkout: router({
     placeOrder: publicProcedure
-      .input(z.object({
-        items: z.array(z.object({
-          id: z.number(),
-          name: z.string(),
-          price: z.number(),
-          image: z.string().optional(),
-          size: z.string().optional(),
-          qty: z.number(),
-          brandId: z.number().optional(),
-          brandName: z.string().optional(),
-        })),
-        total: z.number(),
-        address: z.object({
-          fullName: z.string(),
-          phone: z.string(),
-          address: z.string(),
-          city: z.string(),
-          postCode: z.string(),
-          country: z.string(),
-        }),
-      }))
+      .input(
+        z.object({
+          items: z.array(
+            z.object({
+              id: z.number(),
+              name: z.string(),
+              price: z.number(),
+              image: z.string().optional(),
+              size: z.string().optional(),
+              qty: z.number(),
+              brandId: z.number().optional(),
+              brandName: z.string().optional(),
+            })
+          ),
+          total: z.number(),
+          paymentMethod: z.enum(["card", "d17", "flouci", "cod"]).default("cod"),
+          address: z.object({
+            fullName: z.string(),
+            phone: z.string(),
+            address: z.string(),
+            city: z.string(),
+            postCode: z.string(),
+            country: z.string(),
+          }),
+        })
+      )
       .mutation(async ({ input, ctx }) => {
-        const { createFullOrder } = await import("./db");
+        // Require email verification for logged-in users before making purchases
+        if (ctx.user && !ctx.user.isEmailVerified) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Email verification required before placing an order. Please verify your email first.",
+          });
+        }
+
+        const { createFullOrder, getShipmentsByOrder, getBrandById } = await import("./db");
         const userId = ctx.user?.id ?? 1;
         const email = ctx.user?.email ?? undefined;
+
+        // 1. Create order & brand shipments in MongoDB
         const order = await createFullOrder(userId, email, input.address, input.items, input.total);
+
+        // 2. Save delivery profile to user DB if logged in
+        if (ctx.user) {
+          await updateDeliveryProfile(ctx.user.id, {
+            phone: input.address.phone,
+            deliveryAddress: input.address.address,
+            deliveryCity: input.address.city,
+            deliveryPostCode: input.address.postCode,
+            deliveryCountry: input.address.country,
+          });
+        }
+
+        // 3. Notify & Email each Brand that has items in this order
+        try {
+          const shipments = await getShipmentsByOrder(order.id);
+          for (const s of shipments) {
+            // Create in-app brand notification
+            await createNotification({
+              brandId: s.brandId,
+              orderId: order.id,
+              type: "new_order",
+              title: "🛍️ New Order Received!",
+              message: `Order #${order.id} from ${input.address.fullName} (${s.brandName}) — ${input.address.city}`,
+            });
+
+            // Email brand if brand record has email
+            const brandDoc = await getBrandById(s.brandId);
+            if (brandDoc && brandDoc.website) {
+              const brandItems = input.items.filter(i => i.brandId === s.brandId);
+              await sendBrandOrderEmail(brandDoc.website, {
+                brandName: s.brandName,
+                orderId: order.id,
+                customerName: input.address.fullName,
+                customerPhone: input.address.phone,
+                address: `${input.address.address}, ${input.address.city}`,
+                items: brandItems,
+              }).catch(() => {});
+            }
+          }
+        } catch (err: any) {
+          console.error("[Checkout] Non-fatal error creating brand notifications:", err.message);
+        }
+
+        // 4. Create in-app customer notification & send confirmation email
+        try {
+          await createNotification({
+            userId,
+            orderId: order.id,
+            type: "order_placed",
+            title: "🎉 Order Placed Successfully!",
+            message: `Order #${order.id} total ${input.total.toLocaleString()} TND. We'll update you on delivery status!`,
+          });
+
+          if (email) {
+            await sendOrderConfirmationEmail(email, {
+              orderId: order.id,
+              customerName: input.address.fullName,
+              items: input.items,
+              total: input.total,
+              paymentMethod: input.paymentMethod,
+              address: `${input.address.address}, ${input.address.city}`,
+            }).catch(() => {});
+          }
+        } catch (err: any) {
+          console.error("[Checkout] Non-fatal error sending customer email/notification:", err.message);
+        }
+
         await logActivity(userId, "Order Placed", "order", order.id,
-          `${input.address.fullName} placed order #${order.id} — $${input.total.toFixed(2)}`);
+          `${input.address.fullName} placed order #${order.id} via ${input.paymentMethod} — ${input.total.toFixed(2)} TND`);
+
         return { success: true, orderId: order.id };
       }),
   }),
@@ -1003,16 +1193,19 @@ export const appRouter = router({
 
     /** Brand or Admin: update a shipment's fulfillment status / tracking */
     updateShipment: publicProcedure
-      .input(z.object({
-        shipmentId: z.number(),
-        status: z.enum(["pending", "preparing", "ready_for_pickup", "shipped", "delivered", "canceled"]),
-        carrier: z.string().optional(),
-        trackingNumber: z.string().optional(),
-        estimatedDeliveryDate: z.string().optional(),
-        notes: z.string().optional(),
-      }))
+      .input(
+        z.object({
+          shipmentId: z.number(),
+          status: z.enum(["pending", "preparing", "ready_for_pickup", "shipped", "delivered", "canceled"]),
+          carrier: z.string().optional(),
+          trackingNumber: z.string().optional(),
+          estimatedDeliveryDate: z.string().optional(),
+          notes: z.string().optional(),
+        })
+      )
       .mutation(async ({ input, ctx }) => {
-        const { updateShipmentStatus } = await import("./db");
+        const { updateShipmentStatus, ShipmentModel, OrderModel, toPlain } = await import("./db");
+        
         await updateShipmentStatus(input.shipmentId, {
           status: input.status,
           carrier: input.carrier,
@@ -1020,9 +1213,70 @@ export const appRouter = router({
           estimatedDeliveryDate: input.estimatedDeliveryDate,
           notes: input.notes,
         });
+
+        // Trigger lifecycle notifications
+        try {
+          const shipment = toPlain(await ShipmentModel.findOne({ id: input.shipmentId }));
+          if (shipment) {
+            const order = toPlain(await OrderModel.findOne({ id: shipment.orderId }));
+            
+            // Brand confirmed item ready for Styly team pickup
+            if (input.status === "ready_for_pickup" || input.status === "preparing") {
+              if (order?.customerId) {
+                await createNotification({
+                  userId: order.customerId,
+                  orderId: shipment.orderId,
+                  type: "order_confirmed",
+                  title: "📦 Brand Confirmed Shipment",
+                  message: `${shipment.brandName} has packed your items for order #${shipment.orderId}. Styly team is handling delivery!`,
+                });
+              }
+            }
+
+            // Styly team shipped / delivered
+            if (input.status === "shipped") {
+              if (order?.customerId) {
+                await createNotification({
+                  userId: order.customerId,
+                  orderId: shipment.orderId,
+                  type: "order_shipped",
+                  title: "🚚 Order On Its Way!",
+                  message: `Your package from ${shipment.brandName} (Order #${shipment.orderId}) is with Styly delivery.`,
+                });
+              }
+            }
+
+            if (input.status === "delivered") {
+              if (order?.customerId) {
+                await createNotification({
+                  userId: order.customerId,
+                  orderId: shipment.orderId,
+                  type: "order_delivered",
+                  title: "🎉 Order Delivered!",
+                  message: `Your package from ${shipment.brandName} (Order #${shipment.orderId}) has been delivered!`,
+                });
+
+                if (order.customerEmail) {
+                  await sendOrderDeliveredEmail(order.customerEmail, {
+                    customerName: order.customerName,
+                    orderId: shipment.orderId,
+                  }).catch(() => {});
+                }
+              }
+            }
+          }
+        } catch (err: any) {
+          console.error("[Delivery] Non-fatal notification error:", err.message);
+        }
+
         const userId = ctx.user?.id ?? 1;
-        await logActivity(userId, "Shipment Updated", "shipment", input.shipmentId,
-          `Shipment #${input.shipmentId} status → ${input.status}`);
+        await logActivity(
+          userId,
+          "Shipment Updated",
+          "shipment",
+          input.shipmentId,
+          `Shipment #${input.shipmentId} status → ${input.status}`
+        );
         return { success: true, message: "Shipment updated" };
       }),
 
@@ -1043,7 +1297,6 @@ export const appRouter = router({
       }),
   }),
 });
-
 
 export type AppRouter = typeof appRouter;
 

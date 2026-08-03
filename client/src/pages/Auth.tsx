@@ -24,15 +24,12 @@ export default function Auth() {
 
   React.useEffect(() => {
     if (!loading && user) {
-      if (!user.isEmailVerified) {
-        return;
-      }
       const currentPort = window.location.port;
       if (user.role === "admin") {
         if (currentPort === "3001") {
           setLocation("/admin");
         } else {
-          window.location.href = `${window.location.protocol}//${window.location.hostname}:3001/admin`;
+          setLocation("/feed");
         }
       } else {
         if (currentPort === "3001") {
@@ -53,6 +50,11 @@ export default function Auth() {
   const [signUpRole, setSignUpRole] = useState<"admin" | "user">("admin");
   const [verificationCode, setVerificationCode] = useState("");
 
+  // Forgot password state
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotSent, setForgotSent] = useState(false);
+
   const [isLoading, setIsLoading] = useState(false);
 
   // tRPC Mutations
@@ -60,6 +62,25 @@ export default function Auth() {
   const signUpMutation = trpc.auth.signUp.useMutation();
   const verifyEmailMutation = trpc.auth.verifyEmail.useMutation();
   const resendVerificationMutation = trpc.auth.resendVerificationCode.useMutation();
+  const requestResetMutation = trpc.auth.requestPasswordReset.useMutation();
+
+  const handleForgotSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail) {
+      toast.error("Please enter your email address");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const res = await requestResetMutation.mutateAsync({ email: forgotEmail });
+      toast.success(res.message);
+      setForgotSent(true);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to request password reset");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -218,6 +239,14 @@ export default function Auth() {
                 >
                   {isLoading ? "Verifying..." : "Verify Code"}
                 </Button>
+                {/* Skip verification — user can still browse but cannot purchase */}
+                <button
+                  type="button"
+                  onClick={() => setLocation("/feed")}
+                  className="w-full h-10 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm font-semibold text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all"
+                >
+                  Skip for now — Browse without purchasing
+                </button>
                 <div className="flex items-center justify-between w-full text-xs">
                   <button
                     type="button"
@@ -354,7 +383,7 @@ export default function Auth() {
                     </div>
                   </div>
                 </CardContent>
-                <CardFooter className="pt-2">
+                <CardFooter className="pt-2 flex flex-col gap-3">
                   <Button 
                     type="submit" 
                     className="w-full bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white shadow-lg shadow-red-500/10 active:scale-[0.98] transition-all font-semibold"
@@ -367,6 +396,13 @@ export default function Auth() {
                       </>
                     )}
                   </Button>
+                  <button
+                    type="button"
+                    onClick={() => { setShowForgotModal(true); setForgotSent(false); setForgotEmail(""); }}
+                    className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                  >
+                    Forgot your password?
+                  </button>
                 </CardFooter>
               </form>
             </TabsContent>
@@ -480,6 +516,76 @@ export default function Auth() {
           </Tabs>
         </Card>
       </div>
+
+      {/* ─── Forgot Password Modal ─── */}
+      {showForgotModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-sm bg-white dark:bg-neutral-900 rounded-3xl p-8 shadow-2xl border border-neutral-200 dark:border-neutral-800 space-y-5 animate-in zoom-in-95 duration-200">
+            <div className="text-center space-y-1">
+              <div className="h-12 w-12 rounded-2xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-3">
+                <Mail className="h-6 w-6 text-red-500" />
+              </div>
+              <h2 className="text-xl font-black text-neutral-900 dark:text-white">Reset Password</h2>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                Enter your email and we'll send you a reset link
+              </p>
+            </div>
+
+            {forgotSent ? (
+              <div className="text-center space-y-4 py-2">
+                <div className="h-14 w-14 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto">
+                  <Shield className="h-7 w-7 text-green-500" />
+                </div>
+                <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">
+                  Check your email! A reset link has been sent to <span className="text-red-500">{forgotEmail}</span>
+                </p>
+                <p className="text-xs text-neutral-500">
+                  Also check the server console if email delivery is restricted.
+                </p>
+                <Button
+                  className="w-full"
+                  variant="outline"
+                  onClick={() => setShowForgotModal(false)}
+                >
+                  Back to Sign In
+                </Button>
+              </div>
+            ) : (
+              <form onSubmit={handleForgotSubmit} className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold mb-1.5 block text-neutral-700 dark:text-neutral-300">Email Address</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+                    <input
+                      type="email"
+                      placeholder="name@example.com"
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value)}
+                      required
+                      className="w-full h-11 pl-10 pr-4 rounded-xl bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-red-500/30 transition-all text-neutral-900 dark:text-white"
+                    />
+                  </div>
+                </div>
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white font-bold shadow-lg shadow-red-500/20"
+                >
+                  {isLoading ? "Sending…" : "Send Reset Link"}
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setShowForgotModal(false)}
+                  className="w-full text-xs font-semibold text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors"
+                >
+                  Cancel
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
