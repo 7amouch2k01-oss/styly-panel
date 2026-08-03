@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useTheme } from "@/contexts/ThemeContext";
 import AppShell, { useAppShell } from "@/components/AppShell";
@@ -103,7 +103,7 @@ function ImageWithHotspots({ image, mediaType, caption, hotspotsJson, taggedProd
                   <img src={taggedProduct.image} className="w-8 h-8 rounded object-cover shrink-0" />
                   <div className="min-w-0">
                     <p className="font-extrabold text-[10px] truncate leading-tight text-foreground">{taggedProduct.name}</p>
-                    <p className="text-[11px] font-black text-primary leading-tight">${taggedProduct.price}</p>
+                    <p className="text-[11px] font-black text-primary leading-tight">{taggedProduct.price} TND</p>
                   </div>
                 </div>
                 <button
@@ -546,7 +546,7 @@ function PostComposerModal({
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-bold truncate">{item.brand}</p>
-                    <p className="text-[10px] text-muted-foreground">{item.type}{item.subtype ? ` Ã‚Â· ${item.subtype}` : ""}{item.price ? ` Ã‚Â· $${item.price}` : ""}</p>
+                    <p className="text-[10px] text-muted-foreground">{item.type}{item.subtype ? ` · ${item.subtype}` : ""}{item.price ? ` · ${item.price} TND` : ""}</p>
                   </div>
                   <button
                     onClick={() => setItemInfoIdx(idx)}
@@ -691,7 +691,7 @@ function PostComposerModal({
             <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto no-scrollbar">
               {/* Price */}
               <div>
-                <label className="text-xs font-bold mb-1.5 block">Price ($)</label>
+                <label className="text-xs font-bold mb-1.5 block">Price (TND)</label>
                 <input
                   type="number"
                   placeholder="e.g. 89"
@@ -1296,7 +1296,7 @@ export default function HomeFeed() {
                           <div className="min-w-0">
                             <p className="font-bold text-[10px] truncate leading-snug">{post.taggedProduct.name}</p>
                             <div className="flex items-center gap-1.5 mt-0.5">
-                              <span className="text-primary font-black text-[11px]">${post.taggedProduct.price}</span>
+                              <span className="text-primary font-black text-[11px]">{post.taggedProduct.price} TND</span>
                               <span className="text-[9px] font-bold text-amber-500">★ 4.8</span>
                               <span className="text-[8px] font-extrabold px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500">In Stock</span>
                             </div>
