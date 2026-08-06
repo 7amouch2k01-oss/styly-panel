@@ -1,7 +1,7 @@
 {
   "SMTP_HOST": "smtp.gmail.com",
-  "SMTP_PORT": "587",
-  "SMTP_SECURE": "false",
+  "SMTP_PORT": "465",
+  "SMTP_SECURE": "true",
   "SMTP_FROM": "Styly <mistymo0471@gmail.com>",
   "SMTP_USER": "mistymo0471@gmail.com",
   "SMTP_PASS": "zyiboyjbaroilpvq"
