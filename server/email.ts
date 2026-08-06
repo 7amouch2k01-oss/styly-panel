@@ -21,6 +21,55 @@ async function sendEmail(to: string, subject: string, html: string) {
   console.log(`[Email] To: ${to} | Subject: ${subject}`);
   console.log(`══════════════════════════════════════════════\n`);
 
+  const senderEmail = process.env.SMTP_USER || smtpConfig?.SMTP_USER || "mistymo0471@gmail.com";
+  const senderName = "Styly";
+
+  // 1. Try Brevo (supports Gmail single sender verification over HTTPS port 443)
+  if (process.env.BREVO_API_KEY) {
+    try {
+      const resp = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: {
+          "accept": "application/json",
+          "api-key": process.env.BREVO_API_KEY,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          sender: { name: senderName, email: senderEmail },
+          to: [{ email: to }],
+          subject,
+          htmlContent: html,
+        }),
+      });
+      if (resp.ok) { console.log(`[Email] ✅ Sent via Brevo`); return; }
+      const err = await resp.json().catch(() => ({ message: "unknown" }));
+      console.error(`[Email] Brevo error ${resp.status}:`, err.message || JSON.stringify(err));
+    } catch (e: any) { console.error(`[Email] Brevo fetch failed:`, e.message); }
+  }
+
+  // 2. Try SendGrid (supports Gmail single sender verification over HTTPS port 443)
+  if (process.env.SENDGRID_API_KEY) {
+    try {
+      const resp = await fetch("https://api.sendgrid.com/v3/mail/send", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.SENDGRID_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          personalizations: [{ to: [{ email: to }] }],
+          from: { email: senderEmail, name: senderName },
+          subject,
+          content: [{ type: "text/html", value: html }],
+        }),
+      });
+      if (resp.ok) { console.log(`[Email] ✅ Sent via SendGrid`); return; }
+      const err = await resp.json().catch(() => ({ message: "unknown" }));
+      console.error(`[Email] SendGrid error ${resp.status}:`, err.message || JSON.stringify(err));
+    } catch (e: any) { console.error(`[Email] SendGrid fetch failed:`, e.message); }
+  }
+
+  // 3. Try Resend (requires custom domain over HTTPS port 443)
   if (process.env.RESEND_API_KEY) {
     try {
       const resp = await fetch("https://api.resend.com/emails", {
@@ -41,6 +90,7 @@ async function sendEmail(to: string, subject: string, html: string) {
     } catch (e: any) { console.error(`[Email] Resend fetch failed:`, e.message); }
   }
 
+  // 4. Try SMTP (blocked by Railway on Hobby tier, but works locally)
   const smtpHost = process.env.SMTP_HOST || smtpConfig?.SMTP_HOST;
   const smtpPort = process.env.SMTP_PORT || smtpConfig?.SMTP_PORT;
   const smtpSecure = process.env.SMTP_SECURE || smtpConfig?.SMTP_SECURE;
