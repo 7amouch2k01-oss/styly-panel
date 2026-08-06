@@ -1,7 +1,20 @@
 import nodemailer from "nodemailer";
+import fs from "fs";
+import path from "path";
+
+// Load fallback SMTP config from root config file if present
+let smtpConfig: any = null;
+try {
+  const configPath = path.join(process.cwd(), "smtp_config.json");
+  if (fs.existsSync(configPath)) {
+    smtpConfig = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+  }
+} catch (e: any) {
+  console.warn("[Email] Failed to load smtp_config.json:", e.message);
+}
 
 // ─── Shared sender helper ──────────────────────────────────────────────────────
-const FROM = process.env.SMTP_FROM || "Styly <onboarding@resend.dev>";
+const FROM = process.env.SMTP_FROM || smtpConfig?.SMTP_FROM || "Styly <onboarding@resend.dev>";
 
 async function sendEmail(to: string, subject: string, html: string) {
   console.log(`\n══════════════════════════════════════════════`);
@@ -22,25 +35,32 @@ async function sendEmail(to: string, subject: string, html: string) {
       const err = await resp.json().catch(() => ({ message: "unknown" }));
       if (resp.status === 403) {
         console.warn(`[Email] ⚠️  Resend domain restriction: ${err.message}`);
-        return;
+      } else {
+        console.error(`[Email] Resend error ${resp.status}:`, err.message);
       }
-      console.error(`[Email] Resend error ${resp.status}:`, err.message);
     } catch (e: any) { console.error(`[Email] Resend fetch failed:`, e.message); }
   }
 
-  if (process.env.SMTP_HOST) {
+  const smtpHost = process.env.SMTP_HOST || smtpConfig?.SMTP_HOST;
+  const smtpPort = process.env.SMTP_PORT || smtpConfig?.SMTP_PORT;
+  const smtpSecure = process.env.SMTP_SECURE || smtpConfig?.SMTP_SECURE;
+  const smtpUser = process.env.SMTP_USER || smtpConfig?.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS || smtpConfig?.SMTP_PASS;
+
+  if (smtpHost) {
     try {
       const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: parseInt(process.env.SMTP_PORT || "587"),
-        secure: process.env.SMTP_SECURE === "true",
-        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+        host: smtpHost,
+        port: parseInt(smtpPort || "587"),
+        secure: smtpSecure === "true",
+        auth: { user: smtpUser, pass: smtpPass },
       });
       await transporter.sendMail({ from: FROM, to, subject, html });
       console.log(`[Email] ✅ Sent via SMTP`);
     } catch (e: any) { console.error(`[Email] SMTP failed:`, e.message); }
   }
 }
+
 
 // ─── Branded wrapper ───────────────────────────────────────────────────────────
 function brandedEmail(content: string) {
