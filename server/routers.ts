@@ -107,15 +107,15 @@ export const appRouter = router({
           verificationCode: code,
         };
 
-        // Send verification email — non-blocking so signup succeeds even if email fails
-        try {
-          await sendVerificationEmail(input.email, code);
-        } catch (emailErr: any) {
+        // Create user first so signup completes even if email hangs
+        await upsertUser(newUserPayload);
+
+        // Send verification email — fire-and-forget so signup is never blocked by email API
+        sendVerificationEmail(input.email, code).catch((emailErr: any) => {
           console.error("[Auth] Email send failed (non-fatal):", emailErr.message);
           console.log(`[Auth] ⚠️  Verification code for ${input.email}: ${code}`);
-        }
+        });
 
-        await upsertUser(newUserPayload);
 
         const createdUser = await getUserByEmail(input.email);
         if (!createdUser) {
@@ -257,12 +257,10 @@ export const appRouter = router({
           });
         }
 
-        try {
-          await sendVerificationEmail(user.email, code);
-        } catch (emailErr: any) {
+        sendVerificationEmail(user.email, code).catch((emailErr: any) => {
           console.error("[Auth] Resend verification email failed (non-fatal):", emailErr.message);
           console.log(`[Auth] ⚠️  New verification code for ${user.email}: ${code}`);
-        }
+        });
 
         return {
           success: true,
@@ -284,12 +282,10 @@ export const appRouter = router({
         const origin = ctx.req.headers.origin || "https://responsible-harmony-production-8371.up.railway.app";
         const resetUrl = `${origin}/reset-password?token=${token}`;
 
-        try {
-          await sendPasswordResetEmail(input.email, resetUrl);
-        } catch (err: any) {
+        sendPasswordResetEmail(input.email, resetUrl).catch((err: any) => {
           console.error("[Auth] Reset password email failed (non-fatal):", err.message);
           console.log(`[Auth] ⚠️  Reset password link for ${input.email}: ${resetUrl}`);
-        }
+        });
 
         return { success: true, message: "Password reset link sent to your email!" };
       }),
@@ -1111,7 +1107,7 @@ export const appRouter = router({
             const brandDoc = await getBrandById(s.brandId);
             if (brandDoc && brandDoc.website) {
               const brandItems = input.items.filter(i => i.brandId === s.brandId);
-              await sendBrandOrderEmail(brandDoc.website, {
+              sendBrandOrderEmail(brandDoc.website, {
                 brandName: s.brandName,
                 orderId: order.id,
                 customerName: input.address.fullName,
@@ -1136,7 +1132,7 @@ export const appRouter = router({
           });
 
           if (email) {
-            await sendOrderConfirmationEmail(email, {
+            sendOrderConfirmationEmail(email, {
               orderId: order.id,
               customerName: input.address.fullName,
               items: input.items,
@@ -1256,12 +1252,10 @@ export const appRouter = router({
                   message: `Your package from ${shipment.brandName} (Order #${shipment.orderId}) has been delivered!`,
                 });
 
-                if (order.customerEmail) {
-                  await sendOrderDeliveredEmail(order.customerEmail, {
+                  sendOrderDeliveredEmail(order.customerEmail, {
                     customerName: order.customerName,
                     orderId: shipment.orderId,
                   }).catch(() => {});
-                }
               }
             }
           }

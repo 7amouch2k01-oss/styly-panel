@@ -188,7 +188,7 @@ export default function AppShell({
 
   // Notification state
   const notifQuery = trpc.notifications.myNotifications.useQuery(undefined, { enabled: !!user, refetchInterval: 20000 });
-  const notifications = notifQuery.data || [];
+  const notifications: any[] = notifQuery.data?.items || [];
   const markReadMutation = trpc.notifications.markRead.useMutation({
     onSuccess: () => notifQuery.refetch()
   });

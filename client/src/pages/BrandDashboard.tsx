@@ -2038,7 +2038,8 @@ function BrandDashboardInner({ userId, appUser }: { userId: number; appUser: any
   const markReadMutation = trpc.notifications.markRead.useMutation({
     onSuccess: () => notificationsQuery.refetch()
   });
-  const unreadNotifs = notificationsQuery.data?.filter(n => !n.read) || [];
+  const brandNotifs: any[] = notificationsQuery.data?.items || [];
+  const unreadNotifs = brandNotifs.filter(n => !n.read);
   const handleMarkAllRead = () => {
     if (unreadNotifs.length > 0) {
       markReadMutation.mutate({ ids: unreadNotifs.map(n => n.id) });
@@ -2405,10 +2406,10 @@ function BrandDashboardInner({ userId, appUser }: { userId: number; appUser: any
               </div>
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
-              {notificationsQuery.data?.length === 0 ? (
+              {brandNotifs.length === 0 ? (
                 <div className="text-center text-muted-foreground text-sm mt-10">No notifications yet.</div>
               ) : (
-                notificationsQuery.data?.map(n => (
+                brandNotifs.map(n => (
                   <div key={n.id} className={`p-3 rounded-xl border ${!n.read ? 'bg-primary/5 border-primary/20' : 'bg-muted/30 border-border/20'}`}>
                     <div className="flex gap-2">
                       <span className="text-xl shrink-0">{n.type === "new_order" ? "📦" : n.type === "brand_approval" ? "🏷️" : "🔔"}</span>
