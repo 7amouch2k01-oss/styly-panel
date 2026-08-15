@@ -18,13 +18,8 @@ import {
   Truck,
   Star,
   ShoppingBag,
-  Layers,
   Heart,
   ShieldCheck,
-  Compass,
-  DollarSign,
-  Smartphone,
-  ChevronDown,
 } from "lucide-react";
 
 // ─── Community Testimonials ──────────────────────────────────────────────────
@@ -69,7 +64,7 @@ const PILLARS = [
   {
     icon: Truck,
     title: "Split-Shipment Logistics",
-    description: "Order from 5 different brands in 1 bag. Each brand fulfills and updates its shipment status separately.",
+    description: "Order from multiple different brands in 1 bag. Each brand fulfills and updates its shipment status separately.",
     badge: "Smart Shipping",
   },
   {
@@ -107,29 +102,20 @@ export default function Landing() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAFAFC] text-neutral-900 selection:bg-rose-500/15 selection:text-rose-600 font-sans overflow-x-hidden relative text-[14px]">
+    <div className="min-h-screen bg-[#FAFAFC] text-neutral-900 selection:bg-rose-500/15 selection:text-rose-600 overflow-x-hidden relative text-[13.5px] font-sans">
       
-      {/* Subtle 3D Depth CSS Styles */}
+      {/* 3D Depth CSS Styles */}
       <style>{`
-        @keyframes floatSlow {
+        @keyframes floatPhone {
           0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-8px) rotate(0.3deg); }
+          50% { transform: translateY(-10px) rotate(0.4deg); }
         }
-        @keyframes floatReverse {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(6px); }
+        .hero-phone-3d {
+          filter: drop-shadow(0 25px 35px rgba(225, 29, 72, 0.14)) drop-shadow(0 10px 15px rgba(0, 0, 0, 0.06));
+          animation: floatPhone 6.5s ease-in-out infinite;
         }
         .card-3d-shadow {
-          box-shadow: 0 20px 40px -15px rgba(225, 29, 72, 0.08), 0 0 25px rgba(0, 0, 0, 0.04);
-        }
-        .hero-mockup-3d {
-          box-shadow: 0 30px 60px -20px rgba(244, 63, 94, 0.18), 0 10px 30px -10px rgba(0,0,0,0.08);
-          animation: floatSlow 8s ease-in-out infinite;
-        }
-        .glass-light {
-          background: rgba(255, 255, 255, 0.85);
-          backdrop-filter: blur(16px);
-          border: 1px solid rgba(225, 29, 72, 0.08);
+          box-shadow: 0 15px 30px -10px rgba(225, 29, 72, 0.07), 0 0 20px rgba(0, 0, 0, 0.03);
         }
       `}</style>
 
@@ -155,7 +141,7 @@ export default function Landing() {
           </div>
 
           <nav className="hidden md:flex items-center gap-7 text-xs font-semibold text-neutral-600">
-            <a href="#showcase" className="hover:text-rose-600 transition-colors">App Preview</a>
+            <a href="#hero" className="hover:text-rose-600 transition-colors">Overview</a>
             <a href="#how-it-works" className="hover:text-rose-600 transition-colors">How It Works</a>
             <a href="#features" className="hover:text-rose-600 transition-colors">Key Features</a>
             <a href="#brands" className="hover:text-rose-600 transition-colors">For Brands</a>
@@ -190,7 +176,7 @@ export default function Landing() {
         {/* Mobile Dropdown */}
         {mobileMenuOpen && (
           <div className="md:hidden border-b border-neutral-200 bg-white/98 px-5 pt-2 pb-5 space-y-2 text-xs">
-            <a href="#showcase" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-neutral-600 font-semibold hover:text-rose-600">App Preview</a>
+            <a href="#hero" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-neutral-600 font-semibold hover:text-rose-600">Overview</a>
             <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-neutral-600 font-semibold hover:text-rose-600">How It Works</a>
             <a href="#features" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-neutral-600 font-semibold hover:text-rose-600">Key Features</a>
             <a href="#brands" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-neutral-600 font-semibold hover:text-rose-600">For Brands</a>
@@ -217,158 +203,151 @@ export default function Landing() {
         )}
       </header>
 
-      {/* ── Hero Section ── */}
-      <section className="relative pt-12 pb-14 md:pt-20 md:pb-20 overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+      {/* ── Hero Section (Title on Left, 3D Phone on Right) ── */}
+      <section id="hero" className="relative pt-12 pb-16 md:pt-20 md:pb-24 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           
-          {/* Header Pill */}
-          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full border border-rose-200 bg-rose-50/80 text-[11px] font-bold text-rose-600 mb-6 backdrop-blur-sm shadow-xs">
-            <Sparkles size={11} className="text-orange-500 animate-pulse" />
-            <span>The Social Fashion & Multi-Brand Marketplace</span>
-          </div>
-
-          {/* Hero Headline */}
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.12] text-neutral-900 max-w-4xl mx-auto">
-            Discover Real Outfits. <br className="hidden sm:inline" />
-            <span className="bg-gradient-to-r from-rose-600 via-pink-500 to-orange-500 bg-clip-text text-transparent">
-              Tag Local Brands.
-            </span>{" "}
-            Shop in One Click.
-          </h1>
-
-          <p className="mt-4 text-neutral-600 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed font-normal">
-            Styly unites fashion creators, shoppers, and local brands on a fast, live social feed. Tag pieces directly, buy from multiple brands in a single bag, and track split shipments in real-time.
-          </p>
-
-          {/* Action CTAs */}
-          <div className="flex flex-col sm:flex-row gap-3 justify-center items-center mt-8">
-            <Button
-              onClick={handleEnterApp}
-              size="lg"
-              className="h-12 rounded-full bg-gradient-to-r from-rose-500 via-rose-600 to-orange-500 hover:opacity-95 text-white font-extrabold px-8 shadow-lg shadow-rose-500/20 text-xs sm:text-sm border-0 transition-transform hover:scale-[1.02]"
-            >
-              Explore Live Feed
-              <ArrowRight className="ml-1.5 h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                const el = document.getElementById("showcase");
-                el?.scrollIntoView({ behavior: "smooth" });
-              }}
-              size="lg"
-              className="h-12 rounded-full border-neutral-300 bg-white hover:bg-neutral-50 text-neutral-800 font-bold px-7 text-xs sm:text-sm shadow-xs"
-            >
-              <Eye className="mr-1.5 h-3.5 w-3.5 text-neutral-500" />
-              See App In Action
-            </Button>
-          </div>
-
-          {/* ── Prominent 3D Featured App Photo ── */}
-          <div id="showcase" className="mt-14 md:mt-16 max-w-4xl mx-auto relative group">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
             
-            {/* Glowing background halo */}
-            <div className="absolute -inset-2 bg-gradient-to-r from-rose-500/20 via-pink-500/15 to-orange-500/20 rounded-3xl blur-2xl opacity-60 group-hover:opacity-85 transition duration-700 pointer-events-none" />
-            
-            {/* 3D App Card */}
-            <div className="relative rounded-3xl overflow-hidden border border-neutral-200/80 bg-white p-2.5 shadow-2xl hero-mockup-3d">
-              <img
-                src="/landing_feed_mockup.jpg"
-                alt="Styly Creator Feed and Outfit Tagging Interface"
-                className="w-full h-auto object-cover rounded-2xl"
-              />
+            {/* Left Column: Headline & Action Controls */}
+            <div className="lg:col-span-7 space-y-6 text-left">
               
-              {/* Floating Bottom Info Bar */}
-              <div className="mt-2.5 p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-neutral-900 to-neutral-800 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-left shadow-lg">
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-1.5 text-xs font-bold">
-                    <Sparkles className="h-3.5 w-3.5 text-orange-400" />
-                    <span>Interactive Creator Outfits & Hotspot Tags</span>
-                  </div>
-                  <p className="text-neutral-400 text-[11px]">
-                    Tap clothing tags to view garment specs, live TND pricing, and add items straight to your shopping bag.
-                  </p>
-                </div>
+              <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full border border-rose-200 bg-rose-50/80 text-[11px] font-bold text-rose-600 shadow-xs">
+                <Sparkles size={11} className="text-orange-500 animate-pulse" />
+                <span>The Social Fashion & Multi-Brand Marketplace</span>
+              </div>
+
+              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.1] text-neutral-900">
+                Discover Real Outfits. <br />
+                <span className="bg-gradient-to-r from-rose-600 via-pink-500 to-orange-500 bg-clip-text text-transparent">
+                  Tag Local Brands.
+                </span>{" "}
+                Shop in One Click.
+              </h1>
+
+              <p className="text-neutral-600 text-sm sm:text-base leading-relaxed max-w-xl">
+                Styly unites fashion creators, shoppers, and emerging local designer brands on a high-speed live feed. Tag pieces directly, purchase from multiple brands in a single bag, and track independent split shipments in real-time.
+              </p>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <Button
                   onClick={handleEnterApp}
-                  size="sm"
-                  className="rounded-full bg-gradient-to-r from-rose-500 to-orange-500 hover:opacity-95 text-white font-extrabold text-xs px-5 shrink-0 border-0 shadow-md shadow-rose-500/30"
+                  size="lg"
+                  className="h-12 rounded-full bg-gradient-to-r from-rose-500 via-rose-600 to-orange-500 hover:opacity-95 text-white font-extrabold px-8 shadow-lg shadow-rose-500/20 text-xs sm:text-sm border-0 transition-transform hover:scale-[1.02]"
                 >
-                  Try Feed
+                  Explore Live Feed
+                  <ArrowRight className="ml-1.5 h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    const el = document.getElementById("how-it-works");
+                    el?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  size="lg"
+                  className="h-12 rounded-full border-neutral-300 bg-white hover:bg-neutral-50 text-neutral-800 font-bold px-7 text-xs sm:text-sm shadow-xs"
+                >
+                  <Eye className="mr-1.5 h-3.5 w-3.5 text-neutral-500" />
+                  How It Works
                 </Button>
               </div>
+
+              {/* Live Trust Metrics */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-6 border-t border-neutral-200/70">
+                <div className="p-3 rounded-2xl bg-white border border-neutral-200/70 card-3d-shadow">
+                  <p className="text-xl font-black text-neutral-900">100%</p>
+                  <p className="text-[10.5px] text-neutral-500 font-medium">Live MongoDB Feed</p>
+                </div>
+                <div className="p-3 rounded-2xl bg-white border border-neutral-200/70 card-3d-shadow">
+                  <p className="text-xl font-black text-neutral-900">Multi-Brand</p>
+                  <p className="text-[10.5px] text-neutral-500 font-medium">Split Shipment Orders</p>
+                </div>
+                <div className="p-3 rounded-2xl bg-white border border-neutral-200/70 card-3d-shadow">
+                  <p className="text-xl font-black text-neutral-900">Direct Tag</p>
+                  <p className="text-[10.5px] text-neutral-500 font-medium">Brand Dashboard Sync</p>
+                </div>
+                <div className="p-3 rounded-2xl bg-white border border-neutral-200/70 card-3d-shadow">
+                  <p className="text-xl font-black text-neutral-900">TND Hub</p>
+                  <p className="text-[10.5px] text-neutral-500 font-medium">Tunisian Currency</p>
+                </div>
+              </div>
+
             </div>
 
-            {/* Floating Top Badge */}
-            <div className="absolute -top-4 left-6 sm:left-10 bg-white/95 backdrop-blur border border-rose-200/80 px-3.5 py-1.5 rounded-full shadow-lg flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-              <span className="text-[10px] font-bold text-neutral-800 tracking-wide uppercase">Live MongoDB Feed</span>
-            </div>
-          </div>
+            {/* Right Column: 3D Angled Phone Mockup */}
+            <div className="lg:col-span-5 relative flex justify-center items-center">
+              
+              {/* Background ambient glow */}
+              <div className="absolute -inset-4 bg-gradient-to-tr from-rose-500/20 via-pink-500/15 to-orange-500/20 rounded-full blur-3xl opacity-70 pointer-events-none" />
 
-          {/* Quick Metrics Bar */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 max-w-4xl mx-auto mt-14 pt-8 border-t border-neutral-200/70 text-left">
-            <div className="p-3.5 rounded-2xl bg-white border border-neutral-200/70 card-3d-shadow">
-              <p className="text-xl sm:text-2xl font-black text-neutral-900">100%</p>
-              <p className="text-[11px] text-neutral-500 font-medium mt-0.5">Live Database Pipeline</p>
+              {/* 3D Phone Image */}
+              <div className="relative w-full max-w-[380px] lg:max-w-[420px] hero-phone-3d">
+                <img
+                  src="/landing_3d_phone.jpg"
+                  alt="Styly 3D Smartphone Running Creator Feed"
+                  className="w-full h-auto object-contain rounded-3xl"
+                />
+
+                {/* Floating 3D Micro Tags */}
+                <div className="absolute -top-3 -left-3 bg-white/95 backdrop-blur-md border border-rose-200/90 px-3.5 py-1.5 rounded-full shadow-lg flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                  <span className="text-[10px] font-bold text-neutral-800 uppercase tracking-wider">Live App Feed</span>
+                </div>
+
+                <div className="absolute -bottom-3 -right-3 bg-white/95 backdrop-blur-md border border-orange-200/90 px-3.5 py-1.5 rounded-full shadow-lg flex items-center gap-2">
+                  <Tag className="w-3.5 h-3.5 text-rose-500" />
+                  <span className="text-[10px] font-bold text-neutral-800 uppercase tracking-wider">Interactive Tags</span>
+                </div>
+              </div>
+
             </div>
-            <div className="p-3.5 rounded-2xl bg-white border border-neutral-200/70 card-3d-shadow">
-              <p className="text-xl sm:text-2xl font-black text-neutral-900">Multi-Brand</p>
-              <p className="text-[11px] text-neutral-500 font-medium mt-0.5">Split Shipment Tracking</p>
-            </div>
-            <div className="p-3.5 rounded-2xl bg-white border border-neutral-200/70 card-3d-shadow">
-              <p className="text-xl sm:text-2xl font-black text-neutral-900">Direct Tag</p>
-              <p className="text-[11px] text-neutral-500 font-medium mt-0.5">Brand Dashboard Sync</p>
-            </div>
-            <div className="p-3.5 rounded-2xl bg-white border border-neutral-200/70 card-3d-shadow">
-              <p className="text-xl sm:text-2xl font-black text-neutral-900">TND Hub</p>
-              <p className="text-[11px] text-neutral-500 font-medium mt-0.5">Tunisian Fashion Currency</p>
-            </div>
+
           </div>
 
         </div>
       </section>
 
       {/* ── How It Works ── */}
-      <section id="how-it-works" className="py-16 md:py-24 border-t border-neutral-200/70 bg-white/60">
+      <section id="how-it-works" className="py-16 md:py-24 border-t border-neutral-200/70 bg-white/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           
-          <div className="text-center space-y-2.5 max-w-xl mx-auto">
+          <div className="text-center space-y-2 max-w-xl mx-auto">
             <span className="text-[10px] font-bold text-rose-600 uppercase tracking-widest bg-rose-50 border border-rose-200 px-3 py-1 rounded-full">
               Frictionless Commerce
             </span>
             <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-neutral-900">How Styly Works</h2>
             <p className="text-neutral-600 text-xs sm:text-sm">
-              A smooth 3-step loop uniting fashion creators, shoppers, and brand partners.
+              A smooth 3-step continuous loop uniting creators, shoppers, and brand partners.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-6 sm:p-7 rounded-3xl bg-white border border-neutral-200/80 space-y-4 text-left card-3d-shadow hover:border-rose-300 transition-colors">
-              <div className="h-10 w-10 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 font-black text-base">
+            <div className="p-6 sm:p-7 rounded-3xl bg-white border border-neutral-200/80 space-y-3.5 text-left card-3d-shadow hover:border-rose-300 transition-colors">
+              <div className="h-10 w-10 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 font-black text-sm">
                 1
               </div>
-              <h3 className="text-base font-bold text-neutral-900">Creators Post & Tag Brands</h3>
+              <h3 className="text-sm sm:text-base font-bold text-neutral-900">Creators Post & Tag Brands</h3>
               <p className="text-xs text-neutral-600 leading-relaxed">
-                Snap and upload your looks. Tag registered brands or enter custom tags with live piece prices in TND.
+                Snap and upload your outfit looks. Tag registered brands or enter custom names with live piece prices in TND.
               </p>
             </div>
 
-            <div className="p-6 sm:p-7 rounded-3xl bg-white border border-neutral-200/80 space-y-4 text-left card-3d-shadow hover:border-orange-300 transition-colors">
-              <div className="h-10 w-10 rounded-2xl bg-orange-50 border border-orange-200 flex items-center justify-center text-orange-600 font-black text-base">
+            <div className="p-6 sm:p-7 rounded-3xl bg-white border border-neutral-200/80 space-y-3.5 text-left card-3d-shadow hover:border-orange-300 transition-colors">
+              <div className="h-10 w-10 rounded-2xl bg-orange-50 border border-orange-200 flex items-center justify-center text-orange-600 font-black text-sm">
                 2
               </div>
-              <h3 className="text-base font-bold text-neutral-900">Shoppers Buy in 1 Single Bag</h3>
+              <h3 className="text-sm sm:text-base font-bold text-neutral-900">Shoppers Buy in 1 Single Bag</h3>
               <p className="text-xs text-neutral-600 leading-relaxed">
                 Combine items from multiple fashion brands in one cart. The system automatically splits shipments per designer.
               </p>
             </div>
 
-            <div className="p-6 sm:p-7 rounded-3xl bg-white border border-neutral-200/80 space-y-4 text-left card-3d-shadow hover:border-emerald-300 transition-colors">
-              <div className="h-10 w-10 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 font-black text-base">
+            <div className="p-6 sm:p-7 rounded-3xl bg-white border border-neutral-200/80 space-y-3.5 text-left card-3d-shadow hover:border-emerald-300 transition-colors">
+              <div className="h-10 w-10 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 font-black text-sm">
                 3
               </div>
-              <h3 className="text-base font-bold text-neutral-900">Brands Dispatch & Creators Earn</h3>
+              <h3 className="text-sm sm:text-base font-bold text-neutral-900">Brands Dispatch & Creators Earn</h3>
               <p className="text-xs text-neutral-600 leading-relaxed">
                 Brand portals receive their specific orders, prepare packages, while creators earn verified sales commissions.
               </p>
@@ -378,14 +357,14 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── Core Value Propositions ── */}
+      {/* ── Key Features Grid ── */}
       <section id="features" className="py-16 md:py-24 border-t border-neutral-200/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           
-          <div className="text-center space-y-2.5 max-w-xl mx-auto">
+          <div className="text-center space-y-2 max-w-xl mx-auto">
             <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-neutral-900">Engineered for Modern Fashion</h2>
             <p className="text-neutral-600 text-xs sm:text-sm">
-              Packed with powerful features for creators, shoppers, and brand managers.
+              Powerful tools for fashion creators, shoppers, and brand managers.
             </p>
           </div>
 
@@ -401,7 +380,7 @@ export default function Landing() {
                       {badge}
                     </span>
                   </div>
-                  <h3 className="text-sm font-bold text-neutral-900">{title}</h3>
+                  <h3 className="text-xs sm:text-sm font-bold text-neutral-900">{title}</h3>
                   <p className="text-xs text-neutral-600 leading-relaxed">{description}</p>
                 </CardContent>
               </Card>
@@ -437,7 +416,7 @@ export default function Landing() {
       <section id="reviews" className="py-16 md:py-24 border-t border-neutral-200/70 bg-white/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           
-          <div className="text-center space-y-2.5 max-w-xl mx-auto">
+          <div className="text-center space-y-2 max-w-xl mx-auto">
             <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-neutral-900">Trusted by Creators & Brands</h2>
             <p className="text-neutral-600 text-xs sm:text-sm">
               What the fashion community is saying about their Styly experience.
@@ -447,8 +426,8 @@ export default function Landing() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {TESTIMONIALS.map((t) => (
               <Card key={t.name} className="bg-white border border-neutral-200/80 text-left card-3d-shadow">
-                <CardContent className="p-6 flex flex-col justify-between h-full space-y-5">
-                  <div className="space-y-3">
+                <CardContent className="p-6 flex flex-col justify-between h-full space-y-4">
+                  <div className="space-y-2.5">
                     <div className="flex gap-1">
                       {[...Array(t.rating)].map((_, i) => (
                         <Star key={i} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
@@ -476,7 +455,7 @@ export default function Landing() {
 
       {/* ── Call To Action Banner ── */}
       <section className="py-16 md:py-20 border-t border-neutral-200/70 bg-gradient-to-b from-white to-neutral-100/60">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center space-y-5">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center space-y-4">
           <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-neutral-900">
             Ready to find your signature fit?
           </h2>
@@ -509,7 +488,7 @@ export default function Landing() {
             &copy; {new Date().getFullYear()} Styly Fashion Platform. All rights reserved.
           </p>
           <div className="flex gap-5 text-[11px] text-neutral-500">
-            <a href="#showcase" className="hover:text-neutral-800">App Preview</a>
+            <a href="#hero" className="hover:text-neutral-800">Overview</a>
             <a href="#features" className="hover:text-neutral-800">Key Features</a>
             <a href="#brands" className="hover:text-neutral-800">Brands</a>
           </div>
