@@ -21,11 +21,17 @@ async function sendEmail(to: string, subject: string, html: string) {
   console.log(`[Email] Sending to: ${to} | Subject: ${subject}`);
   console.log(`══════════════════════════════════════════════\n`);
 
-  const senderEmail = process.env.SMTP_USER || smtpConfig?.SMTP_USER || "styly.app.official@gmail.com";
+  const senderEmail = process.env.SMTP_USER || smtpConfig?.SMTP_USER || "7amouch2k01@gmail.com";
   const senderName = "Styly";
 
   // 1. Try Brevo HTTPS REST API (works across all Railway hosting on port 443)
-  const brevoKey = process.env.BREVO_API_KEY || process.env.BREVO_SMTP_KEY || (process.env.SMTP_PASS?.startsWith("xsmtpsib-") ? process.env.SMTP_PASS : undefined) || smtpConfig?.BREVO_API_KEY || (smtpConfig?.SMTP_PASS?.startsWith("xsmtpsib-") ? smtpConfig?.SMTP_PASS : undefined);
+  const brevoKey =
+    process.env.BREVO_API_KEY ||
+    process.env.BREVO_SMTP_KEY ||
+    (process.env.SMTP_PASS?.startsWith("xsmtpsib-") ? process.env.SMTP_PASS : undefined) ||
+    smtpConfig?.BREVO_API_KEY ||
+    (smtpConfig?.SMTP_PASS?.startsWith("xsmtpsib-") ? smtpConfig?.SMTP_PASS : undefined) ||
+    "xsmtpsib-1bd9e4daeaf0e67ce2929e51c75555e9f3375cf0d906d4bb5978e7c968788c78-oTrgjLjYsM210pRM";
   
   if (brevoKey) {
     try {
