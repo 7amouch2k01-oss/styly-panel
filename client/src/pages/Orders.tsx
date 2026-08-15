@@ -246,7 +246,7 @@ export default function Orders() {
     return matchesSearch && matchesStatus;
   });
 
-  const filteredShipments = allShipments.filter(s =>
+  const filteredShipments = allShipments.filter((s: any) =>
     statusFilter === "all" || s.status === statusFilter
   );
 
@@ -254,8 +254,8 @@ export default function Orders() {
   const stats = [
     { label: "Total Orders",  value: orders.length,                                    color: "text-foreground" },
     { label: "Pending",       value: orders.filter(o => o.status === "pending").length,    color: "text-amber-400" },
-    { label: "Shipped",       value: allShipments.filter(s => s.status === "shipped").length, color: "text-indigo-400" },
-    { label: "Delivered",     value: allShipments.filter(s => s.status === "delivered").length, color: "text-emerald-400" },
+    { label: "Shipped",       value: allShipments.filter((s: any) => s.status === "shipped").length, color: "text-indigo-400" },
+    { label: "Delivered",     value: allShipments.filter((s: any) => s.status === "delivered").length, color: "text-emerald-400" },
   ];
 
   return (
@@ -394,7 +394,7 @@ export default function Orders() {
               </CardContent>
             </Card>
           ) : (
-            filteredShipments.map(sh => {
+            filteredShipments.map((sh: any) => {
               const cfg = SHIP_STATUS_CFG[sh.status] ?? SHIP_STATUS_CFG.pending;
               const SIcon = cfg.icon;
               return (

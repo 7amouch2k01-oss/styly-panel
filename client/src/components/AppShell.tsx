@@ -200,6 +200,9 @@ export default function AppShell({
   const heartNotifs = notifications.filter((n: any) => n.type === "like" || n.type === "brand_approval");
   const unreadHearts = heartNotifs.filter((n: any) => !n.readHeart).length;
 
+  // Brand Store state from backend
+  const { data: brandStore } = trpc.brandStore.get.useQuery(undefined, { enabled: !!user });
+
   // Listen for new notifications pushed by HomeFeed
   useEffect(() => {
     const handler = () => {
@@ -306,10 +309,13 @@ export default function AppShell({
           <div className="p-4 border-t border-border/20">
             {(() => {
               if (!user) return null;
-              const activeMode = localStorage.getItem(`active_profile_mode_${user.id}`) || "user";
-              const isBrandRegistered = localStorage.getItem(`brand_registered_${user.id}`) === "true";
-              const brandName = localStorage.getItem(`brand_name_${user.id}`) || "Style Store";
-              const brandOwner = localStorage.getItem(`brand_owner_name_${user.id}`) || "Brand Owner";
+              
+              // Resolve real status from backend
+              const isApproved = brandStore && brandStore.status === "approved";
+              const activeMode = (isApproved && localStorage.getItem(`active_profile_mode_${user.id}`) === "brand") ? "brand" : "user";
+              
+              const brandName = brandStore?.brandName || "Style Store";
+              const brandOwner = brandStore?.ownerName || "Brand Owner";
 
               const handleToggleAccount = () => {
                 if (activeMode === "brand") {
@@ -317,13 +323,14 @@ export default function AppShell({
                   setLocation("/feed");
                   toast.success("Switched to User Account 👤");
                 } else {
-                  if (isBrandRegistered) {
+                  if (isApproved) {
                     localStorage.setItem(`active_profile_mode_${user.id}`, "brand");
                     setLocation("/brand");
                     toast.success("Switched to Brand Account 👗");
                   } else {
-                    toast.error("Please create a Brand account in your profile settings first!");
-                    setLocation("/profile");
+                    // Not approved yet (pending, rejected, or doesn't exist)
+                    setLocation("/brand");
+                    toast.info("Navigating to Brand Registration status.");
                   }
                 }
               };
@@ -339,7 +346,7 @@ export default function AppShell({
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold truncate">
-                      {activeMode === "brand" ? brandName : "@AriaF"}
+                      {activeMode === "brand" ? brandName : `@${user.name?.replace(/\s+/g, "") || "user"}`}
                     </p>
                     <p className="text-[10px] text-muted-foreground">
                       {activeMode === "brand" ? `Brand: ${brandOwner}` : "User Account"}

@@ -16,45 +16,15 @@ import {
   Trophy,
   Crown,
   Award,
+  Store,
+  Package,
 } from "lucide-react";
 import { toast } from "sonner";
 
-// ─── Data ────────────────────────────────────────────────────────────────────
+// ─── Static constants ─────────────────────────────────────────────────────────
 
 const CATEGORIES = ["All", "Tops", "Dresses", "Jackets", "Pants", "Accessories", "Shoes"];
 const SORT_OPTIONS = ["Most Popular", "Newest", "Price: Low to High", "Price: High to Low"];
-
-const ALL_ITEMS = [
-  { id: 1,  name: "Queen Rania S Dress",      price: 1200, brand: "Queen Rania Collection", category: "Dresses",     likes: 5124, image: "/product_dress_1.png", rating: 4.9 },
-  { id: 2,  name: "Linen Blend Blazer",       price: 349,  brand: "Urban Threads",          category: "Jackets",     likes: 2441, image: "/product_jacket.png",  rating: 4.7 },
-  { id: 3,  name: "Wrap Midi Dress",          price: 189,  brand: "Aria Fenix",             category: "Dresses",     likes: 892,  image: "/product_dress_1.png", rating: 4.5 },
-  { id: 4,  name: "Cargo Tech Jacket",        price: 429,  brand: "Street Couture",         category: "Jackets",     likes: 3310, image: "/product_jacket.png",  rating: 4.8 },
-  { id: 5,  name: "Floaty Linen Set",         price: 239,  brand: "Maya Styles",            category: "Tops",        likes: 1780, image: "/product_dress_1.png", rating: 4.6 },
-  { id: 6,  name: "Performance Zip Jacket",   price: 299,  brand: "Peak Activewear",        category: "Jackets",     likes: 4205, image: "/product_jacket.png",  rating: 4.8 },
-  { id: 7,  name: "Silk Evening Blouse",      price: 289,  brand: "Lumière Paris",          category: "Tops",        likes: 3340, image: "/product_dress_1.png", rating: 4.9 },
-  { id: 8,  name: "Urban Cargo Pants",        price: 199,  brand: "Street Couture",         category: "Pants",       likes: 1804, image: "/product_jacket.png",  rating: 4.4 },
-  { id: 9,  name: "Pearl Hoop Earrings",      price: 89,   brand: "Lumière Paris",          category: "Accessories", likes: 920,  image: "/product_dress_1.png", rating: 4.7 },
-  { id: 10, name: "Velvet Stilettos",         price: 379,  brand: "Queen Rania Collection", category: "Shoes",       likes: 2100, image: "/product_jacket.png",  rating: 4.6 },
-  { id: 11, name: "Oversized Trench Coat",    price: 549,  brand: "Urban Threads",          category: "Jackets",     likes: 5600, image: "/product_jacket.png",  rating: 4.9 },
-  { id: 12, name: "Floral Sundress",          price: 159,  brand: "Maya Styles",            category: "Dresses",     likes: 1430, image: "/product_dress_1.png", rating: 4.5 },
-];
-
-const TRENDING_BRANDS = [
-  { id: 1, name: "Lumière Paris", tag: "#aesthetic", color: "from-rose-500 to-pink-600", items: 28, growth: "+34%" },
-  { id: 2, name: "Street Couture", tag: "#streetwear", color: "from-slate-700 to-slate-900", items: 41, growth: "+22%" },
-  { id: 3, name: "Queen Rania", tag: "#luxury", color: "from-amber-500 to-yellow-600", items: 16, growth: "+58%" },
-  { id: 4, name: "Maya Styles", tag: "#boho", color: "from-emerald-500 to-teal-600", items: 33, growth: "+18%" },
-  { id: 5, name: "Peak Activewear", tag: "#sports", color: "from-blue-500 to-indigo-600", items: 22, growth: "+41%" },
-];
-
-const TRENDING_HASHTAGS = [
-  { tag: "#SummerVibes", count: "14.2K posts" },
-  { tag: "#TunisianFashion", count: "9.8K posts" },
-  { tag: "#OOTD", count: "32.1K posts" },
-  { tag: "#StreetStyle", count: "21.4K posts" },
-  { tag: "#LuxuryFashion", count: "7.3K posts" },
-  { tag: "#Minimalist", count: "11.9K posts" },
-];
 
 // ─── Explore Page ─────────────────────────────────────────────────────────────
 
@@ -69,22 +39,40 @@ export default function Explore() {
   const [showFilters, setShowFilters] = useState(false);
   const [activeSection, setActiveSection] = useState<"discover" | "browse" | "leaderboard">("discover");
 
+  // ── Live DB data ──
+  const { data: rawDevices = [], isLoading: devicesLoading } = trpc.devices.list.useQuery();
+  const { data: rawBrands = [], isLoading: brandsLoading } = trpc.brands.list.useQuery();
+
+  // Map devices to item format
+  const allItems = (rawDevices as any[]).map((d: any) => ({
+    id: d.id,
+    name: d.name,
+    price: d.price,
+    brand: (rawBrands as any[]).find((b: any) => b.id === d.brandId)?.name || "Unknown Brand",
+    brandId: d.brandId,
+    category: d.category || "Other",
+    likes: 0,
+    image: d.imageUrl || "/product_jacket.png",
+    rating: 4.5,
+    stock: d.stock ?? 0,
+  }));
+
   const toggleLike = (id: number) => {
     setLikedItems((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   };
 
-  let filtered = ALL_ITEMS.filter((item) => {
+  let filtered = allItems.filter((item) => {
     const matchSearch = item.name.toLowerCase().includes(search.toLowerCase()) ||
       item.brand.toLowerCase().includes(search.toLowerCase());
-    const matchCat = category === "All" || item.category === category;
+    const matchCat = category === "All" || item.category.toLowerCase().includes(category.toLowerCase());
     return matchSearch && matchCat;
   });
 
   if (sort === "Price: Low to High") filtered = [...filtered].sort((a, b) => a.price - b.price);
   else if (sort === "Price: High to Low") filtered = [...filtered].sort((a, b) => b.price - a.price);
-  else if (sort === "Most Popular") filtered = [...filtered].sort((a, b) => b.likes - a.likes);
 
-  const topItems = [...ALL_ITEMS].sort((a, b) => b.likes - a.likes).slice(0, 4);
+  const topItems = [...allItems].slice(0, 4);
+  const isLoading = devicesLoading || brandsLoading;
 
   return (
     <AppShell activePath="/explore" showRightPanel={false}>
@@ -97,7 +85,7 @@ export default function Explore() {
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Search items, brands, #hashtags…"
+                placeholder="Search items, brands…"
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); if (e.target.value) setActiveSection("browse"); }}
                 className="w-full h-9 pl-9 pr-4 rounded-full bg-muted border border-border/30 text-xs focus:outline-none focus:ring-2 focus:ring-primary/30 transit-all"
@@ -142,53 +130,62 @@ export default function Explore() {
               <section>
                 <div className="flex items-center justify-between mb-3">
                   <h2 className="text-sm font-extrabold text-foreground flex items-center gap-1.5">
-                    <Flame className="h-4 w-4 text-orange-500" /> Trending Brands This Week
+                    <Flame className="h-4 w-4 text-orange-500" /> Verified Brands
                   </h2>
                   <span className="text-[10px] text-muted-foreground font-semibold">Live data</span>
                 </div>
-                <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
-                  {TRENDING_BRANDS.map((brand) => (
-                    <div
-                      key={brand.id}
-                      onClick={() => { setSearch(brand.name); setActiveSection("browse"); }}
-                      className={`shrink-0 w-36 rounded-2xl bg-gradient-to-br ${brand.color} p-4 cursor-pointer hover:scale-105 transit-all relative overflow-hidden shadow-md`}
-                    >
-                      <div className="absolute -right-4 -bottom-4 w-20 h-20 rounded-full bg-white/10" />
-                      <p className="text-white font-black text-xs leading-tight">{brand.name}</p>
-                      <p className="text-white/70 text-[9px] mt-0.5">{brand.tag}</p>
-                      <div className="mt-3 flex items-end justify-between">
-                        <span className="text-white/80 text-[9px]">{brand.items} items</span>
-                        <span className="bg-white/20 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">{brand.growth}</span>
-                      </div>
+                {isLoading ? (
+                  <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
+                    {[...Array(4)].map((_, i) => (
+                      <div key={i} className="shrink-0 w-36 h-24 rounded-2xl bg-muted/60 animate-pulse" />
+                    ))}
+                  </div>
+                ) : (rawBrands as any[]).filter((b: any) => b.isActive !== false).length === 0 ? (
+                  <div className="flex items-center gap-3 py-6 px-4 rounded-2xl border border-border/30 bg-muted/30">
+                    <Store className="h-8 w-8 text-muted-foreground/40 shrink-0" />
+                    <div>
+                      <p className="text-sm font-bold text-foreground">No verified brands yet</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">Be the first to register your brand on Styly!</p>
                     </div>
-                  ))}
-                </div>
-              </section>
-
-              {/* ── Trending Hashtags ── */}
-              <section>
-                <h2 className="text-sm font-extrabold text-foreground flex items-center gap-1.5 mb-3">
-                  <TrendingUp className="h-4 w-4 text-primary" /> Trending Hashtags
-                </h2>
-                <div className="flex flex-wrap gap-2">
-                  {TRENDING_HASHTAGS.map((h) => (
-                    <button
-                      key={h.tag}
-                      onClick={() => { setSearch(h.tag.replace("#", "")); setActiveSection("browse"); }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/50 bg-muted hover:bg-primary hover:text-white hover:border-primary text-xs font-semibold transit-all group"
-                    >
-                      <span>{h.tag}</span>
-                      <span className="text-muted-foreground group-hover:text-white/70 text-[9px]">{h.count}</span>
-                    </button>
-                  ))}
-                </div>
+                  </div>
+                ) : (
+                  <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
+                    {(rawBrands as any[]).filter((b: any) => b.isActive !== false).map((brand: any, i: number) => {
+                      const gradients = [
+                        "from-rose-500 to-pink-600",
+                        "from-slate-700 to-slate-900",
+                        "from-amber-500 to-yellow-600",
+                        "from-emerald-500 to-teal-600",
+                        "from-blue-500 to-indigo-600",
+                        "from-violet-500 to-purple-700",
+                      ];
+                      const color = gradients[i % gradients.length];
+                      const brandItems = allItems.filter(item => item.brandId === brand.id);
+                      return (
+                        <div
+                          key={brand.id}
+                          onClick={() => { setSearch(brand.name); setActiveSection("browse"); }}
+                          className={`shrink-0 w-36 rounded-2xl bg-gradient-to-br ${color} p-4 cursor-pointer hover:scale-105 transit-all relative overflow-hidden shadow-md`}
+                        >
+                          <div className="absolute -right-4 -bottom-4 w-20 h-20 rounded-full bg-white/10" />
+                          <p className="text-white font-black text-xs leading-tight">{brand.name}</p>
+                          <p className="text-white/70 text-[9px] mt-0.5">{brand.category || "Fashion"}</p>
+                          <div className="mt-3 flex items-end justify-between">
+                            <span className="text-white/80 text-[9px]">{brandItems.length} items</span>
+                            <span className="bg-white/20 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">Live</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </section>
 
               {/* ── Most Liked This Week ── */}
               <section>
                 <div className="flex items-center justify-between mb-3">
                   <h2 className="text-sm font-extrabold text-foreground flex items-center gap-1.5">
-                    <Zap className="h-4 w-4 text-yellow-500" /> Most Loved This Week
+                    <Zap className="h-4 w-4 text-yellow-500" /> Featured Products
                   </h2>
                   <button
                     onClick={() => setActiveSection("browse")}
@@ -197,46 +194,56 @@ export default function Explore() {
                     See all <ArrowRight className="h-3 w-3" />
                   </button>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {topItems.map((item, i) => (
-                    <div
-                      key={item.id}
-                      className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-border/30 overflow-hidden hover:scale-[1.02] hover:shadow-xl hover:shadow-primary/5 hover:border-primary/15 transit-all group cursor-pointer"
-                    >
-                      <div className="relative aspect-[3/4] bg-muted overflow-hidden">
-                        <img src={item.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transit-all" />
-                        {i === 0 && (
-                          <div className="absolute top-2 left-2 bg-gradient-to-r from-orange-500 to-rose-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full">
-                            🔥 #1 Trending
-                          </div>
-                        )}
-                        <button
-                          onClick={(e) => { e.stopPropagation(); toggleLike(item.id); }}
-                          className="absolute top-2 right-2 h-7 w-7 rounded-full bg-white/80 dark:bg-[#1A1A1A]/80 glassmorphic flex items-center justify-center transit-all hover:scale-110"
-                        >
-                          <Heart className={`h-3.5 w-3.5 ${likedItems.includes(item.id) ? "fill-primary text-primary" : "text-foreground/60"}`} />
-                        </button>
-                        <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/60 text-white rounded-full px-2 py-0.5">
-                          <Heart className="h-2.5 w-2.5 fill-white" />
-                          <span className="text-[9px] font-bold">{(item.likes / 1000).toFixed(1)}K</span>
-                        </div>
-                      </div>
-                      <div className="p-3">
-                        <p className="text-[9px] text-muted-foreground truncate">{item.brand}</p>
-                        <p className="font-bold text-xs leading-tight truncate mt-0.5">{item.name}</p>
-                        <div className="flex items-center justify-between mt-2">
-                          <p className="text-primary font-black text-sm">{item.price} TND</p>
+                {isLoading ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {[...Array(4)].map((_, i) => (
+                      <div key={i} className="aspect-[3/4] rounded-2xl bg-muted/60 animate-pulse" />
+                    ))}
+                  </div>
+                ) : topItems.length === 0 ? (
+                  <div className="text-center py-16 rounded-2xl border border-border/30 bg-white dark:bg-[#1A1A1A]">
+                    <Package className="h-10 w-10 text-muted-foreground/40 mx-auto mb-2" />
+                    <p className="text-sm font-semibold text-foreground">No products listed yet</p>
+                    <p className="text-xs text-muted-foreground mt-1">Brand owners can list products from their dashboard</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {topItems.map((item, i) => (
+                      <div
+                        key={item.id}
+                        className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-border/30 overflow-hidden hover:scale-[1.02] hover:shadow-xl hover:shadow-primary/5 hover:border-primary/15 transit-all group cursor-pointer"
+                      >
+                        <div className="relative aspect-[3/4] bg-muted overflow-hidden">
+                          <img src={item.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transit-all" />
+                          {i === 0 && (
+                            <div className="absolute top-2 left-2 bg-gradient-to-r from-orange-500 to-rose-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full">
+                              🔥 New
+                            </div>
+                          )}
                           <button
-                            onClick={() => addToBag({ id: item.id, name: item.name, price: item.price, image: item.image, size: "M" })}
-                            className="h-7 w-7 rounded-full bg-primary text-white flex items-center justify-center hover:bg-primary/90 transit-all shadow-sm"
+                            onClick={(e) => { e.stopPropagation(); toggleLike(item.id); }}
+                            className="absolute top-2 right-2 h-7 w-7 rounded-full bg-white/80 dark:bg-[#1A1A1A]/80 glassmorphic flex items-center justify-center transit-all hover:scale-110"
                           >
-                            <ShoppingBag className="h-3 w-3" />
+                            <Heart className={`h-3.5 w-3.5 ${likedItems.includes(item.id) ? "fill-primary text-primary" : "text-foreground/60"}`} />
                           </button>
                         </div>
+                        <div className="p-3">
+                          <p className="text-[9px] text-muted-foreground truncate">{item.brand}</p>
+                          <p className="font-bold text-xs leading-tight truncate mt-0.5">{item.name}</p>
+                          <div className="flex items-center justify-between mt-2">
+                            <p className="text-primary font-black text-sm">{item.price} TND</p>
+                            <button
+                              onClick={() => addToBag({ id: item.id, name: item.name, price: item.price, image: item.image, size: "M" })}
+                              className="h-7 w-7 rounded-full bg-primary text-white flex items-center justify-center hover:bg-primary/90 transit-all shadow-sm"
+                            >
+                              <ShoppingBag className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </section>
 
               {/* ── Featured Collection Banner ── */}
@@ -245,14 +252,14 @@ export default function Explore() {
                   <div className="absolute top-0 right-0 w-48 h-48 bg-purple-500/20 rounded-full blur-3xl" />
                   <div className="absolute bottom-0 left-10 w-32 h-32 bg-rose-500/20 rounded-full blur-2xl" />
                   <div className="relative z-10">
-                    <span className="text-[9px] font-black tracking-widest text-purple-300 uppercase">Featured Collection</span>
-                    <h3 className="text-xl font-black text-white mt-1">Summer Luxe 2026</h3>
-                    <p className="text-xs text-white/60 mt-1 max-w-xs">Curated pieces from Tunisia's top luxury and contemporary brands.</p>
+                    <span className="text-[9px] font-black tracking-widest text-purple-300 uppercase">Styly Platform</span>
+                    <h3 className="text-xl font-black text-white mt-1">Discover Fashion</h3>
+                    <p className="text-xs text-white/60 mt-1 max-w-xs">Browse real products from verified local brands. Post your outfits and get discovered.</p>
                     <button
                       onClick={() => setActiveSection("browse")}
                       className="mt-4 px-5 py-2 bg-white text-slate-900 rounded-full text-xs font-black hover:bg-white/90 transit-all flex items-center gap-1.5 shadow-lg w-fit"
                     >
-                      <Sparkles className="h-3.5 w-3.5" /> Explore Collection
+                      <Sparkles className="h-3.5 w-3.5" /> Browse All
                     </button>
                   </div>
                 </div>
@@ -294,10 +301,22 @@ export default function Explore() {
                 <p className="text-xs text-muted-foreground hidden sm:block">Sorted by <span className="font-semibold text-foreground">{sort}</span></p>
               </div>
 
-              {filtered.length === 0 ? (
+              {isLoading ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 pb-6">
+                  {[...Array(8)].map((_, i) => (
+                    <div key={i} className="aspect-[3/4] rounded-2xl bg-muted/60 animate-pulse" />
+                  ))}
+                </div>
+              ) : filtered.length === 0 ? (
                 <div className="text-center py-20 rounded-2xl border border-border/30 bg-white dark:bg-[#1A1A1A]">
-                  <p className="text-sm font-semibold">No items found</p>
-                  <p className="text-xs text-muted-foreground mt-1">Try a different search or category</p>
+                  <Package className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
+                  <p className="text-sm font-semibold">No products found</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {allItems.length === 0
+                      ? "Brand owners can add products from their dashboard"
+                      : "Try a different search or category"
+                    }
+                  </p>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 pb-6">
@@ -315,10 +334,11 @@ export default function Explore() {
                         >
                           <Heart className={`h-3.5 w-3.5 ${likedItems.includes(item.id) ? "fill-primary text-primary" : "text-foreground/60"}`} />
                         </button>
-                        <div className="absolute bottom-2 left-2 flex items-center gap-0.5 bg-black/60 text-white rounded-full px-2 py-0.5">
-                          <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
-                          <span className="text-[9px] font-bold">{item.rating}</span>
-                        </div>
+                        {item.stock === 0 && (
+                          <div className="absolute bottom-2 left-2 bg-red-500/90 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
+                            Out of Stock
+                          </div>
+                        )}
                       </div>
                       <div className="p-3 flex flex-col gap-2 flex-1">
                         <div>
@@ -329,7 +349,8 @@ export default function Explore() {
                         <div className="flex items-center gap-1.5 mt-auto">
                           <button
                             onClick={() => addToBag({ id: item.id, name: item.name, price: item.price, image: item.image, size: "M" })}
-                            className="flex-1 h-8 rounded-full bg-primary text-white text-[10px] font-bold hover:bg-primary/90 transit-all flex items-center justify-center gap-1 shadow-sm shadow-primary/20"
+                            disabled={item.stock === 0}
+                            className="flex-1 h-8 rounded-full bg-primary text-white text-[10px] font-bold hover:bg-primary/90 transit-all flex items-center justify-center gap-1 shadow-sm shadow-primary/20 disabled:opacity-40 disabled:cursor-not-allowed"
                           >
                             <ShoppingBag className="h-3 w-3" /> Add to Bag
                           </button>
@@ -356,28 +377,12 @@ export default function Explore() {
   );
 }
 // ─────────────────────────────────────────────────────────────
-// LEADERBOARD SECTION — lists top style points earners
+// LEADERBOARD SECTION — lists top style points earners (live DB only)
 // ─────────────────────────────────────────────────────────────
 function LeaderboardSection() {
   const { data: rawLeaderboard = [], isLoading } = trpc.userGrade.leaderboard.useQuery({ limit: 10 });
 
-  const mockEntries = [
-    { userId: 991, userName: "Yasmine Khelifi", grade: 5, gradeTitle: "Style Icon", stylePoints: 4850, userAvatar: null },
-    { userId: 992, userName: "Soumaya Sebai", grade: 4, gradeTitle: "Style Expert", stylePoints: 2320, userAvatar: null },
-    { userId: 993, userName: "Lina Bouaziz", grade: 3, gradeTitle: "Influencer", stylePoints: 1200, userAvatar: null },
-    { userId: 994, userName: "Nour Mansouri", grade: 2, gradeTitle: "Trendsetter", stylePoints: 450, userAvatar: null },
-    { userId: 995, userName: "Amira Belhaj", grade: 1, gradeTitle: "Newcomer", stylePoints: 180, userAvatar: null },
-  ];
-
-  const leaderboard = [...rawLeaderboard];
-  const dbUserIds = new Set(leaderboard.map(x => x.userId));
-  mockEntries.forEach(item => {
-    if (!dbUserIds.has(item.userId)) {
-      leaderboard.push(item as any);
-    }
-  });
-
-  leaderboard.sort((a, b) => b.stylePoints - a.stylePoints);
+  const leaderboard = [...(rawLeaderboard as any[])].sort((a, b) => b.stylePoints - a.stylePoints);
 
   if (isLoading) {
     return (
@@ -385,6 +390,16 @@ function LeaderboardSection() {
         <div className="h-48 rounded-3xl bg-white/5 animate-pulse" />
         <div className="h-12 rounded-2xl bg-white/5 animate-pulse" />
         <div className="h-12 rounded-2xl bg-white/5 animate-pulse" />
+      </div>
+    );
+  }
+
+  if (leaderboard.length === 0) {
+    return (
+      <div className="pt-8 text-center py-20">
+        <Trophy className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+        <p className="text-sm font-bold text-foreground">Leaderboard is empty</p>
+        <p className="text-xs text-muted-foreground mt-1">Start posting outfits to earn Style Points and claim the crown!</p>
       </div>
     );
   }
@@ -464,29 +479,31 @@ function LeaderboardSection() {
         )}
       </div>
 
-      <div className="max-w-md mx-auto bg-white dark:bg-[#1A1A1A] border border-border/30 rounded-3xl overflow-hidden shadow-sm divide-y divide-border/20">
-        {rest.map((entry, index) => {
-          const rank = index + 4;
-          return (
-            <div key={entry.userId} className="flex items-center justify-between p-4 hover:bg-accent/30 transition-colors">
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-bold text-muted-foreground w-4">{rank}</span>
-                <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center font-bold text-xs overflow-hidden shrink-0 border border-border/40">
-                  {entry.userAvatar ? <img src={entry.userAvatar} className="h-full w-full object-cover" /> : entry.userName?.charAt(0).toUpperCase()}
+      {rest.length > 0 && (
+        <div className="max-w-md mx-auto bg-white dark:bg-[#1A1A1A] border border-border/30 rounded-3xl overflow-hidden shadow-sm divide-y divide-border/20">
+          {rest.map((entry, index) => {
+            const rank = index + 4;
+            return (
+              <div key={entry.userId} className="flex items-center justify-between p-4 hover:bg-accent/30 transition-colors">
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-bold text-muted-foreground w-4">{rank}</span>
+                  <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center font-bold text-xs overflow-hidden shrink-0 border border-border/40">
+                    {entry.userAvatar ? <img src={entry.userAvatar} className="h-full w-full object-cover" /> : entry.userName?.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-foreground">{entry.userName}</p>
+                    <p className="text-[9px] text-muted-foreground leading-none mt-0.5">{entry.gradeTitle}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs font-bold text-foreground">{entry.userName}</p>
-                  <p className="text-[9px] text-muted-foreground leading-none mt-0.5">{entry.gradeTitle}</p>
+                <div className="text-right">
+                  <p className="text-xs font-black text-primary">{entry.stylePoints} SP</p>
+                  <p className="text-[8px] text-muted-foreground">Grade {entry.grade || 1}</p>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-xs font-black text-primary">{entry.stylePoints} SP</p>
-                <p className="text-[8px] text-muted-foreground">Grade {entry.grade || 1}</p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

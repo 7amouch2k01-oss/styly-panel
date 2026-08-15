@@ -224,12 +224,12 @@ export default function Checkout() {
                   <button
                     onClick={() => {
                       setDelivery({
-                        fullName: profile.fullName || "",
+                        fullName: "",
                         phone: profile.phone || "",
-                        address: profile.address || "",
-                        city: profile.city || "",
-                        postCode: profile.postCode || "",
-                        country: profile.country || "Morocco",
+                        address: profile.deliveryAddress || "",
+                        city: profile.deliveryCity || "",
+                        postCode: profile.deliveryPostCode || "",
+                        country: profile.deliveryCountry || "Tunisia",
                       });
                       toast.success("Address auto-filled from profile!");
                     }}

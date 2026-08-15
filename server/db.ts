@@ -250,14 +250,20 @@ export async function updateOrderStatus(id: number, status: string) {
 // POSTS
 // ─────────────────────────────────────────────────────────────
 
-export async function getAllPosts() {
-  return toPlain(await PostModel.find().sort({ createdAt: -1 }));
+export async function getAllPosts(opts?: { limit?: number; offset?: number }) {
+  let query = PostModel.find().sort({ createdAt: -1 });
+  if (opts?.offset) query = query.skip(opts.offset);
+  if (opts?.limit) query = query.limit(opts.limit);
+  return toPlain(await query);
 }
 
 export const getPosts = getAllPosts;
 
-export async function getActivePosts() {
-  return toPlain(await PostModel.find({ status: "active", approvalStatus: "green" }).sort({ createdAt: -1 }));
+export async function getActivePosts(opts?: { limit?: number; offset?: number }) {
+  let query = PostModel.find({ status: "active", approvalStatus: "green" }).sort({ createdAt: -1 });
+  if (opts?.offset) query = query.skip(opts.offset);
+  if (opts?.limit) query = query.limit(opts.limit);
+  return toPlain(await query);
 }
 
 export async function getPostById(id: number) {
@@ -275,11 +281,47 @@ export async function createPost(arg1: any, arg2?: any) {
     userId = postData.userId || 1;
   }
 
+  // Extract brandId from taggedProduct (top-level for fast querying)
+  const taggedProduct = postData.taggedProduct || null;
+  const brandId: number | null = taggedProduct?.brandId ?? postData.brandId ?? null;
+
+  // Hotspots — accept array of objects directly
+  const hotspots = Array.isArray(postData.hotspots)
+    ? postData.hotspots
+    : [];
+
+  // Creator — accept object directly
+  const creator = postData.creator || null;
+
   const now = new Date().toISOString();
   const id = await nextId("posts");
-  const doc = new PostModel({ id, ...postData, userId, createdAt: now, updatedAt: now });
+  const doc = new PostModel({
+    id,
+    userId,
+    brandId,
+    unregisteredBrand: postData.unregisteredBrand || null,
+    image: postData.image || postData.imageUrl || null,
+    caption: postData.caption || null,
+    category: postData.category || null,
+    mediaType: postData.mediaType || "image",
+    status: postData.status || "active",
+    approvalStatus: postData.approvalStatus || "pending",
+    taggedProduct,
+    creator,
+    hotspots,
+    createdAt: now,
+    updatedAt: now,
+  });
   await doc.save();
   return toPlain(doc);
+}
+
+/**
+ * Get all posts that tag a specific brand (by brandId).
+ * This is the correct way to populate the Brand Dashboard — using the indexed brandId field.
+ */
+export async function getPostsByBrand(brandId: number) {
+  return toPlain(await PostModel.find({ brandId }).sort({ createdAt: -1 }));
 }
 
 export async function updatePost(id: number, data: Partial<{
@@ -663,7 +705,9 @@ export async function getShipmentsByOrder(orderId: number) {
 }
 
 export async function getShipmentsByBrand(brandId: number) {
-  return toPlain(await ShipmentModel.find({ brandId }).sort({ createdAt: -1 }));
+  const shs = toPlain(await ShipmentModel.find({ brandId }).sort({ createdAt: -1 }));
+  const allItems = toPlain(await OrderItemModel.find({ brandId }));
+  return shs.map((s: any) => ({ ...s, items: allItems.filter((i: any) => i.shipmentId === s.id) }));
 }
 
 export async function getAllShipments() {
@@ -821,4 +865,30 @@ export async function getUnreadCountByUser(userId: number) {
 
 export async function getUnreadCountByBrand(brandId: number) {
   return await NotificationModel.countDocuments({ brandId, isRead: false });
+}
+
+export async function linkPendingPostsToBrand(brandName: string, brandId: number) {
+  const slug = brandName.toLowerCase().replace(/\s+/g, "");
+  const posts = await PostModel.find({
+    $or: [
+      { unregisteredBrand: { $regex: new RegExp(`^${brandName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}$`, "i") } },
+      {
+        brandId: null,
+        caption: { $regex: new RegExp(`@${slug}\\b`, "i") }
+      }
+    ]
+  });
+
+  if (posts.length > 0) {
+    for (const post of posts) {
+      post.brandId = brandId;
+      post.approvalStatus = "pending";
+      post.unregisteredBrand = null;
+      if (post.taggedProduct) {
+        post.taggedProduct.brandId = brandId;
+      }
+      await post.save();
+    }
+    console.log(`[Styly Pipeline] Successfully linked ${posts.length} posts to brand "${brandName}" (ID: ${brandId})`);
+  }
 }

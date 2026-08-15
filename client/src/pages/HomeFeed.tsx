@@ -201,147 +201,15 @@ const ADV_CATEGORIES = [
   "Streetwear", "Formal", "Activewear", "Bohemian", "Vacation", "Loungewear",
 ];
 
-const DUMMY_BRANDS = [
-  "Queen Rania Collection", "Urban Threads", "Street Couture",
-  "Peak Activewear", "LumiÃƒÂ¨re Paris", "Kenzo Luxury", "Exist", "Sofi Design",
-];
+// Live brands used instead of DUMMY_BRANDS
+
 
 // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Data Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 
 
-export const DUMMY_POSTS: Post[] = [
-  {
-    id: 1,
-    creator: { name: "Queen Rania Collection", username: "@rania_brand", avatar: "/logo.png", isBrand: true, verified: true },
-    image: "/post_dress_evening.jpg",
-    caption: "The elegant Queen Rania S Dress — silk blends, hand-embroidered. Perfect for formal ceremonies.",
-    likes: 5124, comments: 148,
-    taggedProduct: { id: 1, name: "Queen Rania S Dress", price: 1200, image: "/post_dress_evening.jpg", brandId: 1 },
-    category: "Date Night",
-    gender: "Woman",
-    colors: ["Blue", "White"],
-    aesthetics: ["Old Money", "Minimalist"],
-    itemType: "Dresses & Jumpsuits"
-  },
-  {
-    id: 2,
-    creator: { name: "Urban Threads", username: "@urban_threads", avatar: "/logo.png", isBrand: true, verified: true },
-    image: "/post_blazer_office.jpg",
-    caption: "Linen Blend Blazer — tailored for the modern professional. Sustainable. Sharp. Timeless.",
-    likes: 2441, comments: 63,
-    taggedProduct: { id: 2, name: "Linen Blend Blazer", price: 349, image: "/post_blazer_office.jpg", brandId: 2 },
-    category: "Work / Office",
-    gender: "Woman",
-    colors: ["Brown", "Gray"],
-    aesthetics: ["Minimalist", "Old Money"],
-    itemType: "Outerwear"
-  },
-  {
-    id: 3,
-    creator: { name: "Aria Fenix", username: "@aria.style", avatar: "/logo.png", isBrand: false, verified: false },
-    image: "/post_boho_midi.jpg",
-    caption: "Sunday afternoon vibes ☀️ This fit has been in heavy rotation lately.",
-    likes: 892, comments: 34,
-    taggedProduct: { id: 3, name: "Wrap Midi Dress", price: 189, image: "/post_boho_midi.jpg", brandId: 1 },
-    category: "Vacation / Travel",
-    gender: "Woman",
-    colors: ["Blue", "Pink"],
-    aesthetics: ["Boho", "Hippie"],
-    itemType: "Dresses & Jumpsuits"
-  },
-  {
-    id: 4,
-    creator: { name: "Street Couture", username: "@street.couture", avatar: "/logo.png", isBrand: true, verified: true },
-    image: "/post_streetwear_jacket.jpg",
-    caption: "Drop alert 🚨 The Cargo Tech Jacket is back in stock. Limited run.",
-    likes: 3310, comments: 211,
-    taggedProduct: { id: 4, name: "Cargo Tech Jacket", price: 429, image: "/post_streetwear_jacket.jpg", brandId: 3 },
-    category: "Streetwear",
-    gender: "Man",
-    colors: ["Black", "Gray"],
-    aesthetics: ["Baggy", "Edgy / Grunge"],
-    itemType: "Outerwear"
-  },
-  {
-    id: 5,
-    creator: { name: "Maya Styles", username: "@maya.styles", avatar: "/logo.png", isBrand: false, verified: false },
-    image: "/post_linen_casual.jpg",
-    caption: "Summer brunch fit 🌊 Living for this floaty silhouette. Highly recommend the size up!",
-    likes: 1780, comments: 57,
-    taggedProduct: { id: 5, name: "Floaty Linen Set", price: 239, image: "/post_linen_casual.jpg" },
-    category: "Casual",
-    gender: "Woman",
-    colors: ["White", "Yellow"],
-    aesthetics: ["Minimalist", "Boho"],
-    itemType: "Dresses & Jumpsuits"
-  },
-  {
-    id: 6,
-    creator: { name: "Peak Activewear", username: "@peak.active", avatar: "/logo.png", isBrand: true, verified: true },
-    image: "/post_sporty_zip.jpg",
-    caption: "Engineered for performance. Worn for style. New colourways just dropped. 🏋️‍♂️",
-    likes: 4205, comments: 182,
-    taggedProduct: { id: 6, name: "Performance Zip Jacket", price: 299, image: "/post_sporty_zip.jpg" },
-    category: "Sporty / Activewear",
-    gender: "Man",
-    colors: ["Black", "Blue"],
-    aesthetics: ["Sporty Chic"],
-    itemType: "Outerwear"
-  },
-  {
-    id: 7,
-    creator: { name: "Lumière Paris", username: "@lumiere.paris", avatar: "/logo.png", isBrand: true, verified: true },
-    image: "/post_dress_evening.jpg",
-    caption: "Le Soir Collection. Capturing the essence of Parisian nights in silk and velvet. ✨",
-    likes: 3840, comments: 95,
-    taggedProduct: { id: 7, name: "Silk Evening Blouse", price: 289, image: "/post_dress_evening.jpg" },
-    category: "Party",
-    gender: "Woman",
-    colors: ["Black", "Red"],
-    aesthetics: ["Old Money"],
-    itemType: "Tops"
-  },
-  {
-    id: 8,
-    creator: { name: "Sofi Design", username: "@sofi.design", avatar: "/logo.png", isBrand: false, verified: false },
-    image: "/post_streetwear_jacket.jpg",
-    caption: "Styling the cargo tech with minimal pearl hoops today. Contrasting aesthetics is everything.",
-    likes: 1102, comments: 41,
-    taggedProduct: { id: 8, name: "Urban Cargo Pants", price: 199, image: "/post_streetwear_jacket.jpg" },
-    category: "Streetwear",
-    gender: "Woman",
-    colors: ["Gray", "White"],
-    aesthetics: ["Baggy", "Sporty Chic"],
-    itemType: "Bottoms"
-  },
-  {
-    id: 9,
-    creator: { name: "Kenzo Luxury", username: "@kenzo_off", avatar: "/logo.png", isBrand: true, verified: true },
-    image: "/post_blazer_office.jpg",
-    caption: "Winter drop. Oversized Trench Coat engineered with water-repellent gabardine fabric.",
-    likes: 6710, comments: 348,
-    taggedProduct: { id: 11, name: "Oversized Trench Coat", price: 549, image: "/post_blazer_office.jpg" },
-    category: "Seasonal",
-    gender: "Man",
-    colors: ["Navy", "Black"],
-    aesthetics: ["Old Money", "Minimalist"],
-    itemType: "Outerwear"
-  },
-  {
-    id: 10,
-    creator: { name: "Amina K.", username: "@amina.k", avatar: "/logo.png", isBrand: false, verified: false },
-    image: "/post_boho_midi.jpg",
-    caption: "Feeling cute in this floral midi set 🌸. Perfect for warm afternoon coffee dates.",
-    likes: 1530, comments: 72,
-    taggedProduct: { id: 12, name: "Floral Sundress", price: 159, image: "/post_boho_midi.jpg" },
-    category: "Vacation / Travel",
-    gender: "Woman",
-    colors: ["Red", "Pink"],
-    aesthetics: ["Boho"],
-    itemType: "Dresses & Jumpsuits"
-  },
-];
+// Live posts used instead of DUMMY_POSTS
+
 
 type FeedTab = "trending" | "products";
 type ViewMode = "grid" | "list";
@@ -361,6 +229,7 @@ function pushNotification(notif: {
 
 interface ComposerItem {
   brand: string;
+  brandId?: number;
   type: string;
   price: string;
   colors: string[];
@@ -376,20 +245,29 @@ interface AdvTargeting {
 function PostComposerModal({
   onClose,
   onPost,
+  liveBrands,
 }: {
   onClose: () => void;
   onPost: (post: { title: string; caption: string; imagePreview: string; mediaType: "image" | "video"; items: ComposerItem[]; targeting: AdvTargeting; category: string }) => void;
+  liveBrands: Array<{ id: number; name: string }>;
 }) {
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<"image" | "video">("image");
   const [title, setTitle] = useState("");
   const [caption, setCaption] = useState("");
+  const captionRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // @ Brand mention autocomplete
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [selectedMentionBrand, setSelectedMentionBrand] = useState<{ id: number; name: string } | null>(null);
 
   // Add Item flow
   const [showBrandDropdown, setShowBrandDropdown] = useState(false);
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [selectedBrand, setSelectedBrand] = useState("");
+  const [selectedBrandId, setSelectedBrandId] = useState<number | null>(null);
+  const [brandSearch, setBrandSearch] = useState("");
   const [selectedType, setSelectedType] = useState("");
   const [addedItems, setAddedItems] = useState<ComposerItem[]>([]);
   const [itemInfoIdx, setItemInfoIdx] = useState<number | null>(null);
@@ -401,9 +279,44 @@ function PostComposerModal({
   const [showAdvTargeting, setShowAdvTargeting] = useState(false);
   const [advTargeting, setAdvTargeting] = useState<AdvTargeting>({ categories: [], colors: [] });
 
+  // Detect @ in caption to show brand mention autocomplete
+  const handleCaptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setCaption(val);
+    const match = val.match(/@([a-zA-Z0-9]*)$/);
+    if (match) {
+      setMentionQuery(match[1].toLowerCase());
+    } else {
+      setMentionQuery(null);
+    }
+  };
+
+  const filteredMentionBrands = mentionQuery !== null
+    ? liveBrands.filter(b => b.name.toLowerCase().replace(/\s+/g, "").includes(mentionQuery))
+    : [];
+
+  const filteredBrands = liveBrands.filter(b =>
+    b.name.toLowerCase().includes(brandSearch.toLowerCase())
+  );
+  const exactMatch = liveBrands.some(b =>
+    b.name.toLowerCase().trim() === brandSearch.toLowerCase().trim()
+  );
+
+  const handleSelectMentionBrand = (brand: { id: number; name: string }) => {
+    const newCaption = caption.replace(/@([a-zA-Z0-9]*)$/, `@${brand.name.replace(/\s+/g, "")} `);
+    setCaption(newCaption);
+    setSelectedMentionBrand(brand);
+    setMentionQuery(null);
+    setTimeout(() => captionRef.current?.focus(), 50);
+  };
+
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
   const handleMedia = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setSelectedFile(file);
     const isVideo = file.type.startsWith("video/");
     setMediaType(isVideo ? "video" : "image");
     const reader = new FileReader();
@@ -411,8 +324,9 @@ function PostComposerModal({
     reader.readAsDataURL(file);
   };
 
-  const handleAddBrand = (brand: string) => {
+  const handleAddBrand = (brand: string, brandId?: number) => {
     setSelectedBrand(brand);
+    setSelectedBrandId(brandId || null);
     setShowBrandDropdown(false);
     setShowTypeDropdown(true);
   };
@@ -420,9 +334,10 @@ function PostComposerModal({
   const handleAddType = (type: string) => {
     setSelectedType(type);
     setShowTypeDropdown(false);
-    const item: ComposerItem = { brand: selectedBrand, type, price: "", colors: [], subtype: "", customType: "" };
+    const item: ComposerItem = { brand: selectedBrand, brandId: selectedBrandId || undefined, type, price: "", colors: [], subtype: "", customType: "" };
     setAddedItems(prev => [...prev, item]);
     setSelectedBrand("");
+    setSelectedBrandId(null);
     setSelectedType("");
   };
 
@@ -452,14 +367,40 @@ function PostComposerModal({
     }));
   };
 
-  const handlePost = () => {
+  const handlePost = async () => {
     if (!mediaPreview && !caption.trim()) {
       toast.error("Add a photo/video or caption to post.");
       return;
     }
+    
+    let uploadedUrl = "/product_dress_1.png";
+    if (selectedFile) {
+      setIsUploading(true);
+      try {
+        const formData = new FormData();
+        formData.append("image", selectedFile);
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+        if (res.ok) {
+          const data = await res.json();
+          uploadedUrl = data.url || mediaPreview || "/product_dress_1.png";
+        } else {
+          uploadedUrl = mediaPreview || "/product_dress_1.png";
+        }
+      } catch {
+        uploadedUrl = mediaPreview || "/product_dress_1.png";
+      } finally {
+        setIsUploading(false);
+      }
+    } else if (mediaPreview) {
+      uploadedUrl = mediaPreview;
+    }
+
     // Determine category from advanced targeting or default
     const category = advTargeting.categories[0] || "Casual";
-    onPost({ title, caption, imagePreview: mediaPreview || "/product_dress_1.png", mediaType, items: addedItems, targeting: advTargeting, category });
+    onPost({ title, caption, imagePreview: uploadedUrl, mediaType, items: addedItems, targeting: advTargeting, category });
   };
 
   return (
@@ -572,23 +513,50 @@ function PostComposerModal({
                 <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transit-all ${showBrandDropdown ? "rotate-180" : ""}`} />
               </button>
 
-              {/* Brand Dropdown */}
+              {/* Brand Dropdown — uses live DB brands with search and unregistered fallback */}
               {showBrandDropdown && (
                 <div className="absolute top-full left-0 right-0 mt-1.5 bg-white dark:bg-[#1E1E1E] border border-border/40 rounded-2xl shadow-2xl z-50 overflow-hidden animate-fade-up">
-                  <p className="px-4 pt-3 pb-1 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Choose a Brand</p>
+                  <div className="p-2 border-b border-border/20">
+                    <input
+                      type="text"
+                      placeholder="Search or type unregistered brand..."
+                      value={brandSearch}
+                      onChange={(e) => setBrandSearch(e.target.value)}
+                      className="w-full h-8 px-3 rounded-lg bg-muted text-xs focus:outline-none border border-border/30"
+                    />
+                  </div>
                   <div className="max-h-48 overflow-y-auto no-scrollbar">
-                    {DUMMY_BRANDS.map(brand => (
+                    {filteredBrands.length === 0 && !brandSearch.trim() ? (
+                      <p className="px-4 py-3 text-xs text-muted-foreground italic">No approved brands yet</p>
+                    ) : (
+                      filteredBrands.map(brand => (
+                        <button
+                          key={brand.id}
+                          onClick={() => {
+                            handleAddBrand(brand.name, brand.id);
+                            setBrandSearch("");
+                          }}
+                          className="w-full text-left px-4 py-2.5 text-sm font-medium hover:bg-primary/8 hover:text-primary transit-all flex items-center gap-2.5"
+                        >
+                          <div className="h-5 w-5 rounded-full bg-gradient-to-tr from-primary/30 to-orange-400/30 flex items-center justify-center text-[8px] font-black text-primary shrink-0">
+                            {brand.name[0]}
+                          </div>
+                          {brand.name}
+                        </button>
+                      ))
+                    )}
+                    {brandSearch.trim() && !exactMatch && (
                       <button
-                        key={brand}
-                        onClick={() => handleAddBrand(brand)}
-                        className="w-full text-left px-4 py-2.5 text-sm font-medium hover:bg-primary/8 hover:text-primary transit-all flex items-center gap-2.5"
+                        onClick={() => {
+                          handleAddBrand(brandSearch.trim()); // brandId will be undefined
+                          setBrandSearch("");
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-xs font-bold text-amber-500 hover:bg-amber-500/10 border-t border-border/10 transit-all flex items-center gap-2"
                       >
-                        <div className="h-5 w-5 rounded-full bg-gradient-to-tr from-primary/30 to-orange-400/30 flex items-center justify-center text-[8px] font-black text-primary shrink-0">
-                          {brand[0]}
-                        </div>
-                        {brand}
+                        <Plus className="h-3.5 w-3.5" />
+                        Tag unregistered brand: "{brandSearch.trim()}"
                       </button>
-                    ))}
+                    )}
                   </div>
                 </div>
               )}
@@ -597,7 +565,7 @@ function PostComposerModal({
               {showTypeDropdown && selectedBrand && (
                 <div className="absolute top-full left-0 right-0 mt-1.5 bg-white dark:bg-[#1E1E1E] border border-border/40 rounded-2xl shadow-2xl z-50 overflow-hidden animate-fade-up">
                   <p className="px-4 pt-3 pb-1 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                    <span className="text-primary font-black">{selectedBrand}</span> Ã‚Â· Choose product type
+                    <span className="text-primary font-black">{selectedBrand}</span> · Choose product type
                   </p>
                   <div className="grid grid-cols-2 gap-1 p-2">
                     {PRODUCT_TYPES.map(type => (
@@ -665,10 +633,11 @@ function PostComposerModal({
         <div className="px-5 pb-6 pt-3 shrink-0 border-t border-border/15">
           <button
             onClick={handlePost}
-            className="w-full h-13 py-3.5 rounded-2xl bg-gradient-to-r from-primary to-orange-400 text-white font-extrabold text-sm hover:opacity-95 hover:scale-[1.01] transit-all shadow-lg shadow-primary/30 flex items-center justify-center gap-2"
+            disabled={isUploading}
+            className="w-full h-13 py-3.5 rounded-2xl bg-gradient-to-r from-primary to-orange-400 text-white font-extrabold text-sm hover:opacity-95 hover:scale-[1.01] transit-all shadow-lg shadow-primary/30 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Sparkles className="h-4 w-4" />
-            Post
+            {isUploading ? "Uploading..." : "Post"}
           </button>
         </div>
       </div>
@@ -783,7 +752,7 @@ function PostComposerModal({
         </div>
       )}
 
-      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Advanced Targeting Modal Ã¢â€â‚¬Ã¢â€â‚¬ */}
+      {/* Ã¢â€ â‚¬Ã¢â€ â‚¬ Advanced Targeting Modal Ã¢â€ â‚¬Ã¢â€ â‚¬ */}
       {showAdvTargeting && (
         <div className="absolute inset-0 z-60 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowAdvTargeting(false)} />
@@ -871,6 +840,9 @@ export default function HomeFeed() {
 
   // Load from database query
   const { data: dbPosts = [], isLoading: isPostsLoading } = trpc.posts.list.useQuery();
+  // Load live brands for @mention autocomplete and brand tag display
+  const { data: liveBrandsData = [] } = trpc.brands.list.useQuery();
+  const liveBrands: Array<{ id: number; name: string }> = (liveBrandsData as any[]).map((b: any) => ({ id: b.id, name: b.name }));
   const utils = trpc.useUtils();
   const createPostMutation = trpc.posts.create.useMutation({
     onSuccess: () => {
@@ -878,48 +850,35 @@ export default function HomeFeed() {
     }
   });
 
-  // Load liked posts from localStorage
-  const [posts, setPosts] = useState<Post[]>(() => {
-    try {
-      const likedStr = localStorage.getItem("styly_liked_posts");
-      const likedIds = likedStr ? JSON.parse(likedStr) : [];
-      return DUMMY_POSTS.map(p => ({
-        ...p,
-        hasLiked: likedIds.includes(p.id),
-        likes: likedIds.includes(p.id) ? p.likes + 1 : p.likes
-      }));
-    } catch {
-      return DUMMY_POSTS;
-    }
-  });
+  // Sync DB posts to local state — no DUMMY fallback, always live data
+  const [posts, setPosts] = useState<Post[]>([]);
 
-  // Sync DB posts to local state when loaded
   useEffect(() => {
-    if (dbPosts && dbPosts.length > 0) {
-      const likedStr = localStorage.getItem("styly_liked_posts");
-      const likedIds = likedStr ? JSON.parse(likedStr) : [];
-
-      const mapped = dbPosts.map((p: any) => ({
-        id: p.id,
-        creator: p.creator || {
-          name: "Queen Rania Collection",
-          username: "@rania_brand",
-          avatar: "/logo.png",
-          isBrand: true,
-          verified: true
-        },
-        image: p.image || p.imageUrl || "/product_dress_1.png",
-        caption: p.caption || "",
-        likes: p.likes || 0,
-        comments: p.comments || 0,
-        taggedProduct: p.taggedProduct || { id: 1, name: "Wrap Dress", price: 150, image: "/product_dress_1.png" },
-        category: p.category || "Casual",
-        hotspots: p.hotspots || null,
-        mediaType: p.mediaType || "image",
-        hasLiked: likedIds.includes(p.id)
-      }));
-      setPosts(mapped);
-    }
+    const likedStr = localStorage.getItem("styly_liked_posts");
+    const likedIds = likedStr ? JSON.parse(likedStr) : [];
+    const mapped = (dbPosts || []).map((p: any) => ({
+      id: p.id,
+      brandId: p.brandId || null,
+      unregisteredBrand: p.unregisteredBrand || null,
+      approvalStatus: p.approvalStatus || "pending",
+      creator: p.creator || {
+        name: "Styly User",
+        username: "@user",
+        avatar: "/logo.png",
+        isBrand: false,
+        verified: false,
+      },
+      image: p.image || p.imageUrl || "",
+      caption: p.caption || "",
+      likes: p.likes || 0,
+      comments: p.comments || 0,
+      taggedProduct: p.taggedProduct || null,
+      category: p.category || "Casual",
+      hotspots: p.hotspots || null,
+      mediaType: p.mediaType || "image",
+      hasLiked: likedIds.includes(p.id),
+    }));
+    setPosts(mapped as any);
   }, [dbPosts]);
 
   const [feedTab, setFeedTab] = useState<FeedTab>("trending");
@@ -1335,6 +1294,7 @@ export default function HomeFeed() {
         <PostComposerModal
           onClose={() => setShowComposer(false)}
           onPost={handleNewPost}
+          liveBrands={liveBrands}
         />
       )}
 

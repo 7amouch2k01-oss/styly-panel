@@ -173,9 +173,27 @@ export const ShipmentModel = mongoose.models.Shipment || model("Shipment", Shipm
 
 // ─── POSTS ────────────────────────────────────────────────────────────────────
 
+const TaggedProductSchema = new Schema({
+  id:      Number,
+  name:    String,
+  price:   Number,
+  image:   String,
+  brandId: Number,
+}, { _id: false });
+
+const HotspotSchema = new Schema({
+  x:         Number,
+  y:         Number,
+  brandId:   Number,
+  productId: Number,
+}, { _id: false });
+
 const PostSchema = new Schema({
   id:             { type: Number, unique: true, index: true },
-  userId:         { type: Number, required: true },
+  userId:         { type: Number, required: true, index: true },
+  // ─ Top-level brandId for fast brand-dashboard queries ─
+  brandId:        { type: Number, index: true, default: null },
+  unregisteredBrand: { type: String, default: null },
   image:          String,
   caption:        String,
   category:       String,
@@ -183,12 +201,21 @@ const PostSchema = new Schema({
   comments:       { type: Number, default: 0 },
   status:         { type: String, enum: ["active", "hidden", "flagged"], default: "active" },
   approvalStatus: { type: String, enum: ["pending", "green", "red", "grey"], default: "pending" },
-  taggedProduct:  String, // JSON string
-  creatorJson:    String, // JSON string
-  hotspots:       String, // JSON string
-  mediaType:      { type: String, enum: ["image", "video"], default: "image" },
-  createdAt:      { type: String, default: () => new Date().toISOString() },
-  updatedAt:      { type: String, default: () => new Date().toISOString() },
+  // ─ Structured product tag (not a JSON string) ─
+  taggedProduct:  { type: TaggedProductSchema, default: null },
+  // ─ Creator info stored as object ─
+  creator: {
+    name:     String,
+    username: String,
+    avatar:   String,
+    isBrand:  { type: Boolean, default: false },
+    verified: { type: Boolean, default: false },
+  },
+  // ─ Hotspots stored as array of objects ─
+  hotspots:  { type: [HotspotSchema], default: [] },
+  mediaType: { type: String, enum: ["image", "video"], default: "image" },
+  createdAt: { type: String, default: () => new Date().toISOString() },
+  updatedAt: { type: String, default: () => new Date().toISOString() },
 }, { collection: "posts" });
 
 export const PostModel = mongoose.models.Post || model("Post", PostSchema);

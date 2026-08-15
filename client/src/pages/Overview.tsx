@@ -93,7 +93,7 @@ export default function Overview() {
                 ))}
               </div>
             ) : activity && activity.length > 0 ? (
-              activity.map((log) => (
+              activity.map((log: any) => (
                 <div key={log.id} className="flex items-center justify-between py-3 border-b border-border/50 last:border-0">
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-2">

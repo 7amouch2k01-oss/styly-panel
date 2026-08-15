@@ -70,7 +70,7 @@ export default function Users() {
     }
   };
 
-  const filteredUsers = users.filter(user =>
+  const filteredUsers = users.filter((user: any) =>
     (user.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     (user.email || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -136,7 +136,7 @@ export default function Users() {
                     </TableRow>
                   ))
                 ) : filteredUsers.length > 0 ? (
-                  filteredUsers.map((user) => (
+                  filteredUsers.map((user: any) => (
                     <TableRow key={user.id} className="border-border/50 hover:bg-accent/5">
                       <TableCell className="font-medium">{user.name || "-"}</TableCell>
                       <TableCell className="text-muted-foreground">{user.email || "-"}</TableCell>

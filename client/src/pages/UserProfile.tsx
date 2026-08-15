@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useTheme } from "@/contexts/ThemeContext";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { DUMMY_POSTS, Post } from "./HomeFeed";
+import { Post } from "./HomeFeed";
 import { trpc } from "@/lib/trpc";
 import { GradePanel, GradeBadge } from "@/components/GradePanel";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -379,13 +379,13 @@ export default function UserProfile() {
       return;
     }
 
-    const prod = products.find(p => p.id === Number(selectedProductId));
+    const prod = products.find((p: any) => p.id === Number(selectedProductId));
     if (!prod) {
       toast.error("Tagged product not found");
       return;
     }
 
-    const brand = brands.find(b => b.id === Number(selectedBrandId));
+    const brand = brands.find((b: any) => b.id === Number(selectedBrandId));
     const tagText = brand ? ` @${brand.name.replace(/\s+/g, "")}` : "";
 
     setIsPosting(true);
@@ -818,8 +818,16 @@ export default function UserProfile() {
             {activeSubTab === "loved" && (() => {
               const likedStr = localStorage.getItem("styly_liked_posts");
               const likedIds = likedStr ? JSON.parse(likedStr) : [];
-              // Import the posts pool or search local list
-              const lovedPosts = DUMMY_POSTS.filter(p => likedIds.includes(p.id));
+              const lovedPosts = (dbPosts || []).map((p: any) => ({
+                id: p.id,
+                image: p.image || p.imageUrl || "/product_dress_1.png",
+                caption: p.caption || "",
+                creator: p.creator || {
+                  name: "Styly User",
+                  username: "@user",
+                  avatar: "/logo.png",
+                }
+              })).filter((p: any) => likedIds.includes(p.id));
 
               if (lovedPosts.length === 0) {
                 return (
@@ -838,7 +846,7 @@ export default function UserProfile() {
                 <div className="space-y-4 animate-fade-up">
                   <p className="text-xs font-bold text-muted-foreground">{lovedPosts.length} loved outfits</p>
                   <div className="grid grid-cols-2 gap-3">
-                    {lovedPosts.map((post) => (
+                    {lovedPosts.map((post: any) => (
                       <div
                         key={post.id}
                         onClick={() => setLocation("/feed")}

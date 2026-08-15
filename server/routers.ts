@@ -80,7 +80,7 @@ export const appRouter = router({
           name: z.string().min(2, "Name must be at least 2 characters"),
           email: z.string().email("Invalid email format"),
           password: z.string().min(6, "Password must be at least 6 characters"),
-          role: z.enum(["admin", "user"]).default("admin"), // default to admin locally to prevent lock-outs
+          role: z.enum(["admin", "user"]).default("user"),
         })
       )
       .mutation(async ({ input, ctx }) => {
@@ -402,6 +402,30 @@ export const appRouter = router({
         await logActivity(ctx.user.id, "Product Created", "device", product.id, `Created product "${input.name}"`);
         return { success: true, message: "Product created", id: product.id };
       }),
+    // Brand owners can create products without needing admin role
+    brandCreate: publicProcedure
+      .input(z.object({
+        name: z.string().min(1),
+        category: z.string().min(1),
+        price: z.number().positive(),
+        stock: z.number().nonnegative().default(1),
+        brandId: z.number(),
+        description: z.string().optional(),
+        imageUrl: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const userId = ctx.user?.id;
+        if (!userId) throw new TRPCError({ code: "UNAUTHORIZED", message: "You must be logged in" });
+        // Verify this user owns the brand
+        const { getBrandStore } = await import("./db");
+        const store = await getBrandStore(userId);
+        if (!store || store.brandId !== input.brandId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You do not own this brand" });
+        }
+        const product = await createDevice(input);
+        await logActivity(userId, "Brand Product Created", "device", product.id, `Brand owner created product "${input.name}"`);
+        return { success: true, message: "Product created", product };
+      }),
     update: adminProcedure
       .input(z.object({
         id: z.number(),
@@ -431,15 +455,19 @@ export const appRouter = router({
     list: adminProcedure.query(async () => {
       return await getAllOrders();
     }),
+    // NOTE: All new purchases should use checkout.placeOrder which creates per-brand shipments.
+    // This legacy endpoint is kept for sync/compat but now also creates proper shipments.
     create: publicProcedure
       .input(z.object({
         items: z.array(z.object({
           id: z.number(),
           name: z.string(),
           price: z.number(),
-          image: z.string(),
-          size: z.string(),
+          image: z.string().optional().default(""),
+          size: z.string().optional().default(""),
           qty: z.number(),
+          brandId: z.number().optional(),
+          brandName: z.string().optional(),
         })),
         total: z.number(),
         userId: z.number().optional(),
@@ -448,23 +476,19 @@ export const appRouter = router({
         const userId = ctx.user?.id ?? input.userId ?? 1;
         const customerName = ctx.user?.name ?? "Styly User";
         const customerEmail = ctx.user?.email ?? undefined;
-
-        const order = await createOrder({
-          customerId: userId,
-          customerName,
-          customerEmail,
-          status: "pending",
-          totalAmount: input.total,
-          itemCount: input.items.reduce((acc, i) => acc + i.qty, 0),
-          notes: JSON.stringify(input.items.map(i => ({ name: i.name, size: i.size, qty: i.qty, price: i.price }))),
-          items: input.items.map(i => ({
-            deviceId: i.id,
-            quantity: i.qty,
-            priceAtPurchase: i.price,
-          })),
-        });
+        // Route through createFullOrder so each brand gets a proper ShipmentModel entry
+        const { createFullOrder } = await import("./db");
+        const address = {
+          fullName: customerName,
+          phone: "",
+          address: "",
+          city: "",
+          postCode: "",
+          country: "Tunisia",
+        };
+        const order = await createFullOrder(userId, customerEmail, address, input.items as any, input.total);
         await logActivity(userId, "Order Placed", "order", order.id,
-          `${customerName} placed order with ${input.items.length} item(s) — total $${input.total.toFixed(2)}`);
+          `${customerName} placed order with ${input.items.length} item(s) — total ${input.total.toFixed(2)} TND`);
         return { success: true, message: "Order placed", orderId: order.id };
       }),
     updateStatus: adminProcedure
@@ -501,6 +525,8 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         const brand = await createBrand(input);
         await logActivity(ctx.user.id, "Brand Created", "brand", brand.id, `Created brand "${input.name}"`);
+        const { linkPendingPostsToBrand } = await import("./db");
+        await linkPendingPostsToBrand(brand.name, brand.id);
         return { success: true, message: "Brand created", id: brand.id };
       }),
     update: adminProcedure
@@ -524,29 +550,71 @@ export const appRouter = router({
       }),
   }),
 
-  // Analytics
+  // Analytics — all from real MongoDB aggregations
   analytics: router({
     salesTrends: adminProcedure.query(async () => {
-      return [
-        { month: "Jan", sales: 4000 },
-        { month: "Feb", sales: 3000 },
-        { month: "Mar", sales: 2000 },
-        { month: "Apr", sales: 2780 },
-        { month: "May", sales: 1890 },
-        { month: "Jun", sales: 2390 },
-        { month: "Jul", sales: 3490 },
-      ];
+      const { OrderModel } = await import("./mongodb");
+      // Aggregate total order revenue grouped by YYYY-MM
+      const agg = await OrderModel.aggregate([
+        { $group: {
+          _id: { $substr: ["$createdAt", 0, 7] },
+          sales: { $sum: "$totalAmount" },
+          orders: { $sum: 1 },
+        }},
+        { $sort: { _id: 1 } },
+        { $limit: 12 },
+      ]);
+      return agg.map((r: any) => ({ month: r._id, sales: r.sales, orders: r.orders }));
     }),
     userGrowth: adminProcedure.query(async () => {
-      return [
-        { month: "Jan", users: 100 },
-        { month: "Feb", users: 150 },
-        { month: "Mar", users: 220 },
-        { month: "Apr", users: 290 },
-        { month: "May", users: 410 },
-        { month: "Jun", users: 500 },
-        { month: "Jul", users: 650 },
-      ];
+      const { UserModel } = await import("./mongodb");
+      const agg = await UserModel.aggregate([
+        { $group: {
+          _id: { $substr: ["$createdAt", 0, 7] },
+          users: { $sum: 1 },
+        }},
+        { $sort: { _id: 1 } },
+        { $limit: 12 },
+      ]);
+      // Compute cumulative user count
+      let cumulative = 0;
+      return agg.map((r: any) => {
+        cumulative += r.users;
+        return { month: r._id, users: cumulative, newUsers: r.users };
+      });
+    }),
+    // New: full admin analytics — revenue, orders, users grouped by month
+    full: adminProcedure.query(async () => {
+      const { OrderModel, UserModel } = await import("./mongodb");
+      const [revenueAgg, userAgg] = await Promise.all([
+        OrderModel.aggregate([
+          { $group: {
+            _id: { $substr: ["$createdAt", 0, 7] },
+            revenue: { $sum: "$totalAmount" },
+            orders: { $sum: 1 },
+          }},
+          { $sort: { _id: 1 } },
+          { $limit: 12 },
+        ]),
+        UserModel.aggregate([
+          { $group: {
+            _id: { $substr: ["$createdAt", 0, 7] },
+            newUsers: { $sum: 1 },
+          }},
+          { $sort: { _id: 1 } },
+          { $limit: 12 },
+        ]),
+      ]);
+      // Merge by month key
+      const monthMap: Record<string, any> = {};
+      for (const r of revenueAgg as any[]) {
+        monthMap[r._id] = { month: r._id, revenue: r.revenue, orders: r.orders, newUsers: 0 };
+      }
+      for (const r of userAgg as any[]) {
+        if (monthMap[r._id]) monthMap[r._id].newUsers = r.newUsers;
+        else monthMap[r._id] = { month: r._id, revenue: 0, orders: 0, newUsers: r.newUsers };
+      }
+      return Object.values(monthMap).sort((a: any, b: any) => a.month.localeCompare(b.month));
     }),
   }),
 
@@ -637,7 +705,7 @@ export const appRouter = router({
   // =============================================================================
 
   mannequin: router({
-    save: publicProcedure
+    save: protectedProcedure
       .input(z.object({
         slot: z.number().optional().default(1),
         name: z.string().optional(),
@@ -650,7 +718,7 @@ export const appRouter = router({
         hips: z.number().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
-        const userId = ctx.user?.id || 1;
+        const userId = ctx.user.id;
         const { saveMannequinProfile } = await import("./db");
         await saveMannequinProfile(userId, input);
         return { success: true, message: "Mannequin profile saved" };
@@ -671,7 +739,7 @@ export const appRouter = router({
   }),
 
   brandStore: router({
-    register: publicProcedure
+    register: protectedProcedure
       .input(z.object({
         brandName: z.string(),
         ownerName: z.string(),
@@ -680,10 +748,35 @@ export const appRouter = router({
         idFile: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
-        const userId = ctx.user?.id || 1;
-        const { registerBrandStore } = await import("./db");
-        await registerBrandStore(userId, input);
-        return { success: true, message: "Brand store registered" };
+        const userId = ctx.user.id;
+        const { registerBrandStore, getAllBrands, createBrand } = await import("./db");
+
+        // Try to find or create a matching Brand record so brandId is always set
+        let brandId: number | undefined;
+        const brands = await getAllBrands();
+        const existing = brands.find(
+          (b: any) => b.name.toLowerCase() === input.brandName.toLowerCase()
+        );
+        if (existing) {
+          brandId = existing.id;
+        } else {
+          // Auto-create a brand record in inactive (pending approval) state
+          const newBrand = await createBrand({
+            name: input.brandName,
+            country: "Tunisia",
+            category: "Fashion",
+          });
+          brandId = newBrand.id;
+          // Set inactive initially
+          const { BrandModel } = await import("./mongodb.js");
+          await BrandModel.updateOne({ id: brandId }, { isActive: false });
+          // Link pre-tagged posts immediately
+          const { linkPendingPostsToBrand } = await import("./db");
+          await linkPendingPostsToBrand(newBrand.name, newBrand.id);
+        }
+
+        await registerBrandStore(userId, { ...input, brandId });
+        return { success: true, message: "Brand store registered", brandId };
       }),
     get: publicProcedure
       .query(async ({ ctx }) => {
@@ -691,13 +784,55 @@ export const appRouter = router({
         const { getBrandStore } = await import("./db");
         return await getBrandStore(userId);
       }),
+    listPending: adminProcedure
+      .query(async () => {
+        const { BrandStoreModel } = await import("./mongodb.js");
+        const { toPlain } = await import("./db");
+        return toPlain(await BrandStoreModel.find({ status: "pending" }).sort({ createdAt: -1 }));
+      }),
+    approve: adminProcedure
+      .input(z.object({
+        storeId: z.number(),
+        approve: z.boolean(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { updateBrandStoreStatus, updateBrand } = await import("./db");
+        const { BrandStoreModel } = await import("./mongodb.js");
+        
+        const status = input.approve ? "approved" : "rejected";
+        await updateBrandStoreStatus(input.storeId, status);
+        
+        const store = await BrandStoreModel.findOne({ id: input.storeId });
+        if (store && store.brandId) {
+          // Activate or deactivate the Brand based on approval
+          await updateBrand(store.brandId, { isActive: input.approve });
+          if (input.approve) {
+            const { linkPendingPostsToBrand } = await import("./db");
+            await linkPendingPostsToBrand(store.brandName, store.brandId);
+          }
+        }
+        
+        await logActivity(
+          ctx.user.id,
+          input.approve ? "Brand Store Approved" : "Brand Store Rejected",
+          "brandStore",
+          input.storeId,
+          `Admin ${input.approve ? "approved" : "rejected"} brand store request #${input.storeId}`
+        );
+        
+        return { success: true };
+      }),
   }),
 
   posts: router({
     list: publicProcedure
-      .query(async () => {
+      .input(z.object({
+        limit: z.number().min(1).max(100).optional().default(50),
+        offset: z.number().min(0).optional().default(0),
+      }).optional())
+      .query(async ({ input }) => {
         const { getPosts } = await import("./db");
-        return await getPosts();
+        return await getPosts(input);
       }),
     adminList: adminProcedure
       .query(async () => {
@@ -727,11 +862,13 @@ export const appRouter = router({
         await logActivity(ctx.user.id, "Post Deleted", "post", input.postId, `Deleted post #${input.postId}`);
         return { success: true, message: "Post deleted" };
       }),
-    create: publicProcedure
+    // ── posts.create ── Auto-parses @BrandName from caption to resolve brandId
+    create: protectedProcedure
       .input(z.object({
         imageUrl: z.string(),
         caption: z.string(),
         category: z.string(),
+        unregisteredBrand: z.string().nullable().optional(),
         taggedProduct: z.object({
           id: z.number(),
           name: z.string(),
@@ -748,78 +885,103 @@ export const appRouter = router({
         mediaType: z.enum(["image", "video"]).default("image")
       }))
       .mutation(async ({ input, ctx }) => {
-        const userId = ctx.user?.id || 1;
+        const userId = ctx.user.id;
         const { createPost } = await import("./db");
-        
-        // Find or build user details for creator profile
-        const creatorObj = ctx.user 
-          ? {
-              name: ctx.user.name || "Aria F.",
-              username: `@${(ctx.user.name || "ariaf").toLowerCase().replace(/\s+/g, "")}`,
-              avatar: "/logo.png",
-              isBrand: false,
-              verified: false
+        const { BrandModel } = await import("./mongodb");
+
+        const creator = {
+          name:     ctx.user.name || "Style Creator",
+          username: `@${(ctx.user.name || "creator").toLowerCase().replace(/\s+/g, "")}`,
+          avatar:   "/logo.png",
+          isBrand:  false,
+          verified: false,
+        };
+
+        // ── Auto-detect @BrandName mentions in caption ──
+        // Priority: explicit taggedProduct.brandId > @mention in caption
+        let resolvedBrandId: number | null = input.taggedProduct?.brandId ?? null;
+        let approvalStatus: "pending" | "grey" = "grey";
+        let unregisteredBrand: string | null = input.unregisteredBrand ?? null;
+
+        if (!resolvedBrandId) {
+          // Extract all @mentions from caption (e.g. "@NikeBrand" or "@Nike Brand")
+          const mentionMatches = input.caption.match(/@([a-zA-Z0-9]+)/g);
+          if (mentionMatches && mentionMatches.length > 0) {
+            // Try to find a brand whose name (lowercased, stripped of spaces) matches any mention
+            const allBrands = await BrandModel.find({ isActive: { $ne: false } }).lean();
+            let matchedAny = false;
+            for (const mention of mentionMatches) {
+              const slug = mention.replace("@", "").toLowerCase();
+              const matched = allBrands.find((b: any) =>
+                b.name.toLowerCase().replace(/\s+/g, "") === slug ||
+                b.name.toLowerCase().startsWith(slug)
+              );
+              if (matched) {
+                resolvedBrandId = matched.id;
+                approvalStatus = "pending"; // Needs brand owner approval
+                unregisteredBrand = null;
+                matchedAny = true;
+                break;
+              }
             }
-          : {
-              name: "Aria F.",
-              username: "@ariaf",
-              avatar: "/logo.png",
-              isBrand: false,
-              verified: false
-            };
+            if (!matchedAny && !unregisteredBrand) {
+              // Not registered yet - tag it as unregisteredBrand
+              unregisteredBrand = mentionMatches[0].replace("@", "");
+            }
+          }
+        } else {
+          // brandId came explicitly from the client (selected via Add Item flow)
+          approvalStatus = "pending";
+        }
 
         await createPost(userId, {
-          image: input.imageUrl,
-          caption: input.caption,
-          category: input.category,
-          mediaType: input.mediaType,
-          creator: creatorObj,
+          image:         input.imageUrl,
+          caption:       input.caption,
+          category:      input.category,
+          mediaType:     input.mediaType,
+          creator,
           taggedProduct: input.taggedProduct,
-          hotspots: input.hotspots
-        });
-        return { success: true, message: "Post created successfully" };
-      }),
-    getBrandTaggedPosts: publicProcedure
-      .input(z.object({
-        brandName: z.string()
-      }))
-      .query(async ({ input }) => {
-        const { getPosts, getAllUsers } = await import("./db");
-        const posts = await getPosts();
-        const users = await getAllUsers();
-        
-        const normalizedBrand = input.brandName.toLowerCase();
-        
-        // Filter posts tagging this brand in caption or product name
-        const tagged = posts.filter((post: any) => {
-          const captionMatch = (post.caption || "").toLowerCase().includes(`@${normalizedBrand}`);
-          const wordMatch = (post.caption || "").toLowerCase().includes(normalizedBrand);
-          const productMatch = post.taggedProduct && post.taggedProduct.name.toLowerCase().includes(normalizedBrand);
-          return captionMatch || wordMatch || productMatch;
+          hotspots:      input.hotspots || [],
+          brandId:       resolvedBrandId,
+          unregisteredBrand,
+          approvalStatus,
         });
 
-        // Map to TaggedPost interface expected by BrandDashboard
-        return tagged.map((post: any) => {
+        return { success: true, message: "Post created successfully" };
+      }),
+
+    // ── getBrandTaggedPosts ── Now queries by brandId (fast indexed query)
+    getBrandTaggedPosts: publicProcedure
+      .input(z.object({
+        brandId: z.number()
+      }))
+      .query(async ({ input }) => {
+        const { getPostsByBrand, getAllUsers } = await import("./db");
+        const posts = await getPostsByBrand(input.brandId);
+        const users = await getAllUsers();
+
+        return posts.map((post: any) => {
           const poster = users.find((u: any) => u.id === post.userId);
+          const posterName = poster?.name || post.creator?.name || "Style Creator";
           const likesCount = post.likes || 0;
-          
+
           return {
-            id: String(post.id),
-            posterName: (poster && poster.name) || "Aria Fenix",
-            posterAvatar: "/logo.png",
-            postImage: post.image || post.imageUrl || "/product_dress_1.png",
-            likes: likesCount,
-            shares: Math.floor(likesCount * 0.12),
-            comments: post.comments || 0,
-            interactions: likesCount + (post.comments || 0) + 24,
-            clicks: Math.floor(likesCount * 0.45),
-            orders: Math.floor(likesCount * 0.05),
-            revenue: Math.floor(likesCount * 0.05) * (post.taggedProduct?.price || 150),
+            id:               String(post.id),
+            posterName,
+            posterAvatar:     "/logo.png",
+            postImage:        post.image || "/product_dress_1.png",
+            likes:            likesCount,
+            shares:           Math.floor(likesCount * 0.12),
+            comments:         post.comments || 0,
+            interactions:     likesCount + (post.comments || 0),
+            clicks:           Math.floor(likesCount * 0.45),
+            orders:           Math.floor(likesCount * 0.05),
+            revenue:          Math.floor(likesCount * 0.05) * (post.taggedProduct?.price || 150),
             commissionEarned: Math.floor(likesCount * 0.05) * (post.taggedProduct?.price || 150) * 0.1,
-            taggedProducts: post.taggedProduct ? [post.taggedProduct.name] : [],
-            lockType: post.approvalStatus || "black",
-            postText: post.caption,
-            taggedAt: post.createdAt || new Date().toISOString()
+            taggedProducts:   post.taggedProduct ? [post.taggedProduct.name] : [],
+            lockType:         post.approvalStatus || "pending",
+            postText:         post.caption || "",
+            taggedAt:         post.createdAt || new Date().toISOString(),
           };
         });
       }),
@@ -836,13 +998,13 @@ export const appRouter = router({
   }),
 
   bag: router({
-    list: publicProcedure
+    list: protectedProcedure
       .query(async ({ ctx }) => {
-        const userId = ctx.user?.id || 1;
+        const userId = ctx.user.id;
         const { getBagItems } = await import("./db");
         return await getBagItems(userId);
       }),
-    add: publicProcedure
+    add: protectedProcedure
       .input(z.object({
         productId: z.number(),
         name: z.string(),
@@ -852,24 +1014,24 @@ export const appRouter = router({
         qty: z.number().default(1),
       }))
       .mutation(async ({ input, ctx }) => {
-        const userId = ctx.user?.id || 1;
+        const userId = ctx.user.id;
         const { addToBag } = await import("./db");
         await addToBag(userId, input);
         return { success: true, message: "Added to bag" };
       }),
-    remove: publicProcedure
+    remove: protectedProcedure
       .input(z.object({
         id: z.number(),
       }))
       .mutation(async ({ input, ctx }) => {
-        const userId = ctx.user?.id || 1;
+        const userId = ctx.user.id;
         const { removeFromBag } = await import("./db");
         await removeFromBag(userId, input.id);
         return { success: true, message: "Removed from bag" };
       }),
-    clear: publicProcedure
+    clear: protectedProcedure
       .mutation(async ({ ctx }) => {
-        const userId = ctx.user?.id || 1;
+        const userId = ctx.user.id;
         const { clearBag } = await import("./db");
         await clearBag(userId);
         return { success: true, message: "Bag cleared" };
@@ -918,8 +1080,8 @@ export const appRouter = router({
   // COMMISSIONS
   // ─────────────────────────────────────────────────────────────
   commissions: router({
-    myCommissions: publicProcedure.query(async ({ ctx }) => {
-      const userId = ctx.user?.id || 1;
+    myCommissions: protectedProcedure.query(async ({ ctx }) => {
+      const userId = ctx.user.id;
       return await getUserCommissions(userId);
     }),
     brandCommissions: publicProcedure
@@ -927,10 +1089,10 @@ export const appRouter = router({
       .query(async ({ input }) => {
         return await getBrandCommissions(input.brandId);
       }),
-    requestPayout: publicProcedure
+    requestPayout: protectedProcedure
       .input(z.object({ brandId: z.number().optional(), postId: z.number().optional(), amount: z.number(), description: z.string().optional() }))
       .mutation(async ({ input, ctx }) => {
-        const userId = ctx.user?.id || 1;
+        const userId = ctx.user.id;
         await createCommission({ userId, ...input });
         return { success: true, message: "Payout request submitted" };
       }),
@@ -943,16 +1105,16 @@ export const appRouter = router({
   }),
 
   // ─────────────────────────────────────────────────────────────
-  // DEV SIMULATION
+  // DEV SIMULATION (Admin-restricted)
   // ─────────────────────────────────────────────────────────────
   devSimulation: router({
-    simulateOrder: publicProcedure
+    simulateOrder: adminProcedure
       .input(z.object({
         brandId: z.number(),
         amount: z.number()
       }))
       .mutation(async ({ input, ctx }) => {
-        const userId = ctx.user?.id || 1;
+        const userId = ctx.user.id;
         const { createOrder, addBrandXP, createCommission } = await import("./db");
         
         await createOrder({
@@ -978,7 +1140,7 @@ export const appRouter = router({
         return { success: true, message: "Order and XP simulated!" };
       }),
       
-    simulateXP: publicProcedure
+    simulateXP: adminProcedure
       .input(z.object({
         brandId: z.number(),
         xp: z.number()
@@ -1289,7 +1451,38 @@ export const appRouter = router({
         const { getShipmentsByOrder } = await import("./db");
         return await getShipmentsByOrder(input.orderId);
       }),
+
+    /** Brand: monthly revenue aggregated from real shipment data */
+    brandMonthlyRevenue: publicProcedure
+      .input(z.object({ brandId: z.number() }))
+      .query(async ({ input }) => {
+        const { ShipmentModel, OrderItemModel } = await import("./mongodb");
+        // Get all shipments for this brand
+        const shipments = await ShipmentModel.find({ brandId: input.brandId }).lean();
+        if (!shipments.length) return [];
+
+        const shipmentIds = shipments.map((s: any) => s.id);
+
+        // Aggregate order items by month for this brand's shipments
+        const agg = await OrderItemModel.aggregate([
+          { $match: { shipmentId: { $in: shipmentIds } } },
+          { $group: {
+            _id: { $substr: ["$createdAt", 0, 7] },
+            revenue: { $sum: { $multiply: ["$priceAtPurchase", "$quantity"] } },
+            orders: { $sum: 1 },
+          }},
+          { $sort: { _id: 1 } },
+          { $limit: 12 },
+        ]);
+
+        return (agg as any[]).map((r: any) => ({
+          month: r._id,
+          revenue: Math.round(r.revenue),
+          orders: r.orders,
+        }));
+      }),
   }),
+
 });
 
 export type AppRouter = typeof appRouter;

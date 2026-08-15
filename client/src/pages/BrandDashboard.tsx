@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, AlignmentType, WidthType, HeadingLevel } from "docx";
 import { saveAs } from "file-saver";
+import { Button } from "@/components/ui/button";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, Area, AreaChart
@@ -52,7 +53,7 @@ interface TaggedPost {
   revenue: number;
   commissionEarned: number;
   taggedProducts: string[];
-  lockType: "black" | "green" | "red"; // black: pending, green: approved, red: declined
+  lockType: "black" | "green" | "red" | "pending" | "grey"; // black/pending: pending, green: approved, red: declined
   postText: string;
   taggedAt: string;
 }
@@ -125,111 +126,9 @@ const getBrandLevel = (revenue: number): BrandLevel => {
   return matched;
 };
 
-// ─── Initial Mock Data ────────────────────────────────────────────────────────
 
-const INITIAL_PRODUCTS: Product[] = [
-  { id: 1, name: "Queen Rania S Dress", price: 1200, category: "Dresses", description: "Elegant blue embroidered abaya dress.", status: "in-stock", image: "/product_dress_1.png", locked: true, stock: 3 },
-  { id: 2, name: "Queen Rania", price: 1200, category: "Dresses", description: "Classic rania collection piece.", status: "in-stock", image: "/product_dress_1.png", locked: true, stock: 5 },
-  { id: 3, name: "Suede Jacket", price: 480, category: "Jackets", description: "Premium brown suede jacket.", status: "in-stock", image: "/product_jacket.png", locked: false, stock: 8 },
-  { id: 4, name: "Linen Co-ord Set", price: 320, category: "Sets", description: "Light linen two-piece set.", status: "in-stock", image: "/product_jacket.png", locked: false, stock: 12 },
-  { id: 5, name: "Velvet Blazer", price: 650, category: "Jackets", description: "Rich velvet formal blazer.", status: "in-stock", image: "/product_jacket.png", locked: true, stock: 0 },
-  { id: 6, name: "Silk Wrap Dress", price: 890, category: "Dresses", description: "Flowing silk wrap-style dress.", status: "in-stock", image: "/product_dress_1.png", locked: true, stock: 0 },
-];
+// No hardcoded followers — real follower data comes from the users DB
 
-const INITIAL_TAGGED_POSTS: TaggedPost[] = [
-  {
-    id: "PST-493821",
-    posterName: "Amira Belhaj",
-    posterAvatar: "/follower_1.png",
-    postImage: "/product_dress_1.png",
-    likes: 1240,
-    shares: 310,
-    comments: 89,
-    interactions: 24500,
-    clicks: 1800,
-    orders: 45,
-    revenue: 54000,
-    commissionEarned: 2700,
-    taggedProducts: ["Queen Rania S Dress"],
-    lockType: "green",
-    postText: "In love with this Queen Rania S Dress from @styly! The embroidery is absolutely stunning. ✨ #fashion #dress #styly",
-    taggedAt: "2026-06-25",
-  },
-  {
-    id: "PST-773412",
-    posterName: "Yasmine Khelifi",
-    posterAvatar: "/follower_2.png",
-    postImage: "/product_jacket.png",
-    likes: 850,
-    shares: 120,
-    comments: 42,
-    interactions: 15400,
-    clicks: 950,
-    orders: 22,
-    revenue: 10560,
-    commissionEarned: 528,
-    taggedProducts: ["Suede Jacket"],
-    lockType: "green",
-    postText: "This premium brown suede jacket is my go-to for chilly evenings. Get yours on Styly! @styly #ootd #jacket",
-    taggedAt: "2026-06-28",
-  },
-  {
-    id: "PST-890212",
-    posterName: "Ines Saadi",
-    posterAvatar: "/follower_2.png",
-    postImage: "/product_dress_1.png",
-    likes: 410,
-    shares: 55,
-    comments: 19,
-    interactions: 6800,
-    clicks: 420,
-    orders: 8,
-    revenue: 9600,
-    commissionEarned: 480,
-    taggedProducts: ["Silk Wrap Dress"],
-    lockType: "black",
-    postText: "New silk wrap dress arrived! Can't wait to style it. Tell me what you think! @styly",
-    taggedAt: "2026-07-01",
-  },
-  {
-    id: "PST-210344",
-    posterName: "Sami Ben Ali",
-    posterAvatar: "/follower_1.png",
-    postImage: "/product_jacket.png",
-    likes: 95,
-    shares: 12,
-    comments: 5,
-    interactions: 1200,
-    clicks: 80,
-    orders: 1,
-    revenue: 320,
-    commissionEarned: 16,
-    taggedProducts: ["Linen Co-ord Set"],
-    lockType: "red",
-    postText: "Simple linen set for a hot summer day. @styly #summerlook",
-    taggedAt: "2026-06-20",
-  }
-];
-
-const INITIAL_ORDERS = [
-  { id: "SLY-2026-O8213", status: "history", amount: 80, label: "Delivered", date: "2026-06-15" },
-  { id: "SLY-2026-O9412", status: "history", amount: 175, label: "Delivered", date: "2026-06-18" },
-  { id: "SLY-2026-O2108", status: "history", amount: 1400, label: "Delivered", date: "2026-06-20" },
-  { id: "SLY-2026-O1187", status: "history", amount: 0, label: "Cancelled", date: "2026-06-22" },
-  { id: "SLY-2026-O0493", status: "history", amount: 150, label: "Delivered", date: "2026-06-25" },
-  { id: "SLY-2026-O3310", status: "active", amount: 320, label: "Confirmed", date: "2026-06-29" },
-  { id: "SLY-2026-O3290", status: "active", amount: 890, label: "Shipped", date: "2026-07-01" },
-  { id: "SLY-2026-O3105", status: "active", amount: 140, label: "Placed", date: "2026-07-02" },
-];
-
-const FOLLOWERS = [
-  { id: 1, name: "Soumaya Sebai", likes: 1, shares: 0, verified: true, image: "/follower_1.png" },
-  { id: 2, name: "Yasmine Khelifi", likes: 4, shares: 2, verified: false, image: "/follower_2.png" },
-  { id: 3, name: "Lina Bouaziz", likes: 7, shares: 1, verified: true, image: "/follower_1.png" },
-  { id: 4, name: "Nour Mansouri", likes: 2, shares: 0, verified: false, image: "/follower_2.png" },
-  { id: 5, name: "Amira Belhaj", likes: 12, shares: 5, verified: true, image: "/follower_1.png" },
-  { id: 6, name: "Ines Saadi", likes: 3, shares: 1, verified: false, image: "/follower_2.png" },
-];
 
 const CATEGORIES = ["Dresses", "Jackets", "Sets", "Tops", "Bottoms", "Accessories", "Shoes", "Bags", "Other"];
 
@@ -619,9 +518,10 @@ interface AddItemModalProps {
   open: boolean;
   onClose: () => void;
   onAdd: (product: Product) => void;
+  brandId: number;
 }
 
-function AddItemModal({ open, onClose, onAdd }: AddItemModalProps) {
+function AddItemModal({ open, onClose, onAdd, brandId }: AddItemModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
   const [isDragging, setIsDragging] = useState(false);
@@ -635,6 +535,28 @@ function AddItemModal({ open, onClose, onAdd }: AddItemModalProps) {
     description: "",
     stock: "",
     status: "in-stock" as "in-stock" | "pending",
+  });
+
+  const createMutation = trpc.devices.brandCreate.useMutation({
+    onSuccess: (res) => {
+      onAdd({
+        id: res.product.id,
+        name: res.product.name,
+        price: res.product.price,
+        category: res.product.category,
+        description: res.product.description || "",
+        status: res.product.stock > 0 ? "in-stock" : "pending",
+        image: res.product.imageUrl || "/product_jacket.png",
+        locked: false,
+        stock: res.product.stock,
+      });
+      toast.success(`"${res.product.name}" added to your store! 🎉`);
+      handleClose();
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to create product");
+      setIsSaving(false);
+    }
   });
 
   const resetForm = () => {
@@ -692,24 +614,15 @@ function AddItemModal({ open, onClose, onAdd }: AddItemModalProps) {
     if (!validate()) return;
     setIsSaving(true);
 
-    // Simulate brief async save (replace with real API call when backend is ready)
-    await new Promise((r) => setTimeout(r, 800));
-
-    const newProduct: Product = {
-      id: Date.now(),
+    createMutation.mutate({
       name: form.name.trim(),
-      price: Number(form.price),
       category: form.category,
-      description: form.description.trim(),
-      status: form.status,
-      image: imagePreview || "/product_jacket.png",
-      locked: false,
+      price: Number(form.price),
       stock: form.stock === "" ? 1 : Number(form.stock),
-    };
-
-    onAdd(newProduct);
-    toast.success(`"${newProduct.name}" added to your store! 🎉`);
-    handleClose();
+      description: form.description.trim() || undefined,
+      brandId,
+      imageUrl: imagePreview || "/product_jacket.png",
+    });
   };
 
   if (!open) return null;
@@ -937,15 +850,17 @@ function EmptyState({ icon, title, subtitle }: { icon: React.ReactNode; title: s
 }
 
 // Lock Indicator component
-function LockIcon({ type }: { type: "green" | "red" | "black" }) {
-  const colorMap = {
+function LockIcon({ type }: { type: "green" | "red" | "black" | "pending" | "grey" }) {
+  const colorMap: Record<string, string> = {
     green: "bg-green-500 text-white dark:bg-green-600 shadow border border-green-400/20",
     red: "bg-red-500 text-white dark:bg-red-600 shadow border border-red-400/20",
     black: "bg-black text-white dark:bg-neutral-800 shadow border border-neutral-700/20",
+    pending: "bg-amber-500 text-white dark:bg-amber-600 shadow border border-amber-400/20",
+    grey: "bg-neutral-400 text-white dark:bg-neutral-600 shadow border border-neutral-300/20",
   };
 
   return (
-    <div className={`h-8 w-8 rounded-full flex items-center justify-center ${colorMap[type]} transition-transform hover:scale-110`}>
+    <div className={`h-8 w-8 rounded-full flex items-center justify-center ${colorMap[type] ?? colorMap.black} transition-transform hover:scale-110`}>
       <Lock className="h-3.5 w-3.5" />
     </div>
   );
@@ -1161,32 +1076,38 @@ function TaggedPostRow({ post, isFeatureUnlocked, onSelect }: TaggedPostRowProps
 
 interface StoreTabProps {
   products: Product[];
-  setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
+  onProductAdded: () => void;
   taggedPosts: TaggedPost[];
   onApproveTag: (id: string) => void;
   onDeclineTag: (id: string) => void;
   onSelectPost: (post: TaggedPost) => void;
   onSelectProduct: (product: Product) => void;
+  brandId: number;
 }
 
-function StoreTab({ products, setProducts, taggedPosts, onApproveTag, onDeclineTag, onSelectPost, onSelectProduct }: StoreTabProps) {
+function StoreTab({ products, onProductAdded, taggedPosts, onApproveTag, onDeclineTag, onSelectPost, onSelectProduct, brandId }: StoreTabProps) {
   const [filter, setFilter] = useState<StoreFilter>("in-stock");
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
+  const [showProducts, setShowProducts] = useState(true);
 
-  const filters: { key: StoreFilter; label: string; count?: number; icon?: React.ReactNode }[] = [
-    { key: "in-stock", label: "In Stock" },
-    { key: "out-of-stock", label: "Out of Stock" },
-    { key: "pending-tags", label: "Pending Tags", count: taggedPosts.filter(p => p.lockType === "black").length, icon: <Lock className="h-3 w-3 text-foreground" /> },
-    { key: "approved-posts", label: "Approved Tags", count: taggedPosts.filter(p => p.lockType === "green").length, icon: <Lock className="h-3 w-3 text-green-500" /> },
-    { key: "unapproved-posts", label: "Declined Tags", count: taggedPosts.filter(p => p.lockType === "red").length, icon: <Lock className="h-3 w-3 text-red-500" /> },
+  // Filters computed reactively from state/props
+  const activeProducts = products.filter(p => p.status === "in-stock" && p.stock > 0).length;
+  const outOfStockProducts = products.filter(p => p.stock === 0 && p.status === "in-stock").length;
+
+  const pendingTags = taggedPosts.filter(p => p.lockType === "black" || p.lockType === "pending").length;
+  const approvedTags = taggedPosts.filter(p => p.lockType === "green").length;
+  const declinedTags = taggedPosts.filter(p => p.lockType === "red").length;
+
+  const filters: { key: StoreFilter; label: string; count?: number }[] = [
+    { key: "in-stock", label: "In Stock Outfits", count: activeProducts },
+    { key: "out-of-stock", label: "Sold Out Outfits", count: outOfStockProducts },
+    { key: "pending-tags", label: "Pending Tag Requests", count: pendingTags },
+    { key: "approved-posts", label: "Approved Tags Feed", count: approvedTags },
+    { key: "unapproved-posts", label: "Declined Tags Feed", count: declinedTags },
   ];
 
-  // Filter logic
-  const showProducts = filter === "in-stock" || filter === "out-of-stock";
-  
   const filteredProducts = products.filter((p) => {
-    // Only display non-pending items in store page products grid
     const matchesFilter =
       filter === "out-of-stock"
         ? p.stock === 0 && p.status === "in-stock"
@@ -1198,7 +1119,7 @@ function StoreTab({ products, setProducts, taggedPosts, onApproveTag, onDeclineT
   const filteredPosts = taggedPosts.filter((post) => {
     const matchesFilter =
       filter === "pending-tags"
-        ? post.lockType === "black"
+        ? post.lockType === "black" || post.lockType === "pending"
         : filter === "approved-posts"
         ? post.lockType === "green"
         : filter === "unapproved-posts"
@@ -1209,8 +1130,8 @@ function StoreTab({ products, setProducts, taggedPosts, onApproveTag, onDeclineT
     return matchesFilter && matchesSearch;
   });
 
-  const handleAddProduct = (product: Product) => {
-    setProducts((prev) => [product, ...prev]);
+  const handleAddProduct = () => {
+    onProductAdded();
     setFilter("in-stock");
   };
 
@@ -1229,41 +1150,39 @@ function StoreTab({ products, setProducts, taggedPosts, onApproveTag, onDeclineT
               className="w-full h-12 pl-10 pr-4 rounded-full bg-muted border border-border/40 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
             />
           </div>
-          <button className="h-12 w-12 rounded-full bg-muted border border-border/40 flex items-center justify-center hover:bg-accent transition-colors">
-            <Building2 className="h-4 w-4 text-muted-foreground" />
-          </button>
+          <Button
+            onClick={() => setModalOpen(true)}
+            className="h-12 px-6 rounded-full font-bold flex items-center gap-1.5 shadow-md shadow-primary/10 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+          >
+            <Plus className="h-4 w-4" /> Add Outfit
+          </Button>
         </div>
 
-        {/* Add Product Button */}
-        <button
-          onClick={() => setModalOpen(true)}
-          className="w-full h-12 rounded-full border-2 border-border/60 font-semibold text-sm hover:bg-primary hover:text-white hover:border-primary transition-all duration-200 flex items-center justify-center gap-2 group"
-        >
-          <Plus className="h-4 w-4 group-hover:rotate-90 transition-transform duration-300" />
-          Add new item
-        </button>
-
-        {/* Filter Pills */}
-        <div className="flex gap-2 flex-wrap pb-1">
-          {filters.map((f) => (
-            <button
-              key={f.key}
-              onClick={() => setFilter(f.key)}
-              className={`px-4 py-2 rounded-full text-xs font-semibold transition-all duration-200 border flex items-center gap-1.5 ${
-                filter === f.key
-                  ? "bg-foreground text-background border-foreground shadow-sm"
-                  : "bg-transparent text-foreground border-border/60 hover:bg-accent"
-              }`}
-            >
-              {f.icon && f.icon}
-              {f.label}
-              {f.count !== undefined && f.count > 0 && (
-                <span className="bg-primary/20 text-primary text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                  {f.count}
-                </span>
-              )}
-            </button>
-          ))}
+        {/* Tab filters switcher */}
+        <div className="overflow-x-auto pb-1 -mx-1 px-1">
+          <div className="flex gap-2 min-w-max">
+            {filters.map((f) => (
+              <button
+                key={f.key}
+                onClick={() => {
+                  setFilter(f.key);
+                  setShowProducts(f.key === "in-stock" || f.key === "out-of-stock");
+                }}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-all duration-200 border whitespace-nowrap ${
+                  filter === f.key
+                    ? "bg-foreground text-background border-foreground shadow-sm font-semibold"
+                    : "bg-transparent text-foreground border-border/60 hover:bg-accent"
+                }`}
+              >
+                {f.label}
+                {f.count !== undefined && f.count > 0 && (
+                  <span className="bg-primary/20 text-primary text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                    {f.count}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Dynamic Display Grid */}
@@ -1304,7 +1223,7 @@ function StoreTab({ products, setProducts, taggedPosts, onApproveTag, onDeclineT
         )}
       </div>
 
-      <AddItemModal open={modalOpen} onClose={() => setModalOpen(false)} onAdd={handleAddProduct} />
+      <AddItemModal open={modalOpen} onClose={() => setModalOpen(false)} onAdd={handleAddProduct} brandId={brandId} />
     </>
   );
 }
@@ -1389,33 +1308,10 @@ function OrdersTab({ orders }: OrdersTabProps) {
 
 function FollowersTab() {
   const [search, setSearch] = useState("");
-  const [lockStatuses, setLockStatuses] = useState<Record<string, "green" | "orange" | "red">>(() => {
-    const initial: Record<string, "green" | "orange" | "red"> = {};
-    FOLLOWERS.forEach((f) => {
-      const stored = localStorage.getItem(`styly_user_lock_${f.name}`);
-      initial[f.name] = (stored as "green" | "orange" | "red") || "orange";
-    });
-    return initial;
-  });
 
-  const toggleLock = (e: React.MouseEvent, followerName: string) => {
-    e.stopPropagation();
-    const current = lockStatuses[followerName] || "orange";
-    const next = current === "orange" ? "green" : current === "green" ? "red" : "orange";
-    localStorage.setItem(`styly_user_lock_${followerName}`, next);
-    setLockStatuses((prev) => ({ ...prev, [followerName]: next }));
-    toast.success(
-      `${followerName}'s lock status set to ${
-        next === "green"
-          ? "🟢 Green (Auto-Approve Tags)"
-          : next === "red"
-          ? "🔴 Red (Banned / Auto-Decline Tags)"
-          : "🟧 Orange (Normal / Pending Review)"
-      }`
-    );
-  };
-
-  const filtered = FOLLOWERS.filter((f) => f.name.toLowerCase().includes(search.toLowerCase()));
+  // Future: fetch real followers from DB with trpc.brands.getFollowers.useQuery
+  const followers: any[] = [];
+  const filtered = followers.filter((f) => f.name.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div className="space-y-5">
@@ -1435,77 +1331,18 @@ function FollowersTab() {
         </button>
       </div>
 
-      {filtered.length === 0 ? (
-        <EmptyState icon={<Users className="h-20 w-20 text-muted-foreground/40" />} title="No followers found" />
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {filtered.map((follower) => {
-            const status = lockStatuses[follower.name] || "orange";
-            return (
-              <div key={follower.id} className="relative rounded-2xl overflow-hidden aspect-[3/4] bg-muted group cursor-pointer border border-border/40 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300 hover:-translate-y-1">
-                <img
-                  src={follower.image}
-                  alt={follower.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                
-                {/* 3-State Lock Status Toggle */}
-                <button
-                  onClick={(e) => toggleLock(e, follower.name)}
-                  className={`absolute top-3 right-3 z-10 h-8 w-8 rounded-full flex items-center justify-center border transition-all hover:scale-110 active:scale-95 ${
-                    status === "green"
-                      ? "bg-emerald-500 text-white border-emerald-400/50 shadow"
-                      : status === "red"
-                      ? "bg-red-500 text-white border-red-400/50 shadow"
-                      : "bg-amber-500 text-white border-amber-400/50 shadow"
-                  }`}
-                  title={
-                    status === "green"
-                      ? "🟢 Green Lock: Auto-Approve posts from this user"
-                      : status === "red"
-                      ? "🔴 Red Lock: Banned / Auto-Decline posts from this user"
-                      : "🟧 Orange Lock: Normal (Requires Approval)"
-                  }
-                >
-                  <Lock className="h-3.5 w-3.5" />
-                </button>
-
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-3">
-                  <div className="flex items-center gap-1 mb-1.5">
-                    <p className="text-white font-semibold text-sm truncate">{follower.name}</p>
-                    {follower.verified && <CheckCircle2 className="h-3.5 w-3.5 text-blue-400 shrink-0 fill-blue-400" />}
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-1 text-white/90 text-xs">
-                      <Heart className="h-3 w-3 fill-white" /> {follower.likes}
-                    </span>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      status === "green" ? "bg-emerald-500/80 text-white" : status === "red" ? "bg-red-500/80 text-white" : "bg-amber-500/80 text-white"
-                    }`}>
-                      {status === "green" ? "Auto" : status === "red" ? "Banned" : "Review"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      <EmptyState
+        icon={<Users className="h-20 w-20 text-muted-foreground/40" />}
+        title="No followers yet"
+        subtitle="Users who follow your brand will appear here. Get discovered by posting products and having your brand tags approved."
+      />
     </div>
   );
 }
 
 // ─── Chart Data ──────────────────────────────────────────────────────────────
 
-const MONTHLY_CHART_DATA = [
-  { month: "Feb", revenue: 18400, orders: 24 },
-  { month: "Mar", revenue: 24200, orders: 31 },
-  { month: "Apr", revenue: 19800, orders: 27 },
-  { month: "May", revenue: 31500, orders: 42 },
-  { month: "Jun", revenue: 28900, orders: 38 },
-  { month: "Jul", revenue: 36200, orders: 49 },
-];
+// Note: Monthly revenue chart data now comes from trpc.delivery.brandMonthlyRevenue (live DB)
 
 // ─── Commission Calculator ────────────────────────────────────────────────────
 
@@ -1568,7 +1405,7 @@ function CommissionCalculator({ commissionRate }: { commissionRate: number }) {
 
 interface ProfitsTabProps {
   revenueTND: number;
-  setRevenueTND: React.Dispatch<React.SetStateAction<number>>;
+  setRevenueTND: React.Dispatch<React.SetStateAction<number | null>>;
   activePaidTier: string;
   onUpgradeTier: (tierName: string, price: number) => void;
   taggedPosts: TaggedPost[];
@@ -1580,6 +1417,14 @@ interface ProfitsTabProps {
 function ProfitsTab({ revenueTND, setRevenueTND, activePaidTier, onUpgradeTier, taggedPosts, onSelectPost, isFeatureUnlocked, brandId }: ProfitsTabProps) {
   const { data: commissions = [], refetch: refetchCommissions } = trpc.commissions.brandCommissions.useQuery({ brandId });
   const updateStatusMutation = trpc.commissions.updateStatus.useMutation();
+  // Live monthly revenue from real shipments
+  const { data: monthlyChartData = [] } = trpc.delivery.brandMonthlyRevenue.useQuery({ brandId });
+
+  // Real stats derived from commissions and shipments
+  const pendingPayoutTND = commissions
+    .filter((c: any) => c.status === "pending" || c.status === "approved")
+    .reduce((sum: number, c: any) => sum + (c.amount || 0), 0);
+  const totalRealOrders = monthlyChartData.reduce((sum: any, m: any) => sum + (m.orders || 0), 0);
 
   const handleUpdateCommission = async (id: number, status: "approved" | "paid" | "rejected") => {
     try {
@@ -1745,7 +1590,7 @@ function ProfitsTab({ revenueTND, setRevenueTND, activePaidTier, onUpgradeTier, 
           <div className="h-9 w-9 rounded-xl bg-amber-500/10 flex items-center justify-center mb-3">
             <Clock className="h-4 w-4 text-amber-500" />
           </div>
-          <p className="text-xl font-bold">14,200 TND</p>
+          <p className="text-xl font-bold">{pendingPayoutTND.toLocaleString()} TND</p>
           <p className="text-xs text-muted-foreground mt-0.5 font-medium">Pending Payout</p>
         </div>
 
@@ -1753,7 +1598,7 @@ function ProfitsTab({ revenueTND, setRevenueTND, activePaidTier, onUpgradeTier, 
           <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
             <ShoppingBag className="h-4 w-4 text-primary" />
           </div>
-          <p className="text-xl font-bold">{approvedPosts.reduce((acc, curr) => acc + curr.orders, 0) + 8}</p>
+          <p className="text-xl font-bold">{totalRealOrders}</p>
           <p className="text-xs text-muted-foreground mt-0.5 font-medium">Total Orders</p>
         </div>
       </div>
@@ -1779,10 +1624,15 @@ function ProfitsTab({ revenueTND, setRevenueTND, activePaidTier, onUpgradeTier, 
             <span className="text-[10px] text-muted-foreground font-semibold bg-accent px-2 py-0.5 rounded-full">Last 6 months</span>
           </div>
 
-          {/* Revenue Bar Chart */}
+          {/* Revenue Area Chart - Live Data */}
           <div className="h-40">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={MONTHLY_CHART_DATA} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+              {monthlyChartData.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
+                  No revenue data yet
+                </div>
+              ) : (
+              <AreaChart data={monthlyChartData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
                 <defs>
                   <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
@@ -1798,15 +1648,21 @@ function ProfitsTab({ revenueTND, setRevenueTND, activePaidTier, onUpgradeTier, 
                 />
                 <Area type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#revenueGrad)" />
               </AreaChart>
+              )}
             </ResponsiveContainer>
           </div>
 
-          {/* Orders Bar Chart */}
+          {/* Orders Bar Chart - Live Data */}
           <div>
             <p className="text-xs font-semibold text-muted-foreground mb-2">Orders per Month</p>
             <div className="h-28">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={MONTHLY_CHART_DATA} margin={{ top: 0, right: 4, bottom: 0, left: -20 }}>
+                {monthlyChartData.length === 0 ? (
+                  <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
+                    No orders yet
+                  </div>
+                ) : (
+                <BarChart data={monthlyChartData} margin={{ top: 0, right: 4, bottom: 0, left: -20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
                   <XAxis dataKey="month" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} />
                   <YAxis tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} />
@@ -1816,6 +1672,7 @@ function ProfitsTab({ revenueTND, setRevenueTND, activePaidTier, onUpgradeTier, 
                   />
                   <Bar dataKey="orders" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} opacity={0.85} />
                 </BarChart>
+                )}
               </ResponsiveContainer>
             </div>
           </div>
@@ -1988,8 +1845,6 @@ export default function BrandDashboard() {
   return <BrandDashboardInner userId={appUser.id} appUser={appUser} />;
 }
 
-// ─── Inner component (receives resolved, stable userId) ───────────────────────
-
 function BrandDashboardInner({ userId, appUser }: { userId: number; appUser: any }) {
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<MainTab>("store");
@@ -1998,38 +1853,39 @@ function BrandDashboardInner({ userId, appUser }: { userId: number; appUser: any
   const { logout } = useAuth();
   const [showNotifPanel, setShowNotifPanel] = useState(false);
 
-  // Helper to scope every localStorage key to this user's account
-  const key = (name: string) => `${name}_${userId}`;
+  // ─── Query brand store registration from backend ───
+  const { data: brandStore, isLoading: brandStoreLoading, refetch: refetchBrandStore } = trpc.brandStore.get.useQuery();
 
-  const brandRegistered = localStorage.getItem(key("brand_registered")) === "true";
-
-  // brand_logged_in_X can be:
-  //   null / missing → never explicitly logged out → auto-grant if registered
-  //   "true"  → explicitly logged in
-  //   "false" → explicitly logged out → must log in again
-  const brandLoggedInRaw = localStorage.getItem(key("brand_logged_in"));
-  const initiallyLoggedIn = brandRegistered && brandLoggedInRaw !== "false";
-
-  const [brandLoggedIn, setBrandLoggedIn] = useState(initiallyLoggedIn);
-
-  // State with user-scoped initial values
-  const [products, setProducts] = useState<Product[]>(() => {
-    try {
-      const saved = localStorage.getItem(`brand_products_${userId}`);
-      return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
-    } catch {
-      return INITIAL_PRODUCTS;
+  // Register brand store mutation
+  const registerMutation = trpc.brandStore.register.useMutation({
+    onSuccess: () => {
+      toast.success("Brand store application submitted! Pending admin approval. 🎉");
+      refetchBrandStore();
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to register brand store");
     }
   });
 
-  // Read persisted brand info (user-scoped)
-  const brandName = localStorage.getItem(key("brand_name")) || "My Style Store";
-  const brandOwner = localStorage.getItem(key("brand_owner_name")) || appUser?.name || "Brand Owner";
+  const handleRegister = async (data: { brandName: string; ownerName: string; email: string; phone: string }) => {
+    await registerMutation.mutateAsync(data);
+  };
 
-  // Resolve brand ID by name
-  const { data: allBrands = [] } = trpc.brands.list.useQuery();
-  const matchedBrand = allBrands.find(b => b.name.toLowerCase() === brandName.toLowerCase());
-  const brandId = matchedBrand?.id || 1;
+  // Resolve brand identity if store is approved
+  const brandId = brandStore && brandStore.status === "approved" ? brandStore.brandId : null;
+  const brandName = brandStore?.brandName || "My Style Store";
+  const brandOwner = brandStore?.ownerName || appUser?.name || "Brand Owner";
+
+  // ─── Live Database Queries for Approved Brands ───
+  const { data: dbDevices = [], refetch: refetchDevices } = trpc.devices.list.useQuery(undefined, { enabled: !!brandId });
+  const { data: dbTaggedPosts = [], refetch: refetchTaggedPosts } = trpc.posts.getBrandTaggedPosts.useQuery(
+    { brandId: brandId! },
+    { enabled: !!brandId, refetchInterval: 10000 }
+  );
+  const { data: shipments = [], refetch: refetchShipments } = trpc.delivery.brandListShipments.useQuery(
+    { brandId: brandId! },
+    { enabled: !!brandId, refetchInterval: 15000 }
+  );
 
   const notificationsQuery = trpc.notifications.brandNotifications.useQuery(
     { brandId: brandId! },
@@ -2046,38 +1902,37 @@ function BrandDashboardInner({ userId, appUser }: { userId: number; appUser: any
     }
   };
 
-  // Query server database for live tagged posts
-  const { data: dbTaggedPosts = [], refetch: refetchTaggedPosts } = trpc.posts.getBrandTaggedPosts.useQuery(
-    { brandName },
-    { enabled: !!brandName }
-  );
-
   const updateApprovalMutation = trpc.posts.updateApprovalStatus.useMutation();
 
-  const [taggedPosts, setTaggedPosts] = useState<TaggedPost[]>(() => {
-    try {
-      const saved = localStorage.getItem(`brand_tagged_posts_${userId}`);
-      return saved ? JSON.parse(saved) : INITIAL_TAGGED_POSTS;
-    } catch {
-      return INITIAL_TAGGED_POSTS;
-    }
-  });
+  // Map backend devices array to expected Product UI interface
+  const products: Product[] = dbDevices
+    .filter((d: any) => d.brandId === brandId)
+    .map((d: any) => ({
+      id: d.id,
+      name: d.name,
+      price: d.price,
+      category: d.category,
+      description: d.description || "No description available.",
+      status: d.stock > 0 ? "in-stock" : "pending",
+      image: d.imageUrl || "/product_jacket.png",
+      locked: false,
+      stock: d.stock,
+    }));
 
-  const [revenueTND, setRevenueTND] = useState<number>(() => {
-    try {
-      const saved = localStorage.getItem(`brand_revenue_tnd_${userId}`);
-      return saved ? Number(saved) : 6000000;
-    } catch {
-      return 6000000;
-    }
-  });
+  const taggedPosts: TaggedPost[] = dbTaggedPosts || [];
 
-  const [activePaidTier, setActivePaidTier] = useState<string>(() => {
-    try {
-      return localStorage.getItem(`brand_paid_tier_${userId}`) || "";
-    } catch {
-      return "";
-    }
+  // Map backend shipments to Order UI interface for Sales/Orders tab
+  const orders = shipments.map((s: any) => {
+    const status = (s.status === "delivered" || s.status === "canceled") ? "history" : "active";
+    const label = s.status.charAt(0).toUpperCase() + s.status.slice(1).replace(/_/g, " ");
+    const amount = (s.items || []).reduce((acc: number, curr: any) => acc + (curr.priceAtPurchase * curr.quantity), 0);
+    return {
+      id: `SHP-${s.id}`,
+      status,
+      amount: amount || 150, // default fallback
+      label,
+      date: new Date(s.createdAt).toLocaleDateString(),
+    };
   });
 
   const [selectedPost, setSelectedPost] = useState<TaggedPost | null>(null);
@@ -2086,35 +1941,23 @@ function BrandDashboardInner({ userId, appUser }: { userId: number; appUser: any
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [productModalOpen, setProductModalOpen] = useState(false);
 
-  // Sync state to user-scoped storage keys
-  useEffect(() => {
-    localStorage.setItem(key("brand_products"), JSON.stringify(products));
-  }, [products]);
-
-  // Synchronize database posts and merge with seeded initial posts
-  useEffect(() => {
-    if (dbTaggedPosts) {
-      const merged = [...dbTaggedPosts];
-      INITIAL_TAGGED_POSTS.forEach((item) => {
-        if (!merged.some((m) => m.id === item.id)) {
-          merged.push(item);
-        }
-      });
-      setTaggedPosts(merged);
+  // Profit standing tier (mock/localStorage for tier features)
+  const [activePaidTier, setActivePaidTier] = useState<string>(() => {
+    try {
+      return localStorage.getItem(`brand_paid_tier_${userId}`) || "";
+    } catch {
+      return "";
     }
-  }, [dbTaggedPosts]);
+  });
 
-  useEffect(() => {
-    localStorage.setItem(key("brand_tagged_posts"), JSON.stringify(taggedPosts));
-  }, [taggedPosts]);
+  const revenueTND = orders.reduce((acc, curr) => acc + (curr.label !== "Canceled" ? curr.amount : 0), 0);
+  const [simulatedRevenue, setSimulatedRevenue] = useState<number | null>(null);
 
-  useEffect(() => {
-    localStorage.setItem(key("brand_revenue_tnd"), revenueTND.toString());
-  }, [revenueTND]);
-
-  useEffect(() => {
-    localStorage.setItem(key("brand_paid_tier"), activePaidTier);
-  }, [activePaidTier]);
+  const handleUpgradeTier = (tierName: string, price: number) => {
+    setActivePaidTier(tierName);
+    localStorage.setItem(`brand_paid_tier_${userId}`, tierName);
+    toast.success(`Successfully activated ${tierName} standing for ${price} TND! 🎉`);
+  };
 
   const handleApproveTag = async (id: string) => {
     const numericId = Number(id);
@@ -2122,38 +1965,24 @@ function BrandDashboardInner({ userId, appUser }: { userId: number; appUser: any
       try {
         await updateApprovalMutation.mutateAsync({ postId: numericId, approvalStatus: "green" });
         await refetchTaggedPosts();
+        toast.success("Post tag approved! It is now animated on the app feed. 🌟");
       } catch (err: any) {
         toast.error(err.message || "Failed to update tag status");
       }
-    } else {
-      setTaggedPosts((prev) =>
-        prev.map((post) => (post.id === id ? { ...post, lockType: "green" } : post))
-      );
     }
-    toast.success("Post tag approved! It is now animated on the app feed. 🌟");
   };
 
   const handleDeclineTag = async (id: string) => {
-    const postObj = taggedPosts.find((p) => p.id === id);
-    if (postObj) {
-      localStorage.setItem(`styly_user_lock_${postObj.posterName}`, "black");
-      toast.info(`Poster ${postObj.posterName} is now marked as black lock (permanently unapproved).`);
-    }
-
     const numericId = Number(id);
     if (!isNaN(numericId) && numericId > 0) {
       try {
         await updateApprovalMutation.mutateAsync({ postId: numericId, approvalStatus: "red" });
         await refetchTaggedPosts();
+        toast.error("Post tag declined. Tag reverted to normal text.");
       } catch (err: any) {
         toast.error(err.message || "Failed to update tag status");
       }
-    } else {
-      setTaggedPosts((prev) =>
-        prev.map((post) => (post.id === id ? { ...post, lockType: "red" } : post))
-      );
     }
-    toast.error("Post tag declined. Tag reverted to normal text.");
   };
 
   const handleSelectPost = (post: TaggedPost) => {
@@ -2166,34 +1995,18 @@ function BrandDashboardInner({ userId, appUser }: { userId: number; appUser: any
     setProductModalOpen(true);
   };
 
-  const handleUpgradeTier = (tierName: string, price: number) => {
-    setActivePaidTier(tierName);
-    toast.success(`Successfully activated ${tierName} standing for ${price} TND! 🎉`);
-  };
-
   const currentLevel = getBrandLevel(revenueTND);
 
-  // Helper function to verify feature unlocks based on paid tier activations
+  // Verify feature unlocks based on level threshold or active paid subscriptions
   const isFeatureUnlocked = (featureName: string): boolean => {
-    const matchedLevel = getBrandLevel(revenueTND);
-    
-    // If it's a free tier feature, check if current level satisfies it
     const targetLevel = BRAND_LEVELS.find(l => l.name === featureName || l.features.includes(featureName));
     if (!targetLevel) return false;
-
-    // Check if user has sufficient revenue for the target level
     if (revenueTND < targetLevel.minRevenue) return false;
-
-    // If target level requires paid monthly fee, verify it's active
     if (!targetLevel.free && activePaidTier !== targetLevel.name) {
-      // Allow fallback if they active a higher paid tier
       const targetIndex = BRAND_LEVELS.indexOf(targetLevel);
       const activePaidIndex = BRAND_LEVELS.findIndex(l => l.name === activePaidTier);
-      if (activePaidIndex < targetIndex) {
-        return false;
-      }
+      if (activePaidIndex < targetIndex) return false;
     }
-
     return true;
   };
 
@@ -2205,19 +2018,88 @@ function BrandDashboardInner({ userId, appUser }: { userId: number; appUser: any
     { key: "profits", label: "Profits" },
   ];
 
-  if (!brandLoggedIn) {
+  // ─── RENDER LOADING STATE ───
+  if (brandStoreLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm font-medium text-muted-foreground">Syncing brand store profile…</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── PORTAL REGISTER GATE ───
+  if (!brandStore) {
     return (
       <BrandLoginScreen
-        brandRegistered={brandRegistered}
-        storedEmail={localStorage.getItem(key("brand_email")) || ""}
-        onLoginSuccess={() => {
-          localStorage.setItem(key("brand_logged_in"), "true");
-          setBrandLoggedIn(true);
-        }}
+        brandRegistered={false}
+        storedEmail=""
+        userId={userId}
+        onLoginSuccess={() => refetchBrandStore()}
         onGoToProfile={() => setLocation("/profile")}
         onGoToFeed={() => setLocation("/feed")}
-        userId={userId}
+        onRegister={handleRegister}
       />
+    );
+  }
+
+  // ─── PENDING APPROVAL GATE ───
+  if (brandStore.status === "pending") {
+    return (
+      <div className="min-h-screen flex flex-col justify-center items-center bg-[#0C0F17] text-white px-4 relative overflow-hidden font-sans gap-6">
+        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-tr from-slate-950 via-slate-900 to-[#121624] -z-10" />
+        <div className="w-full max-w-md bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-3xl shadow-2xl text-center space-y-5 animate-in fade-in duration-300">
+          <div className="inline-flex h-14 w-14 rounded-2xl bg-amber-500/10 items-center justify-center border border-amber-500/30 text-amber-500 mb-2">
+            <Store className="h-7 w-7" />
+          </div>
+          <h1 className="text-2xl font-black tracking-tight">Verification Pending</h1>
+          <p className="text-sm text-neutral-400 leading-relaxed">
+            Your brand store application for <span className="text-white font-bold">"{brandStore.brandName}"</span> is currently pending administrator verification.
+          </p>
+          <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/10 text-xs text-amber-500/90 leading-relaxed">
+            We confirm all registrations manually to keep the Styly community secure from fake brands.
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => { refetchBrandStore(); toast.info("Refreshed application status!"); }}
+            className="w-full h-11 border-white/10 text-neutral-300 hover:bg-white/5 font-semibold"
+          >
+            Refresh Status
+          </Button>
+          <button
+            onClick={() => setLocation("/")}
+            className="w-full h-11 rounded-full border border-white/10 text-neutral-300 font-bold text-xs hover:bg-white/5 transition-all"
+          >
+            Back to Feed
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── REJECTED GATE ───
+  if (brandStore.status === "rejected") {
+    return (
+      <div className="min-h-screen flex flex-col justify-center items-center bg-[#0C0F17] text-white px-4 relative overflow-hidden font-sans gap-6">
+        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-tr from-slate-950 via-slate-900 to-[#121624] -z-10" />
+        <div className="w-full max-w-md bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-3xl shadow-2xl text-center space-y-5 animate-in fade-in duration-300">
+          <div className="inline-flex h-14 w-14 rounded-2xl bg-red-500/10 items-center justify-center border border-red-500/30 text-red-500 mb-2">
+            <X className="h-7 w-7" />
+          </div>
+          <h1 className="text-2xl font-black tracking-tight text-red-400">Application Rejected</h1>
+          <p className="text-sm text-neutral-400 leading-relaxed">
+            Your brand store registration application was declined. Please verify your details or submit a support claim.
+          </p>
+          <button
+            onClick={() => setLocation("/")}
+            className="w-full h-12 rounded-full bg-gradient-to-r from-red-500 to-red-600 text-white font-bold text-sm hover:shadow-lg transition-all"
+          >
+            Back to Feed
+          </button>
+        </div>
+      </div>
     );
   }
 
@@ -2266,7 +2148,6 @@ function BrandDashboardInner({ userId, appUser }: { userId: number; appUser: any
                 <button
                   onClick={() => {
                     setShowDropdown(false);
-                    localStorage.setItem(key("active_profile_mode"), "user");
                     setLocation("/feed");
                   }}
                   className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold hover:bg-accent/60 transition-colors text-left text-foreground"
@@ -2278,11 +2159,9 @@ function BrandDashboardInner({ userId, appUser }: { userId: number; appUser: any
                 <button
                   onClick={() => {
                     setShowDropdown(false);
-                    // Mark brand as logged-out for THIS user only
-                    localStorage.setItem(key("brand_logged_in"), "false");
-                    setBrandLoggedIn(false);
+                    logout();
                     toast.success("Logged out of Brand Dashboard successfully");
-                    setLocation("/feed");
+                    setLocation("/");
                   }}
                   className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold hover:bg-red-500/10 text-red-500 transition-colors text-left"
                 >
@@ -2339,27 +2218,28 @@ function BrandDashboardInner({ userId, appUser }: { userId: number; appUser: any
         {activeTab === "store" && (
           <StoreTab
             products={products}
-            setProducts={setProducts}
+            onProductAdded={refetchDevices}
             taggedPosts={taggedPosts}
             onApproveTag={handleApproveTag}
             onDeclineTag={handleDeclineTag}
             onSelectPost={handleSelectPost}
             onSelectProduct={handleSelectProduct}
+            brandId={brandId || 1}
           />
         )}
         {activeTab === "orders" && (
-          <OrdersTab orders={INITIAL_ORDERS} />
+          <OrdersTab orders={orders} />
         )}
         {activeTab === "shipments" && (
-          <ShipmentsTab brandId={brandId} />
+          <ShipmentsTab brandId={brandId || 1} />
         )}
         {activeTab === "followers" && (
           <FollowersTab />
         )}
         {activeTab === "profits" && (
           <ProfitsTab
-            revenueTND={revenueTND}
-            setRevenueTND={setRevenueTND}
+            revenueTND={simulatedRevenue ?? revenueTND}
+            setRevenueTND={setSimulatedRevenue}
             activePaidTier={activePaidTier}
             onUpgradeTier={handleUpgradeTier}
             taggedPosts={taggedPosts}
@@ -2747,8 +2627,7 @@ function ShipmentCard({ shipment, onUpdate }: { shipment: any; onUpdate: (s: any
   );
 }
 
-// ─── Brand Login Screen ───────────────────────────────────────────────────────
-
+// ─── Brand Registration Portal Screen ──────────────────────────────────────────
 
 interface BrandLoginScreenProps {
   brandRegistered: boolean;
@@ -2757,68 +2636,46 @@ interface BrandLoginScreenProps {
   onLoginSuccess: () => void;
   onGoToProfile: () => void;
   onGoToFeed: () => void;
+  onRegister: (data: { brandName: string; ownerName: string; email: string; phone: string }) => Promise<void>;
 }
 
 function BrandLoginScreen({
-  brandRegistered,
-  storedEmail,
   userId,
   onLoginSuccess,
   onGoToProfile,
   onGoToFeed,
+  onRegister,
 }: BrandLoginScreenProps) {
-  const [email, setEmail] = useState(storedEmail);
-  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [isRegistering, setIsRegistering] = useState(!brandRegistered);
 
-  // Inline Registration States
+  // Registration States
   const [regFullName, setRegFullName] = useState("");
   const [regBrandName, setRegBrandName] = useState("");
   const [regEmail, setRegEmail] = useState("");
-  const [regPassword, setRegPassword] = useState("");
+  const [regPhone, setRegPhone] = useState("");
 
   const { theme, toggleTheme } = useTheme();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-
-    setTimeout(() => {
-      const registeredEmail = localStorage.getItem(`brand_email_${userId}`) || "";
-      const registeredPassword = localStorage.getItem(`brand_password_${userId}`) || "";
-
-      if (
-        email.trim().toLowerCase() === registeredEmail.toLowerCase() &&
-        password === registeredPassword
-      ) {
-        onLoginSuccess();
-        toast.success("Welcome back to your Brand Dashboard! 🏪");
-      } else {
-        toast.error("Wrong email or password. Use the credentials from your brand registration.");
-      }
-      setLoading(false);
-    }, 900);
-  };
-
-  const handleRegister = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!regFullName || !regBrandName || !regEmail || !regPassword) {
-      toast.error("Please fill in all fields to create your brand store.");
+    if (!regFullName || !regBrandName || !regEmail || !regPhone) {
+      toast.error("Please fill in all fields to submit your brand registration.");
       return;
     }
     setLoading(true);
-    setTimeout(() => {
-      localStorage.setItem(`brand_registered_${userId}`, "true");
-      localStorage.setItem(`brand_owner_name_${userId}`, regFullName);
-      localStorage.setItem(`brand_name_${userId}`, regBrandName);
-      localStorage.setItem(`brand_email_${userId}`, regEmail);
-      localStorage.setItem(`brand_password_${userId}`, regPassword);
-      localStorage.setItem(`brand_logged_in_${userId}`, "true");
-      toast.success("Congrats! Your brand account is verified and ready! 🎉");
+    try {
+      await onRegister({
+        brandName: regBrandName.trim(),
+        ownerName: regFullName.trim(),
+        email: regEmail.trim().toLowerCase(),
+        phone: regPhone.trim(),
+      });
       onLoginSuccess();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to submit brand application");
+    } finally {
       setLoading(false);
-    }, 800);
+    }
   };
 
   return (
@@ -2850,202 +2707,117 @@ function BrandLoginScreen({
           </div>
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-[#FF6B6B] to-[#FF8C42] bg-clip-text text-transparent">
-              Brand Portal
+              Brand Store Registry
             </h1>
             <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1.5 font-medium">
-              Manage your fashion collection & brand analytics
+              Register your official storefront to list items and track sales
             </p>
           </div>
         </div>
 
         {/* Card Panel */}
         <div className="border border-neutral-200 dark:border-neutral-800 bg-white/70 dark:bg-neutral-900/60 backdrop-blur-xl shadow-xl dark:shadow-2xl dark:shadow-black/60 relative overflow-hidden transition-colors duration-300 p-8 rounded-2xl w-full space-y-6">
-          {isRegistering ? (
-            <form onSubmit={handleRegister} className="space-y-4">
-              <div className="space-y-1.5">
-                <h2 className="text-xl font-bold text-neutral-900 dark:text-white">Create Brand Account</h2>
-                <p className="text-neutral-500 dark:text-neutral-400 text-xs">
-                  Register your official brand store to track sales, tags, and revenue.
-                </p>
+          <form onSubmit={handleRegisterSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <h2 className="text-xl font-bold text-neutral-900 dark:text-white">Store Application</h2>
+              <p className="text-neutral-500 dark:text-neutral-400 text-xs">
+                Provide business details. Applications are approved manually by administration.
+              </p>
+            </div>
+
+            {/* Owner Name */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Owner / Representative Name</label>
+              <div className="relative">
+                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400 dark:text-neutral-500" />
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Sarah Connor"
+                  value={regFullName}
+                  onChange={(e) => setRegFullName(e.target.value)}
+                  className="pl-10 h-10 w-full bg-white/95 dark:bg-neutral-950/60 border border-neutral-200 dark:border-neutral-800 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:border-red-500/50 focus:ring-2 focus:ring-red-500/20 focus:outline-none transition-all duration-200 text-xs"
+                />
               </div>
+            </div>
 
-              {/* Owner Name */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Owner / Representative Name</label>
-                <div className="relative">
-                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400 dark:text-neutral-500" />
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Sarah Connor"
-                    value={regFullName}
-                    onChange={(e) => setRegFullName(e.target.value)}
-                    className="pl-10 h-10 w-full bg-white/95 dark:bg-neutral-950/60 border border-neutral-200 dark:border-neutral-800 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:border-red-500/50 focus:ring-2 focus:ring-red-500/20 focus:outline-none transition-all duration-200 text-xs"
-                  />
-                </div>
+            {/* Brand Name */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Brand / Store Name</label>
+              <div className="relative">
+                <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400 dark:text-neutral-500" />
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Maison Zara"
+                  value={regBrandName}
+                  onChange={(e) => setRegBrandName(e.target.value)}
+                  className="pl-10 h-10 w-full bg-white/95 dark:bg-neutral-950/60 border border-neutral-200 dark:border-neutral-800 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:border-red-500/50 focus:ring-2 focus:ring-red-500/20 focus:outline-none transition-all duration-200 text-xs"
+                />
               </div>
+            </div>
 
-              {/* Brand Name */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Brand / Store Name</label>
-                <div className="relative">
-                  <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400 dark:text-neutral-500" />
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Maison Zara"
-                    value={regBrandName}
-                    onChange={(e) => setRegBrandName(e.target.value)}
-                    className="pl-10 h-10 w-full bg-white/95 dark:bg-neutral-950/60 border border-neutral-200 dark:border-neutral-800 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:border-red-500/50 focus:ring-2 focus:ring-red-500/20 focus:outline-none transition-all duration-200 text-xs"
-                  />
-                </div>
+            {/* Brand Email */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Brand Business Email</label>
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400 dark:text-neutral-500" />
+                <input
+                  type="email"
+                  required
+                  placeholder="contact@brand.com"
+                  value={regEmail}
+                  onChange={(e) => setRegEmail(e.target.value)}
+                  className="pl-10 h-10 w-full bg-white/95 dark:bg-neutral-950/60 border border-neutral-200 dark:border-neutral-800 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:border-red-500/50 focus:ring-2 focus:ring-red-500/20 focus:outline-none transition-all duration-200 text-xs"
+                />
               </div>
+            </div>
 
-              {/* Brand Email */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Brand Business Email</label>
-                <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400 dark:text-neutral-500" />
-                  <input
-                    type="email"
-                    required
-                    placeholder="contact@brand.com"
-                    value={regEmail}
-                    onChange={(e) => setRegEmail(e.target.value)}
-                    className="pl-10 h-10 w-full bg-white/95 dark:bg-neutral-950/60 border border-neutral-200 dark:border-neutral-800 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:border-red-500/50 focus:ring-2 focus:ring-red-500/20 focus:outline-none transition-all duration-200 text-xs"
-                  />
-                </div>
+            {/* Brand Phone */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Contact Phone Number</label>
+              <div className="relative">
+                <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400 dark:text-neutral-500" />
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. +216 99 999 999"
+                  value={regPhone}
+                  onChange={(e) => setRegPhone(e.target.value)}
+                  className="pl-10 h-10 w-full bg-white/95 dark:bg-neutral-950/60 border border-neutral-200 dark:border-neutral-800 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:border-red-500/50 focus:ring-2 focus:ring-red-500/20 focus:outline-none transition-all duration-200 text-xs"
+                />
               </div>
+            </div>
 
-              {/* Brand Password */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400 dark:text-neutral-500" />
-                  <input
-                    type="password"
-                    required
-                    placeholder="••••••••"
-                    value={regPassword}
-                    onChange={(e) => setRegPassword(e.target.value)}
-                    className="pl-10 h-10 w-full bg-white/95 dark:bg-neutral-950/60 border border-neutral-200 dark:border-neutral-800 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:border-red-500/50 focus:ring-2 focus:ring-red-500/20 focus:outline-none transition-all duration-200 text-xs"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-2 space-y-2.5">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full h-11 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white shadow-lg shadow-red-500/10 active:scale-[0.98] transition-all font-semibold rounded-full flex items-center justify-center gap-2 disabled:opacity-50 text-xs"
-                >
-                  {loading ? (
-                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <Building2 className="h-4 w-4" />
-                      <span>Register & Create Brand Account</span>
-                    </>
-                  )}
-                </button>
-
-                {brandRegistered && (
-                  <button
-                    type="button"
-                    onClick={() => setIsRegistering(false)}
-                    className="w-full text-center text-xs text-neutral-500 hover:text-neutral-900 dark:hover:text-white font-medium"
-                  >
-                    Already have a brand account? Sign In
-                  </button>
+            <div className="pt-2 space-y-2.5">
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full h-11 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white shadow-lg shadow-red-500/10 active:scale-[0.98] transition-all font-semibold rounded-full flex items-center justify-center gap-2 disabled:opacity-50 text-xs"
+              >
+                {loading ? (
+                  <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Building2 className="h-4 w-4" />
+                    <span>Submit Store Application</span>
+                  </>
                 )}
+              </button>
 
-                <button
-                  type="button"
-                  onClick={onGoToFeed}
-                  className="w-full h-10 rounded-full border border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-all text-center font-medium text-xs"
-                >
-                  Back to Feed
-                </button>
-              </div>
-            </form>
-          ) : (
-            <form onSubmit={handleLogin} className="space-y-5">
-              <div className="space-y-1.5">
-                <h2 className="text-xl font-bold text-neutral-900 dark:text-white">Welcome back</h2>
-                <p className="text-neutral-500 dark:text-neutral-400 text-xs">
-                  Sign in using the credentials entered during brand registration.
-                </p>
-              </div>
-
-              {/* Brand Email */}
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Brand Email</label>
-                <div className="relative">
-                  <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-neutral-400 dark:text-neutral-500" />
-                  <input
-                    type="email"
-                    required
-                    placeholder="email@brand.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-11 h-11 w-full bg-white/95 dark:bg-neutral-950/60 border border-neutral-200 dark:border-neutral-800 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:border-red-500/50 focus:ring-2 focus:ring-red-500/20 focus:outline-none transition-all duration-200 text-sm"
-                  />
-                </div>
-              </div>
-
-              {/* Password */}
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-neutral-400 dark:text-neutral-500" />
-                  <input
-                    type="password"
-                    required
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-11 h-11 w-full bg-white/95 dark:bg-neutral-950/60 border border-neutral-200 dark:border-neutral-800 rounded-lg text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:border-red-500/50 focus:ring-2 focus:ring-red-500/20 focus:outline-none transition-all duration-200 text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-2 space-y-3">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full h-12 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white shadow-lg shadow-red-500/10 active:scale-[0.98] transition-all font-semibold rounded-full flex items-center justify-center gap-2 disabled:opacity-50 text-xs"
-                >
-                  {loading ? (
-                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <LogIn className="h-4 w-4" />
-                      <span>Log In to Dashboard</span>
-                    </>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setIsRegistering(true)}
-                  className="w-full text-center text-xs text-neutral-500 hover:text-neutral-900 dark:hover:text-white font-medium"
-                >
-                  Need to update or re-register your brand? Click here
-                </button>
-
-                <button
-                  type="button"
-                  onClick={onGoToFeed}
-                  className="w-full h-11 rounded-full border border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-all text-center font-medium text-xs"
-                >
-                  Back to Main App
-                </button>
-              </div>
-            </form>
-          )}
+              <button
+                type="button"
+                onClick={onGoToFeed}
+                className="w-full h-10 rounded-full border border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-all text-center font-medium text-xs"
+              >
+                Back to Feed
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
   );
 }
+
 
