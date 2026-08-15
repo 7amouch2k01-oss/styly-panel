@@ -5,43 +5,50 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Sparkles,
-  Shirt,
-  Smartphone,
-  TrendingUp,
-  Shield,
-  Star,
   ArrowRight,
   Menu,
   X,
   Building,
+  CheckCircle2,
+  Tag,
+  Zap,
+  Eye,
+  BarChart3,
+  BadgePercent,
+  Truck,
+  Star,
+  ShoppingBag,
 } from "lucide-react";
 
-// ─── Dummy ratings / reviews ───────────────────────────────────────────────
+// ─── Community Testimonials ──────────────────────────────────────────────────
 const TESTIMONIALS = [
   {
-    name: "Sarah Jenkins",
-    role: "Fashion Content Creator",
-    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100",
-    quote: "Styly's 3D mannequin customizer changed how I shop online. I put in my exact measurements and it fits perfectly every single time!",
+    name: "Yasmine Ben Salem",
+    role: "Fashion Creator · Tunis",
+    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80",
+    quote:
+      "Tagging local Tunisian brands in my daily looks has never been smoother. My followers can buy the exact blazer or pants right from the post, and I track my commissions in real-time.",
     rating: 5,
-    tag: "Casual Fit"
+    tag: "Verified Creator",
   },
   {
-    name: "Marcello Rossi",
-    role: "Creative Director, Rossi Milan",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100",
-    quote: "Using the Brand Dashboard, we synced our lookbook posts and drove a 40% increase in checkout conversions. The tRPC sync is seamless.",
+    name: "Karim Mansour",
+    role: "Brand Owner · Maison Mansour",
+    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80",
+    quote:
+      "The Brand Portal gives us full control over user tags and incoming orders. Split shipment fulfillment means we prepare our orders while Styly handles unified tracking.",
     rating: 5,
-    tag: "Brand Sync"
+    tag: "Brand Partner",
   },
   {
-    name: "Amélie Dubois",
-    role: "Stylist & Influencer",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100",
-    quote: "The combination of a visual outfit feed and direct tagged product checkout makes inspiration instantly actionable. Incredible design!",
+    name: "Sonia Guezguez",
+    role: "Style Enthusiast · Sousse",
+    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&auto=format&fit=crop&q=80",
+    quote:
+      "I love ordering from different brands at the same time and seeing each shipment's progress clearly on my profile. The app design is clean, fast, and gorgeous.",
     rating: 5,
-    tag: "Social Feed"
-  }
+    tag: "Top Shopper",
+  },
 ];
 
 export default function Landing() {
@@ -51,8 +58,6 @@ export default function Landing() {
 
   useEffect(() => {
     if (loading) return;
-    // Only redirect already-logged-in users to the feed
-    // Unauthenticated users stay on the landing page
     if (user) {
       setLocation("/feed");
     }
@@ -67,136 +72,79 @@ export default function Landing() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] text-neutral-900 selection:bg-rose-500/10 selection:text-rose-600 font-sans overflow-x-hidden relative">
+    <div className="min-h-screen bg-[#0E0F12] text-neutral-100 selection:bg-rose-500/20 selection:text-rose-400 font-sans overflow-x-hidden relative">
       
-      {/* Injection of premium CSS animations */}
-      <style>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-10px) rotate(0.5deg); }
-        }
-        @keyframes float-reverse {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(10px) rotate(-0.5deg); }
-        }
-        @keyframes pulseGlow {
-          0%, 100% { box-shadow: 0 0 15px rgba(225, 29, 72, 0.1), 0 0 5px rgba(249, 115, 22, 0.03); }
-          50% { box-shadow: 0 0 30px rgba(225, 29, 72, 0.25), 0 0 15px rgba(249, 115, 22, 0.08); }
-        }
-        @keyframes ambientDrift {
-          0%, 100% { transform: translate(0, 0) scale(1); }
-          50% { transform: translate(3%, 2%) scale(1.03); }
-        }
-        .animate-float {
-          animation: float 6s ease-in-out infinite;
-        }
-        .animate-float-delayed {
-          animation: float-reverse 7s ease-in-out infinite;
-          animation-delay: 2s;
-        }
-        .animate-pulse-glow {
-          animation: pulseGlow 4s ease-in-out infinite;
-        }
-        .animate-ambient {
-          animation: ambientDrift 20s ease-in-out infinite;
-        }
-        .glassmorphic-card {
-          background: rgba(255, 255, 255, 0.7);
-          backdrop-filter: blur(16px);
-          border: 1px solid rgba(0, 0, 0, 0.05);
-        }
-        .glassmorphic-card:hover {
-          border-color: rgba(225, 29, 72, 0.2);
-          background: rgba(255, 255, 255, 0.85);
-        }
-      `}</style>
+      {/* Ambient Lighting Background */}
+      <div className="absolute top-[-10%] left-[10%] w-[50vw] h-[50vw] rounded-full bg-rose-600/10 blur-[140px] pointer-events-none" />
+      <div className="absolute top-[35%] right-[-5%] w-[45vw] h-[45vw] rounded-full bg-orange-500/10 blur-[160px] pointer-events-none" />
+      <div className="absolute bottom-[10%] left-[-5%] w-[40vw] h-[40vw] rounded-full bg-pink-600/10 blur-[150px] pointer-events-none" />
 
-      {/* Warm brand-color ambient glows */}
-      <div className="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] rounded-full bg-rose-500/5 blur-[120px] pointer-events-none animate-ambient" />
-      <div className="absolute top-[20%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-orange-500/3 blur-[120px] pointer-events-none animate-ambient" style={{ animationDelay: '-5s' }} />
-      <div className="absolute bottom-[10%] left-[20%] w-[55vw] h-[55vw] rounded-full bg-rose-500/3 blur-[120px] pointer-events-none animate-ambient" style={{ animationDelay: '-10s' }} />
-
-      {/* ── Header ── */}
-      <header className="sticky top-0 z-50 w-full border-b border-neutral-200/60 bg-white/80 backdrop-blur-md transition-all duration-300">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => setLocation("/")}>
-            <span className="text-2xl font-black bg-gradient-to-r from-rose-600 via-pink-500 to-orange-500 bg-clip-text text-transparent tracking-tight">
+      {/* ── Navigation Header ── */}
+      <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-[#0E0F12]/85 backdrop-blur-xl transition-all duration-300">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between">
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setLocation("/")}>
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-rose-600 to-orange-500 flex items-center justify-center shadow-md shadow-rose-500/20 font-black text-white text-lg">
+              S
+            </div>
+            <span className="text-2xl font-black bg-gradient-to-r from-white via-neutral-100 to-neutral-400 bg-clip-text text-transparent tracking-tight">
               Styly
+            </span>
+            <span className="hidden sm:inline-flex text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400">
+              Social Fashion Hub
             </span>
           </div>
 
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-neutral-600">
-            <a href="#showcase" className="hover:text-neutral-900 transition-colors">Showcase</a>
-            <a href="#features" className="hover:text-neutral-900 transition-colors">Features</a>
-            <a href="#testimonials" className="hover:text-neutral-900 transition-colors">Reviews</a>
-            <a href="#faq" className="hover:text-neutral-900 transition-colors">FAQ</a>
+          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-neutral-400">
+            <a href="#preview" className="hover:text-white transition-colors">App Preview</a>
+            <a href="#how-it-works" className="hover:text-white transition-colors">How It Works</a>
+            <a href="#features" className="hover:text-white transition-colors">Features</a>
+            <a href="#brands" className="hover:text-white transition-colors">For Brands</a>
+            <a href="#reviews" className="hover:text-white transition-colors">Reviews</a>
           </nav>
 
           <div className="hidden md:flex items-center gap-4">
             <button
               onClick={() => setLocation("/auth")}
-              className="text-sm font-medium text-neutral-600 hover:text-neutral-900 transition-colors px-3 py-1.5"
+              className="text-sm font-semibold text-neutral-300 hover:text-white transition-colors px-3 py-1.5"
             >
               Sign In
             </button>
             <Button
               onClick={handleEnterApp}
-              className="rounded-full bg-gradient-to-r from-rose-500 to-orange-500 hover:opacity-90 text-white font-semibold shadow-lg shadow-rose-500/20 px-5 animate-pulse-glow border-0"
+              className="rounded-full bg-gradient-to-r from-rose-500 via-rose-600 to-orange-500 hover:opacity-90 text-white font-bold shadow-lg shadow-rose-500/25 px-6 border-0"
             >
-              Launch App
+              Open Styly
+              <ArrowRight className="ml-1.5 h-4 w-4" />
             </Button>
           </div>
 
-          <button 
-            className="md:hidden p-2 text-neutral-600 hover:text-neutral-900"
+          <button
+            className="md:hidden p-2 text-neutral-400 hover:text-white"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
-            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
         </div>
 
-        {/* Mobile menu dropdown */}
+        {/* Mobile Dropdown */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-b border-neutral-200/80 bg-white/95 px-4 pt-2 pb-6 space-y-3">
-            <a 
-              href="#showcase" 
-              onClick={() => setMobileMenuOpen(false)}
-              className="block py-2 text-sm text-neutral-600 hover:text-neutral-900"
-            >
-              Showcase
-            </a>
-            <a 
-              href="#features" 
-              onClick={() => setMobileMenuOpen(false)}
-              className="block py-2 text-sm text-neutral-600 hover:text-neutral-900"
-            >
-              Features
-            </a>
-            <a 
-              href="#testimonials" 
-              onClick={() => setMobileMenuOpen(false)}
-              className="block py-2 text-sm text-neutral-600 hover:text-neutral-900"
-            >
-              Reviews
-            </a>
-            <a 
-              href="#faq" 
-              onClick={() => setMobileMenuOpen(false)}
-              className="block py-2 text-sm text-neutral-600 hover:text-neutral-900"
-            >
-              FAQ
-            </a>
-            <div className="h-px bg-neutral-200 my-2" />
-            <div className="flex gap-4 pt-2">
+          <div className="md:hidden border-b border-white/10 bg-[#14161B]/95 backdrop-blur-xl px-5 pt-3 pb-6 space-y-3">
+            <a href="#preview" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-sm text-neutral-300 hover:text-white">App Preview</a>
+            <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-sm text-neutral-300 hover:text-white">How It Works</a>
+            <a href="#features" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-sm text-neutral-300 hover:text-white">Features</a>
+            <a href="#brands" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-sm text-neutral-300 hover:text-white">For Brands</a>
+            <a href="#reviews" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-sm text-neutral-300 hover:text-white">Reviews</a>
+            <div className="h-px bg-white/10 my-2" />
+            <div className="flex gap-3 pt-2">
               <Button
                 variant="outline"
-                className="w-full rounded-full border-neutral-300 text-neutral-700 hover:bg-neutral-50"
+                className="w-full rounded-full border-white/20 text-neutral-200 hover:bg-white/10"
                 onClick={() => { setMobileMenuOpen(false); setLocation("/auth"); }}
               >
                 Sign In
               </Button>
               <Button
-                className="w-full rounded-full bg-gradient-to-r from-rose-500 to-orange-500 text-white border-0"
+                className="w-full rounded-full bg-gradient-to-r from-rose-500 to-orange-500 text-white font-bold border-0"
                 onClick={() => { setMobileMenuOpen(false); handleEnterApp(); }}
               >
                 Launch App
@@ -207,182 +155,208 @@ export default function Landing() {
       </header>
 
       {/* ── Hero Section ── */}
-      <section className="relative pt-12 pb-16 md:pt-24 md:pb-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            
-            {/* Left Column: Copy & Actions */}
-            <div className="lg:col-span-6 space-y-6 text-left">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-rose-200 bg-rose-50 text-xs font-semibold text-rose-600 animate-pulse">
-                <Sparkles size={12} />
-                Virtual Fitting Room & Social Commerce
-              </div>
-              
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight leading-[1.1] text-neutral-900">
-                The Social Fashion Platform Designed for <span className="bg-gradient-to-r from-rose-600 to-orange-500 bg-clip-text text-transparent">Your Fit</span>
-              </h1>
-              
-              <p className="text-neutral-600 text-base sm:text-lg leading-relaxed">
-                Create your custom 3D mannequin profile using exact chest, waist, and height specifications. Try on designer outfits virtually, browse fashion inspiration feeds, and order the perfect fit.
-              </p>
+      <section className="relative pt-14 pb-16 md:pt-24 md:pb-24 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+          
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-rose-500/30 bg-rose-500/10 text-xs font-semibold text-rose-400 mb-6 backdrop-blur-md">
+            <Sparkles size={13} className="text-orange-400 animate-pulse" />
+            <span>Social Fashion Discovery & Multi-Brand Commerce</span>
+          </div>
 
-              <div className="flex flex-col sm:flex-row gap-4 pt-2">
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight leading-[1.08] text-white max-w-5xl mx-auto">
+            Discover Real Outfits. <br className="hidden sm:inline" />
+            <span className="bg-gradient-to-r from-rose-500 via-pink-400 to-orange-400 bg-clip-text text-transparent">
+              Tag Local Brands.
+            </span>{" "}
+            Shop in One Click.
+          </h1>
+
+          <p className="mt-6 text-neutral-400 text-base sm:text-xl max-w-2xl mx-auto leading-relaxed font-normal">
+            Styly brings creators, shoppers, and emerging fashion brands together in a seamless social feed with interactive item tagging, multi-brand cart checkout, and real-time delivery tracking.
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-10">
+            <Button
+              onClick={handleEnterApp}
+              size="lg"
+              className="h-14 rounded-full bg-gradient-to-r from-rose-500 via-rose-600 to-orange-500 hover:opacity-95 text-white font-black px-9 shadow-xl shadow-rose-500/25 text-base border-0 hover:scale-[1.02] transition-transform"
+            >
+              Explore Live Feed
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                const el = document.getElementById("preview");
+                el?.scrollIntoView({ behavior: "smooth" });
+              }}
+              size="lg"
+              className="h-14 rounded-full border-white/20 bg-white/5 hover:bg-white/10 text-white font-bold px-8 text-base backdrop-blur-md"
+            >
+              <Eye className="mr-2 h-4 w-4 text-neutral-400" />
+              See App in Action
+            </Button>
+          </div>
+
+          {/* ── Featured Realistic App Photo Showcase ── */}
+          <div id="preview" className="mt-16 md:mt-20 max-w-5xl mx-auto relative group">
+            <div className="absolute -inset-1.5 bg-gradient-to-r from-rose-600 via-pink-500 to-orange-500 rounded-3xl blur-xl opacity-30 group-hover:opacity-50 transition duration-1000 group-hover:duration-200" />
+            <div className="relative rounded-2xl overflow-hidden border border-white/15 bg-black/60 shadow-2xl">
+              <img
+                src="/landing_feed_mockup.jpg"
+                alt="Styly Social Creator Feed and Outfit Tagging Interface"
+                className="w-full h-auto object-cover rounded-2xl transition-transform duration-700 group-hover:scale-[1.01]"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0E0F12]/80 via-transparent to-transparent pointer-events-none" />
+              
+              {/* Overlay Badge */}
+              <div className="absolute bottom-6 left-6 right-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-2xl bg-black/70 backdrop-blur-md border border-white/10 text-left">
+                <div>
+                  <h3 className="text-white font-bold text-base sm:text-lg flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-orange-400" />
+                    Interactive Creator Feed & Hotspot Tagging
+                  </h3>
+                  <p className="text-neutral-400 text-xs sm:text-sm">
+                    Tap any item tag to reveal piece details, localized TND pricing, and add to bag instantly.
+                  </p>
+                </div>
                 <Button
                   onClick={handleEnterApp}
-                  size="lg"
-                  className="h-14 rounded-full bg-gradient-to-r from-rose-500 via-rose-600 to-orange-500 hover:opacity-95 text-white font-bold px-8 shadow-xl shadow-rose-500/20 text-base border-0"
+                  size="sm"
+                  className="rounded-full bg-gradient-to-r from-rose-500 to-orange-500 text-white font-bold text-xs px-5 shrink-0 border-0"
                 >
-                  Get Started For Free
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    const el = document.getElementById("showcase");
-                    el?.scrollIntoView({ behavior: "smooth" });
-                  }}
-                  size="lg"
-                  className="h-14 rounded-full border-neutral-300 text-neutral-700 hover:bg-neutral-50 px-8 text-base"
-                >
-                  Explore Showcase
+                  Try Feed
                 </Button>
               </div>
-
-              {/* Trust Badge */}
-              <div className="pt-6 flex items-center gap-6 border-t border-neutral-100">
-                <div>
-                  <p className="text-2xl font-bold text-neutral-900">98%</p>
-                  <p className="text-xs text-neutral-500">Fit accuracy rating</p>
-                </div>
-                <div className="w-px h-8 bg-neutral-200" />
-                <div>
-                  <p className="text-2xl font-bold text-neutral-900">50+</p>
-                  <p className="text-xs text-neutral-500">Partner brands synced</p>
-                </div>
-                <div className="w-px h-8 bg-neutral-200" />
-                <div>
-                  <p className="text-2xl font-bold text-neutral-900">10k+</p>
-                  <p className="text-xs text-neutral-500">Active style feeds</p>
-                </div>
-              </div>
             </div>
-
-            {/* Right Column: Hero Graphic (Body measurements + App UI Mockup) */}
-            <div className="lg:col-span-6 relative flex justify-center">
-              <div className="relative w-full max-w-[500px] aspect-square rounded-3xl overflow-hidden shadow-2xl shadow-rose-500/10 border border-neutral-100/80 bg-white p-2 animate-float">
-                <img 
-                  src="/landing_hero.png" 
-                  alt="Styly 3D Mannequin and Mobile App" 
-                  className="w-full h-full object-cover rounded-2xl"
-                />
-                
-                {/* Floating Micro Tag */}
-                <div className="absolute top-8 left-8 bg-white/95 backdrop-blur border border-neutral-200/80 px-4 py-2.5 rounded-2xl shadow-lg flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                  <span className="text-[11px] font-bold text-neutral-800">3D Fit Active</span>
-                </div>
-              </div>
-            </div>
-
           </div>
+
+          {/* Trust Highlights */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto mt-16 pt-10 border-t border-white/10 text-left">
+            <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+              <p className="text-3xl font-black text-white">100%</p>
+              <p className="text-xs text-neutral-400 mt-1 font-medium">Live Database Pipeline</p>
+            </div>
+            <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+              <p className="text-3xl font-black text-white">Multi-Brand</p>
+              <p className="text-xs text-neutral-400 mt-1 font-medium">Split-Shipment Tracking</p>
+            </div>
+            <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+              <p className="text-3xl font-black text-white">Direct Tag</p>
+              <p className="text-xs text-neutral-400 mt-1 font-medium">Post to Brand Dashboard</p>
+            </div>
+            <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+              <p className="text-3xl font-black text-white">TND Hub</p>
+              <p className="text-xs text-neutral-400 mt-1 font-medium">Localized Fashion Pricing</p>
+            </div>
+          </div>
+
         </div>
       </section>
 
-      {/* ── Showcase Section ── */}
-      <section id="showcase" className="py-16 md:py-24 border-t border-neutral-200/60 bg-neutral-50/50 relative">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center space-y-4 mb-16">
-            <h2 className="text-3xl md:text-5xl font-black tracking-tight text-neutral-900">Showcase Room</h2>
-            <p className="text-neutral-600 max-w-xl mx-auto text-sm md:text-base">
-              Experience the dual power of the mobile consumer app and the professional brand panel.
-            </p>
-          </div>
-
-          <div className="flex flex-col items-center justify-center max-w-4xl mx-auto">
-            <div className="text-center mb-8">
-              <span className="text-xs font-bold text-rose-600 tracking-widest uppercase mb-1 block">Live Interface Mockup</span>
-              <h3 className="text-2xl font-extrabold text-neutral-900">Professional Dashboard</h3>
-              <p className="text-neutral-500 text-sm mt-1">Manage inventories, sync items via mobile endpoint, and track user checkout trends.</p>
-            </div>
-
-            {/* Browser frame surrounding the generated screenshot */}
-            <div className="w-full border border-neutral-200 bg-white rounded-2xl shadow-xl flex flex-col overflow-hidden relative group transition-all duration-500 hover:border-rose-200 hover:shadow-rose-500/5">
-              {/* Header bar */}
-              <div className="bg-neutral-50/80 border-b border-neutral-200 px-4 py-3 flex items-center gap-3">
-                <div className="flex gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-red-400" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-green-400" />
-                </div>
-                <div className="flex-1 bg-white border border-neutral-200 px-3 py-1 rounded-lg text-[10px] text-neutral-500 flex items-center gap-2 max-w-xs mx-auto">
-                  <span className="text-neutral-400">https://</span>
-                  <span>styly.com/dashboard/brand</span>
-                </div>
-              </div>
-
-              {/* Main image content */}
-              <div className="relative overflow-hidden aspect-[1.58] bg-neutral-50 flex items-center justify-center">
-                <img 
-                  src="/styly_dashboard_mockup.png" 
-                  alt="Styly Platform Interface" 
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
-                />
-                
-                {/* High Tech Badges */}
-                <div className="absolute bottom-4 right-4 bg-white/95 backdrop-blur border border-neutral-200 px-3 py-1.5 rounded-full text-[10px] font-bold text-rose-600 flex items-center gap-1.5 shadow-md">
-                  <Sparkles size={11} className="animate-pulse" />
-                  Interactive Fashion Console
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Features Grid ── */}
-      <section id="features" className="py-16 md:py-24 border-t border-neutral-200/60">
+      {/* ── How It Works ── */}
+      <section id="how-it-works" className="py-20 md:py-28 border-t border-white/10 bg-[#121419]/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
-          <div className="text-center space-y-4">
-            <h2 className="text-3xl md:text-5xl font-black tracking-tight text-neutral-900">Key Value Propositions</h2>
-            <p className="text-neutral-600 max-w-xl mx-auto text-sm md:text-base">
-              Styly bridges the gap between style discovery and perfect fit verification.
+          <div className="text-center space-y-4 max-w-2xl mx-auto">
+            <span className="text-xs font-bold text-rose-500 uppercase tracking-widest bg-rose-500/10 border border-rose-500/20 px-3 py-1 rounded-full">
+              Frictionless Commerce
+            </span>
+            <h2 className="text-3xl md:text-5xl font-black tracking-tight text-white">How Styly Connects Fashion</h2>
+            <p className="text-neutral-400 text-sm sm:text-base">
+              A 3-step continuous loop linking creators, shoppers, and brand partners.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/10 space-y-5 text-left relative overflow-hidden group hover:border-rose-500/30 transition-colors">
+              <div className="h-12 w-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 font-black text-xl">
+                1
+              </div>
+              <h3 className="text-xl font-bold text-white">Creators Post & Tag Brands</h3>
+              <p className="text-sm text-neutral-400 leading-relaxed">
+                Creators snap their real outfit fits, tag existing partner brands or enter custom tags, and set interactive piece prices in TND.
+              </p>
+            </div>
+
+            <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/10 space-y-5 text-left relative overflow-hidden group hover:border-orange-500/30 transition-colors">
+              <div className="h-12 w-12 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-400 font-black text-xl">
+                2
+              </div>
+              <h3 className="text-xl font-bold text-white">Shoppers Multi-Cart Checkout</h3>
+              <p className="text-sm text-neutral-400 leading-relaxed">
+                Shoppers tap tagged clothing pieces across different posts, aggregate multi-brand items in one bag, and place orders with flexible payment.
+              </p>
+            </div>
+
+            <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/10 space-y-5 text-left relative overflow-hidden group hover:border-emerald-500/30 transition-colors">
+              <div className="h-12 w-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-black text-xl">
+                3
+              </div>
+              <h3 className="text-xl font-bold text-white">Split Dispatch & Analytics</h3>
+              <p className="text-sm text-neutral-400 leading-relaxed">
+                Each brand fulfills their individual shipment from their dashboard while creators earn verified sales commissions automatically.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Key Feature Grid ── */}
+      <section id="features" className="py-20 md:py-28 border-t border-white/10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
+          <div className="text-center space-y-4 max-w-2xl mx-auto">
+            <h2 className="text-3xl md:text-5xl font-black tracking-tight text-white">Engineered for Modern Fashion</h2>
+            <p className="text-neutral-400 text-sm sm:text-base">
+              Every feature is built for high speed, creator growth, and brand visibility.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
               {
-                icon: Shirt,
-                title: "3D Mannequin Customizer",
-                desc: "Set your exact height, weight, waist, chest, and hips to simulate fit metrics in real-time.",
-                color: "text-rose-500 bg-rose-50 border-rose-100"
+                icon: Tag,
+                title: "Live Brand Tag Redirection",
+                desc: "Posts tagging unregistered brands auto-route to brand owners when they register and get verified by the admin console.",
+                color: "text-rose-400 bg-rose-500/10 border-rose-500/20",
               },
               {
-                icon: Smartphone,
-                title: "Creator Outfits Feed",
-                desc: "Post your fits, tag brands and specific pieces, and browse style ideas from the community.",
-                color: "text-orange-500 bg-orange-50 border-orange-100"
+                icon: Truck,
+                title: "Independent Shipment Tracking",
+                desc: "Each brand manages its order status individually — from packing to pickup — with real-time customer notifications.",
+                color: "text-orange-400 bg-orange-500/10 border-orange-500/20",
               },
               {
-                icon: TrendingUp,
-                title: "Brand Analytics Console",
-                desc: "Track sales trends, manage inventory size stock, and review customer interaction logs.",
-                color: "text-rose-600 bg-rose-50/50 border-rose-100"
+                icon: BarChart3,
+                title: "Live Revenue Aggregation",
+                desc: "Real-time monthly revenue charts and user statistics pulled directly from MongoDB database aggregations.",
+                color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
               },
               {
-                icon: Shield,
-                title: "Secure Checkouts",
-                desc: "Store shopping bag profiles locally and complete transactions using secure endpoints.",
-                color: "text-emerald-600 bg-emerald-50 border-emerald-100"
-              }
+                icon: ShoppingBag,
+                title: "Multi-Brand Shopping Bag",
+                desc: "Combine garments from different designers into one clean cart with unified delivery addressing and payments.",
+                color: "text-blue-400 bg-blue-500/10 border-blue-500/20",
+              },
+              {
+                icon: BadgePercent,
+                title: "Creator Commission System",
+                desc: "Style Point leaderboards and transparent commission payouts for creators driving verified fashion sales.",
+                color: "text-purple-400 bg-purple-500/10 border-purple-500/20",
+              },
+              {
+                icon: Zap,
+                title: "Ultra-Fast tRPC Architecture",
+                desc: "End-to-end typed communication with MongoDB Atlas ensures zero data loss and instantaneous UI reactivity.",
+                color: "text-amber-400 bg-amber-500/10 border-amber-500/20",
+              },
             ].map(({ icon: Icon, title, desc, color }) => (
-              <Card key={title} className="glassmorphic-card border border-neutral-200/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-rose-500/5">
-                <CardContent className="p-6 space-y-4 text-left">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${color}`}>
+              <Card key={title} className="bg-white/[0.02] border border-white/10 hover:border-white/20 transition-all text-left">
+                <CardContent className="p-7 space-y-4">
+                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center border ${color}`}>
                     <Icon className="h-5 w-5" />
                   </div>
-                  <h3 className="text-lg font-bold text-neutral-900">{title}</h3>
-                  <p className="text-sm text-neutral-600 leading-relaxed">{desc}</p>
+                  <h3 className="text-lg font-bold text-white">{title}</h3>
+                  <p className="text-sm text-neutral-400 leading-relaxed">{desc}</p>
                 </CardContent>
               </Card>
             ))}
@@ -390,37 +364,59 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── Testimonials Section ── */}
-      <section id="testimonials" className="py-16 md:py-24 border-t border-neutral-200/60 bg-neutral-50/20">
+      {/* ── Brand Portal Banner ── */}
+      <section id="brands" className="py-20 border-t border-white/10 bg-gradient-to-b from-[#181A20] to-[#0E0F12]">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center space-y-6">
+          <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mx-auto text-rose-400">
+            <Building size={24} />
+          </div>
+          <h2 className="text-3xl md:text-5xl font-black text-white">Are You a Fashion Brand?</h2>
+          <p className="text-neutral-400 max-w-xl mx-auto text-sm sm:text-base leading-relaxed">
+            Register your official brand store to access your dedicated portal, review creator tags on your garments, manage incoming shipments, and scale in-app sales.
+          </p>
+          <div className="pt-2">
+            <Button
+              onClick={() => setLocation("/auth")}
+              size="lg"
+              className="rounded-full bg-white hover:bg-neutral-200 text-neutral-900 font-extrabold px-8 shadow-lg"
+            >
+              Register Brand Store
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Testimonials ── */}
+      <section id="reviews" className="py-20 md:py-28 border-t border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
-          <div className="text-center space-y-4">
-            <h2 className="text-3xl md:text-5xl font-black tracking-tight text-neutral-900">Loved by Fashion Experts</h2>
-            <p className="text-neutral-600 max-w-xl mx-auto text-sm md:text-base">
-              See what creators and brand managers are saying about their Styly experience.
+          <div className="text-center space-y-4 max-w-2xl mx-auto">
+            <h2 className="text-3xl md:text-5xl font-black tracking-tight text-white">Trusted by Creators & Brands</h2>
+            <p className="text-neutral-400 text-sm sm:text-base">
+              Here is what fashion enthusiasts and store managers are saying about Styly.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {TESTIMONIALS.map((t) => (
-              <Card key={t.name} className="glassmorphic-card border border-neutral-200/60 text-left transition-all duration-300 hover:shadow-lg hover:shadow-rose-500/5">
-                <CardContent className="p-6 flex flex-col justify-between h-full space-y-6">
+              <Card key={t.name} className="bg-white/[0.02] border border-white/10 text-left">
+                <CardContent className="p-7 flex flex-col justify-between h-full space-y-6">
                   <div className="space-y-4">
-                    {/* Stars */}
                     <div className="flex gap-1">
                       {[...Array(t.rating)].map((_, i) => (
                         <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />
                       ))}
                     </div>
-                    <p className="text-sm text-neutral-600 leading-relaxed italic">"{t.quote}"</p>
+                    <p className="text-sm text-neutral-300 leading-relaxed italic">"{t.quote}"</p>
                   </div>
                   
-                  <div className="flex items-center gap-3 pt-4 border-t border-neutral-100">
-                    <img src={t.avatar} alt={t.name} className="h-9 w-9 rounded-full object-cover border border-neutral-200" />
+                  <div className="flex items-center gap-3 pt-5 border-t border-white/10">
+                    <img src={t.avatar} alt={t.name} className="h-10 w-10 rounded-full object-cover border border-white/10" />
                     <div className="min-w-0">
-                      <p className="text-sm font-bold text-neutral-900 truncate leading-none">{t.name}</p>
-                      <p className="text-[10px] text-neutral-500 truncate mt-0.5">{t.role}</p>
+                      <p className="text-sm font-bold text-white truncate leading-none">{t.name}</p>
+                      <p className="text-[11px] text-neutral-400 truncate mt-1">{t.role}</p>
                     </div>
-                    <span className="text-[9px] font-bold px-2 py-0.5 bg-neutral-100 border border-neutral-200 text-neutral-600 rounded-full ml-auto">
+                    <span className="text-[9px] font-bold px-2.5 py-1 bg-white/5 border border-white/10 text-rose-300 rounded-full ml-auto">
                       {t.tag}
                     </span>
                   </div>
@@ -431,88 +427,44 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── Brand dashboard callout ── */}
-      <section className="py-16 md:py-20 border-t border-neutral-200/60 bg-rose-50/20">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center space-y-6">
-          <div className="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center mx-auto text-rose-600">
-            <Building size={24} />
-          </div>
-          <h2 className="text-2xl md:text-4xl font-extrabold text-neutral-900">Are you a Fashion Brand?</h2>
-          <p className="text-neutral-600 max-w-lg mx-auto text-sm md:text-base">
-            Create your Styly user account first to access the platform. Once inside, you can unlock and configure your dedicated Brand Dashboard to sync products and review feeds.
+      {/* ── Call To Action Banner ── */}
+      <section className="py-20 md:py-28 border-t border-white/10 bg-gradient-to-b from-[#14161C] to-[#0E0F12] relative overflow-hidden">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center space-y-6 relative z-10">
+          <h2 className="text-4xl md:text-6xl font-black tracking-tight text-white">
+            Ready to elevate your style?
+          </h2>
+          <p className="text-neutral-400 max-w-lg mx-auto text-sm sm:text-base leading-relaxed">
+            Join the premier fashion community. Browse looks, tag pieces, and experience seamless multi-brand fashion commerce.
           </p>
-          <Button
-            onClick={() => setLocation("/auth")}
-            className="rounded-full bg-neutral-900 hover:bg-neutral-800 text-white px-6 font-semibold"
-          >
-            Create Your Account
-          </Button>
-        </div>
-      </section>
-
-      {/* ── FAQ Section ── */}
-      <section id="faq" className="py-16 md:py-24 border-t border-neutral-200/60">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 space-y-16">
-          <div className="text-center space-y-4">
-            <h2 className="text-3xl md:text-5xl font-black tracking-tight text-neutral-900">Frequently Asked Questions</h2>
-            <p className="text-neutral-600 text-sm md:text-base">
-              Got questions? We've got answers.
-            </p>
+          <div className="pt-4">
+            <Button
+              onClick={handleEnterApp}
+              size="lg"
+              className="h-14 rounded-full bg-gradient-to-r from-rose-500 via-rose-600 to-orange-500 hover:opacity-95 text-white font-black px-10 shadow-2xl shadow-rose-500/30 text-base border-0 hover:scale-[1.02] transition-transform"
+            >
+              Get Started Now
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
           </div>
-
-          <div className="space-y-4">
-            {[
-              {
-                q: "How accurate is the 3D customizer mannequin?",
-                a: "Highly accurate! We map height, chest, and waist ratios using baseline anthropometric profiles, giving you a very close approximation of garment fit profiles."
-              },
-              {
-                q: "How do brands sync their collections?",
-                a: "Brands use our sync endpoints in combination with our tRPC protocol. Simply create a user account, launch the brand dashboard, and sync products directly."
-              },
-              {
-                q: "Is there a charge to register as a Brand store?",
-                a: "No, registering during our beta phase is completely free! You can launch your brand storefront directly inside the authenticated user app."
-              }
-            ].map(({ q, a }, idx) => (
-              <div key={idx} className="border border-neutral-200/60 bg-white rounded-2xl p-6 text-left hover:border-rose-200 transition-colors duration-300">
-                <h4 className="font-bold text-neutral-900">{q}</h4>
-                <p className="text-sm text-neutral-600 mt-2 leading-relaxed">{a}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Call To Action Footer Banner ── */}
-      <section className="py-16 md:py-24 border-t border-neutral-200/60 bg-gradient-to-b from-white to-neutral-50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center space-y-6">
-          <h2 className="text-3xl md:text-5xl font-black tracking-tight text-neutral-900">Ready to find your perfect fit?</h2>
-          <p className="text-neutral-600 max-w-lg mx-auto text-sm md:text-base">
-            Join thousands of fashion lovers and brands sharing styled matching items today.
-          </p>
-          <Button
-            onClick={handleEnterApp}
-            size="lg"
-            className="h-14 rounded-full bg-gradient-to-r from-rose-500 via-rose-600 to-orange-500 hover:opacity-95 text-white font-bold px-8 shadow-xl shadow-rose-500/20 text-base border-0 animate-pulse-glow"
-          >
-            Get Started For Free
-          </Button>
         </div>
       </section>
 
       {/* ── Footer ── */}
-      <footer className="border-t border-neutral-200 py-12 bg-white">
+      <footer className="border-t border-white/10 py-12 bg-[#0A0B0E]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
-          <span className="text-xl font-black bg-gradient-to-r from-rose-600 to-orange-500 bg-clip-text text-transparent tracking-tight">
-            Styly
-          </span>
+          <div className="flex items-center gap-2">
+            <div className="h-6 w-6 rounded-lg bg-gradient-to-tr from-rose-600 to-orange-500 flex items-center justify-center font-black text-white text-xs">
+              S
+            </div>
+            <span className="text-lg font-black text-white tracking-tight">Styly</span>
+          </div>
           <p className="text-xs text-neutral-500">
             &copy; {new Date().getFullYear()} Styly Fashion Platform. All rights reserved.
           </p>
-          <div className="flex gap-6 text-xs text-neutral-500">
-            <a href="#showcase" className="hover:text-neutral-800">Privacy Policy</a>
-            <a href="#features" className="hover:text-neutral-800">Terms of Service</a>
+          <div className="flex gap-6 text-xs text-neutral-400">
+            <a href="#preview" className="hover:text-white transition-colors">App Preview</a>
+            <a href="#features" className="hover:text-white transition-colors">Features</a>
+            <a href="#brands" className="hover:text-white transition-colors">Brands</a>
           </div>
         </div>
       </footer>
