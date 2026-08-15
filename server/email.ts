@@ -28,10 +28,9 @@ async function sendEmail(to: string, subject: string, html: string) {
   const brevoKey =
     process.env.BREVO_API_KEY ||
     process.env.BREVO_SMTP_KEY ||
-    (process.env.SMTP_PASS?.startsWith("xsmtpsib-") ? process.env.SMTP_PASS : undefined) ||
+    (process.env.SMTP_PASS?.startsWith("xkeysib-") ? process.env.SMTP_PASS : undefined) ||
     smtpConfig?.BREVO_API_KEY ||
-    (smtpConfig?.SMTP_PASS?.startsWith("xsmtpsib-") ? smtpConfig?.SMTP_PASS : undefined) ||
-    "xsmtpsib-1bd9e4daeaf0e67ce2929e51c75555e9f3375cf0d906d4bb5978e7c968788c78-oTrgjLjYsM210pRM";
+    "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";
   
   if (brevoKey) {
     try {
