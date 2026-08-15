@@ -24,14 +24,16 @@ async function sendEmail(to: string, subject: string, html: string) {
   const senderEmail = process.env.SMTP_USER || smtpConfig?.SMTP_USER || "styly.app.official@gmail.com";
   const senderName = "Styly";
 
-  // 1. Try Brevo (supports Gmail single sender verification over HTTPS port 443)
-  if (process.env.BREVO_API_KEY) {
+  // 1. Try Brevo HTTPS REST API (works across all Railway hosting on port 443)
+  const brevoKey = process.env.BREVO_API_KEY || process.env.BREVO_SMTP_KEY || (process.env.SMTP_PASS?.startsWith("xsmtpsib-") ? process.env.SMTP_PASS : undefined) || smtpConfig?.BREVO_API_KEY || (smtpConfig?.SMTP_PASS?.startsWith("xsmtpsib-") ? smtpConfig?.SMTP_PASS : undefined);
+  
+  if (brevoKey) {
     try {
       const resp = await fetch("https://api.brevo.com/v3/smtp/email", {
         method: "POST",
         headers: {
           "accept": "application/json",
-          "api-key": process.env.BREVO_API_KEY,
+          "api-key": brevoKey,
           "content-type": "application/json",
         },
         body: JSON.stringify({
@@ -41,7 +43,7 @@ async function sendEmail(to: string, subject: string, html: string) {
           htmlContent: html,
         }),
       });
-      if (resp.ok) { console.log(`[Email] ✅ Sent via Brevo`); return; }
+      if (resp.ok) { console.log(`[Email] ✅ Sent via Brevo HTTPS API`); return; }
       const err = await resp.json().catch(() => ({ message: "unknown" }));
       console.error(`[Email] Brevo error ${resp.status}:`, err.message || JSON.stringify(err));
     } catch (e: any) { console.error(`[Email] Brevo fetch failed:`, e.message); }
