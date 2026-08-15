@@ -14,14 +14,14 @@ try {
 }
 
 // ─── Shared sender helper ──────────────────────────────────────────────────────
-const FROM = process.env.SMTP_FROM || smtpConfig?.SMTP_FROM || "Styly <onboarding@resend.dev>";
+const FROM = process.env.SMTP_FROM || process.env.RESEND_FROM || smtpConfig?.SMTP_FROM || "Styly <onboarding@resend.dev>";
 
 async function sendEmail(to: string, subject: string, html: string) {
   console.log(`\n══════════════════════════════════════════════`);
-  console.log(`[Email] To: ${to} | Subject: ${subject}`);
+  console.log(`[Email] Sending to: ${to} | Subject: ${subject}`);
   console.log(`══════════════════════════════════════════════\n`);
 
-  const senderEmail = process.env.SMTP_USER || smtpConfig?.SMTP_USER || "mistymo0471@gmail.com";
+  const senderEmail = process.env.SMTP_USER || smtpConfig?.SMTP_USER || "styly.app.official@gmail.com";
   const senderName = "Styly";
 
   // 1. Try Brevo (supports Gmail single sender verification over HTTPS port 443)
