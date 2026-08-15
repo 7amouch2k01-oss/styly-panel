@@ -17,6 +17,14 @@ import Checkout from "./pages/Checkout";
 import BrandStorefront from "./pages/BrandStorefront";
 import ResetPassword from "./pages/ResetPassword";
 
+import DashboardLayout from "./components/DashboardLayout";
+import Overview from "./pages/Overview";
+import Users from "./pages/Users";
+import Products from "./pages/Products";
+import Orders from "./pages/Orders";
+import Analytics from "./pages/Analytics";
+import Brands from "./pages/Brands";
+import Settings from "./pages/Settings";
 import { AppShellProvider } from "./components/AppShell";
 import { LanguageProvider } from "./contexts/LanguageContext";
 
@@ -33,6 +41,57 @@ function Router() {
       <Route path="/profile" component={UserProfile} />
       <Route path="/brand" component={BrandDashboard} />
       <Route path="/brand-store/:brandId" component={BrandStorefront} />
+
+      {/* ── Admin Dashboard Routes ── */}
+      <Route path="/admin">
+        {() => (
+          <DashboardLayout>
+            <Overview />
+          </DashboardLayout>
+        )}
+      </Route>
+      <Route path="/admin/users">
+        {() => (
+          <DashboardLayout>
+            <Users />
+          </DashboardLayout>
+        )}
+      </Route>
+      <Route path="/admin/products">
+        {() => (
+          <DashboardLayout>
+            <Products />
+          </DashboardLayout>
+        )}
+      </Route>
+      <Route path="/admin/orders">
+        {() => (
+          <DashboardLayout>
+            <Orders />
+          </DashboardLayout>
+        )}
+      </Route>
+      <Route path="/admin/analytics">
+        {() => (
+          <DashboardLayout>
+            <Analytics />
+          </DashboardLayout>
+        )}
+      </Route>
+      <Route path="/admin/brands">
+        {() => (
+          <DashboardLayout>
+            <Brands />
+          </DashboardLayout>
+        )}
+      </Route>
+      <Route path="/admin/settings">
+        {() => (
+          <DashboardLayout>
+            <Settings />
+          </DashboardLayout>
+        )}
+      </Route>
 
       {/* ── Auth ── */}
       <Route path="/auth" component={Auth} />

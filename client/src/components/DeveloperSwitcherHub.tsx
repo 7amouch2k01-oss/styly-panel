@@ -152,15 +152,16 @@ export default function DeveloperSwitcherHub() {
 
             {/* Admin Dashboard: strictly gated to admin role, brand user has no access & doesn't know it exists */}
             {isAdmin && (
-              <a
-                href="http://localhost:3001"
-                target="_blank"
-                rel="noreferrer"
+              <button
+                onClick={() => {
+                  setLocation("/admin");
+                  setIsOpen(false);
+                }}
                 className="w-full h-9 rounded-xl border border-[#fbbf24]/30 bg-[#fbbf24]/5 text-[#d97706] text-xs font-bold flex items-center justify-between px-3 hover:bg-[#fbbf24]/10 transition-all"
               >
                 <span className="flex items-center gap-1.5"><Crown className="h-3.5 w-3.5" /> Admin Panel</span>
-                <span className="text-[9px] uppercase font-black bg-[#d97706]/10 px-1.5 py-0.5 rounded-full">Port 3001</span>
-              </a>
+                <span className="text-[9px] uppercase font-black bg-[#d97706]/10 px-1.5 py-0.5 rounded-full">Admin</span>
+              </button>
             )}
           </div>
 

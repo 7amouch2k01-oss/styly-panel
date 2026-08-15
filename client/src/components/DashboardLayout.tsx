@@ -64,24 +64,27 @@ export default function DashboardLayout({
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
-          <div className="flex flex-col items-center gap-6">
-            <h1 className="text-2xl font-semibold tracking-tight text-center">
-              Sign in to continue
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="flex flex-col items-center gap-6 p-8 max-w-md w-full border border-border/40 rounded-3xl bg-card/60 backdrop-blur-md shadow-2xl">
+          <div className="h-12 w-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-black text-xl">
+            S
+          </div>
+          <div className="flex flex-col items-center gap-2">
+            <h1 className="text-2xl font-bold tracking-tight text-center">
+              Styly Admin Portal
             </h1>
-            <p className="text-sm text-muted-foreground text-center max-w-sm">
-              Access to this dashboard requires authentication. Continue to launch the login flow.
+            <p className="text-xs text-muted-foreground text-center max-w-sm">
+              Access to this console requires administrator authentication.
             </p>
           </div>
           <Button
             onClick={() => {
-              window.location.href = getLoginUrl();
+              window.location.href = "/auth";
             }}
             size="lg"
-            className="w-full shadow-lg hover:shadow-xl transition-all"
+            className="w-full rounded-2xl bg-gradient-to-r from-primary to-orange-500 text-white font-bold shadow-lg shadow-primary/20"
           >
-            Sign in
+            Sign in as Admin
           </Button>
         </div>
       </div>
