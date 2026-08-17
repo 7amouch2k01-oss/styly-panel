@@ -328,11 +328,11 @@ function PostDetailModal({ post, open, onClose, onApprove, onDecline, isFeatureU
                   <img src={post.posterAvatar} alt={post.posterName} className="w-full h-full object-cover" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm flex items-center gap-1">
+                  <h3 className="font-bold text-sm flex items-center gap-1.5 text-foreground">
                     {post.posterName}
-                    <CheckCircle2 className="h-4 w-4 fill-blue-500 text-white shrink-0" />
+                    <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />
                   </h3>
-                  <p className="text-xs text-muted-foreground">Influencer Partner</p>
+                  <p className="text-xs text-muted-foreground font-medium">Verified Creator</p>
                 </div>
               </div>
 
@@ -1025,48 +1025,33 @@ interface TaggedPostRowProps {
 }
 
 function TaggedPostRow({ post, isFeatureUnlocked, onSelect }: TaggedPostRowProps) {
-  const canDownloadFacture = true; // Open for everyone
-  const canSeeDetailedPostRev = isFeatureUnlocked("Established");
+  const canDownloadFacture = true;
 
   return (
-    <div className="flex items-center gap-3 py-4 border-b border-border/40 last:border-0 hover:bg-accent/30 transition-all px-3 rounded-2xl">
-      <div className="h-14 w-11 rounded-lg overflow-hidden bg-muted shrink-0 cursor-pointer" onClick={() => onSelect(post)}>
+    <div className="flex items-center gap-3 py-3.5 border-b border-border/40 last:border-0 hover:bg-muted/30 transition-all px-3 rounded-2xl">
+      <div className="h-12 w-12 rounded-xl overflow-hidden bg-muted shrink-0 cursor-pointer border border-border/50" onClick={() => onSelect(post)}>
         <img src={post.postImage} alt="Post content" className="w-full h-full object-cover hover:scale-105 transition-transform" />
       </div>
       
       <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onSelect(post)}>
         <div className="flex items-center gap-1.5">
           <p className="font-bold text-sm text-foreground truncate">{post.posterName}</p>
-          <CheckCircle2 className="h-3.5 w-3.5 fill-blue-500 text-white shrink-0" />
+          <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />
         </div>
         <p className="text-xs text-muted-foreground truncate">{post.taggedProducts.join(", ")}</p>
       </div>
 
-      <div className="text-right shrink-0 mr-1">
-        {canSeeDetailedPostRev ? (
-          <>
-            <p className="font-extrabold text-sm text-green-600 dark:text-green-400">+{post.revenue.toLocaleString()} TND</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">{post.interactions.toLocaleString()} interactions</p>
-          </>
-        ) : (
-          <div className="flex flex-col items-end">
-            <span className="blur-xs font-extrabold text-sm text-green-600">9,999 TND</span>
-            <span className="text-[8px] text-muted-foreground block mt-0.5">Locked (Free)</span>
-          </div>
-        )}
+      <div className="text-right shrink-0 mr-2">
+        <p className="font-mono font-bold text-sm text-foreground">+{post.revenue.toLocaleString()} TND</p>
+        <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{post.interactions.toLocaleString()} interactions</p>
       </div>
 
       <button
-        disabled={!canDownloadFacture}
         onClick={(e) => { e.stopPropagation(); downloadFactureDoc(post); }}
-        className={`h-9 w-9 rounded-full flex items-center justify-center border transition-all ${
-          canDownloadFacture
-            ? "border-border/60 hover:bg-primary hover:text-white"
-            : "border-border/30 text-muted-foreground/40 bg-muted/40 cursor-not-allowed"
-        }`}
-        title={canDownloadFacture ? "Download Facture" : "Upgrade standing level to unlock facture downloads"}
+        className="h-8 w-8 rounded-xl flex items-center justify-center border border-border/50 hover:bg-primary hover:text-white transition-all text-muted-foreground"
+        title="Download Facture (DOCX)"
       >
-        <Download className="h-4 w-4" />
+        <Download className="h-3.5 w-3.5" />
       </button>
     </div>
   );
@@ -1353,21 +1338,21 @@ function CommissionCalculator({ commissionRate }: { commissionRate: number }) {
   const commissionEarned = estimatedExtra * (commissionRate / 100);
 
   return (
-    <div className="p-5 rounded-2xl bg-gradient-to-br from-primary/5 to-card border border-primary/20 shadow-sm space-y-4">
-      <div className="flex items-center gap-2">
-        <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-          <Calculator className="h-4 w-4 text-primary" />
+    <div className="p-6 rounded-3xl bg-card border border-border/60 shadow-sm space-y-4">
+      <div className="flex items-center gap-2.5">
+        <div className="h-8 w-8 rounded-xl bg-muted/60 flex items-center justify-center shrink-0 border border-border/40 text-foreground">
+          <Calculator className="h-4 w-4" />
         </div>
         <div>
-          <h3 className="text-sm font-bold text-foreground">Commission Estimator</h3>
-          <p className="text-[10px] text-muted-foreground">See how more tagged posts boost your earnings</p>
+          <h3 className="text-sm font-bold text-foreground">Commission & Yield Estimator</h3>
+          <p className="text-[11px] text-muted-foreground">Forecast projected brand revenue from verified creator tagged looks</p>
         </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-2 pt-1">
         <div className="flex justify-between items-center text-xs font-semibold">
-          <span className="text-muted-foreground">Extra tagged posts this month</span>
-          <span className="text-primary font-black text-base">{extraPosts}</span>
+          <span className="text-muted-foreground">Monthly Active Creator Outfits</span>
+          <span className="text-foreground font-black text-base font-mono">{extraPosts} Posts</span>
         </div>
         <input
           type="range"
@@ -1375,27 +1360,27 @@ function CommissionCalculator({ commissionRate }: { commissionRate: number }) {
           max={30}
           value={extraPosts}
           onChange={(e) => setExtraPosts(Number(e.target.value))}
-          className="w-full h-2 rounded-full accent-primary cursor-pointer"
+          className="w-full h-2 rounded-full accent-primary cursor-pointer bg-muted"
         />
-        <div className="flex justify-between text-[9px] text-muted-foreground">
+        <div className="flex justify-between text-[10px] text-muted-foreground font-mono">
           <span>1 post</span>
           <span>30 posts</span>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="p-3 rounded-xl bg-card border border-border/40 text-center">
-          <p className="text-[10px] text-muted-foreground font-medium">Estimated Revenue</p>
-          <p className="text-sm font-black text-foreground mt-0.5">{estimatedExtra.toLocaleString()} TND</p>
+      <div className="grid grid-cols-2 gap-3 pt-1">
+        <div className="p-4 rounded-2xl bg-muted/30 border border-border/40 text-center">
+          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Projected Gross Sales</p>
+          <p className="text-base font-black text-foreground mt-1 font-mono">{estimatedExtra.toLocaleString()} TND</p>
         </div>
-        <div className="p-3 rounded-xl bg-green-500/10 border border-green-500/20 text-center">
-          <p className="text-[10px] text-green-600 dark:text-green-400 font-medium">Your Commission ({commissionRate}%)</p>
-          <p className="text-sm font-black text-green-600 dark:text-green-400 mt-0.5">+{commissionEarned.toLocaleString()} TND</p>
+        <div className="p-4 rounded-2xl bg-primary/5 border border-primary/20 text-center">
+          <p className="text-[10px] text-primary font-bold uppercase tracking-wider">Platform Take ({commissionRate}%)</p>
+          <p className="text-base font-black text-primary mt-1 font-mono">+{commissionEarned.toLocaleString()} TND</p>
         </div>
       </div>
 
-      <p className="text-[9px] text-muted-foreground text-center">
-        Based on avg. {avgRevenuePerPost.toLocaleString()} TND revenue per approved post at your current {commissionRate}% commission tier.
+      <p className="text-[10px] text-muted-foreground text-center">
+        Estimated from average {avgRevenuePerPost.toLocaleString()} TND checkout volume per creator outfit at your current {commissionRate}% commission tier.
       </p>
     </div>
   );
@@ -1425,6 +1410,7 @@ function ProfitsTab({ revenueTND, setRevenueTND, activePaidTier, onUpgradeTier, 
     .filter((c: any) => c.status === "pending" || c.status === "approved")
     .reduce((sum: number, c: any) => sum + (c.amount || 0), 0);
   const totalRealOrders = monthlyChartData.reduce((sum: any, m: any) => sum + (m.orders || 0), 0);
+  const totalCompletedGross = monthlyChartData.reduce((sum: any, m: any) => sum + (m.revenue || 0), 0);
 
   const handleUpdateCommission = async (id: number, status: "approved" | "paid" | "rejected") => {
     try {
@@ -1447,43 +1433,30 @@ function ProfitsTab({ revenueTND, setRevenueTND, activePaidTier, onUpgradeTier, 
     progressPercent = Math.min(Math.max((currentOffset / range) * 100, 0), 100);
   }
 
-  // Check if current level requires paid activation and isn't active yet
-  const needsPaidActivation = !currentLevel.free && activePaidTier !== currentLevel.name;
-
   const approvedPosts = taggedPosts.filter((post) => post.lockType === "green");
-  const showCharts = isFeatureUnlocked("Profits tab analytics chart");
-  const showInfluencerBreakdown = isFeatureUnlocked("Gold Partner");
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-300">
       {/* Brand Level Standing Progression Card */}
-      <div className="p-6 rounded-3xl bg-gradient-to-br from-card to-card/90 border border-border/50 shadow-md relative overflow-hidden">
-        <div className="absolute -right-16 -top-16 w-48 h-48 rounded-full bg-primary/5 blur-3xl" />
-        
+      <div className="p-6 rounded-3xl bg-card border border-border/60 shadow-sm relative overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="space-y-1">
-            <span className="text-[10px] font-bold tracking-widest text-primary uppercase">Brand Level Progress</span>
-            <div className="flex items-center gap-2">
-              <h2 className={`text-2xl font-black bg-gradient-to-r ${currentLevel.color} bg-clip-text text-transparent`}>
-                {currentLevel.name}
+            <span className="text-[10px] font-bold tracking-widest text-primary uppercase">Partner Standing & Tier</span>
+            <div className="flex items-center gap-2.5">
+              <h2 className="text-2xl font-black tracking-tight text-foreground">
+                {currentLevel.name} Partner
               </h2>
-              {!currentLevel.free && (
-                <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
-                  activePaidTier === currentLevel.name
-                    ? "bg-green-500/10 text-green-600 border-green-500/20"
-                    : "bg-red-500/10 text-red-600 border-red-500/20"
-                }`}>
-                  {activePaidTier === currentLevel.name ? "Paid & Active" : "Requires Activation"}
-                </span>
-              )}
+              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-primary/30 bg-primary/10 text-primary">
+                Active Tier
+              </span>
             </div>
-            <p className="text-xs text-muted-foreground max-w-md">Commission rate decreases as standing level scales.</p>
+            <p className="text-xs text-muted-foreground max-w-md">Platform commission rates and analytics privileges scale automatically.</p>
           </div>
 
-          <div className="bg-muted/50 border border-border/40 px-4 py-3 rounded-2xl shrink-0 text-center md:text-right">
-            <span className="text-[10px] font-medium text-muted-foreground block">Active Commission Rate</span>
-            <span className="text-xl font-black text-foreground">{currentLevel.commissionRate}%</span>
-            <span className="text-[9px] text-muted-foreground block mt-0.5">charged per in-app sale</span>
+          <div className="bg-muted/40 border border-border/40 px-5 py-3 rounded-2xl shrink-0 text-center md:text-right">
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">Platform Commission</span>
+            <span className="text-2xl font-black text-foreground">{currentLevel.commissionRate}%</span>
+            <span className="text-[10px] text-muted-foreground block mt-0.5">Applied per checkout sale</span>
           </div>
         </div>
 
@@ -1492,234 +1465,197 @@ function ProfitsTab({ revenueTND, setRevenueTND, activePaidTier, onUpgradeTier, 
           <div className="flex justify-between text-xs font-semibold">
             <span className="text-muted-foreground">Volume: {revenueTND.toLocaleString()} TND</span>
             {nextLevel ? (
-              <span className="text-primary">Next: {nextLevel.name} ({nextLevel.minRevenue.toLocaleString()} TND)</span>
+              <span className="text-foreground font-bold">Next: {nextLevel.name} ({nextLevel.minRevenue.toLocaleString()} TND)</span>
             ) : (
-              <span className="text-yellow-500 flex items-center gap-1"><Sparkles className="h-3 w-3" /> Max Stylista Level</span>
+              <span className="text-primary flex items-center gap-1 font-bold"><Sparkles className="h-3 w-3" /> Highest Partner Tier</span>
             )}
           </div>
-          <div className="h-3 w-full bg-muted rounded-full overflow-hidden border border-border/20 p-0.5">
+          <div className="h-2.5 w-full bg-muted rounded-full overflow-hidden border border-border/30 p-0.5">
             <div
-              className={`h-full rounded-full bg-gradient-to-r ${currentLevel.color} transition-all duration-500`}
+              className="h-full rounded-full bg-primary transition-all duration-500"
               style={{ width: `${progressPercent}%` }}
             />
           </div>
         </div>
 
         {/* Feature Unlocks Checklist */}
-        <div className="mt-6 pt-4 border-t border-border/40">
-          <p className="text-xs font-bold text-foreground mb-2.5">Current Tier Unlocked Features:</p>
+        <div className="mt-5 pt-4 border-t border-border/40">
+          <p className="text-xs font-bold text-foreground mb-2.5 uppercase tracking-wider">Included Operational Privileges:</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
             {currentLevel.features.map((feat) => (
               <div key={feat} className="flex items-center gap-2 text-muted-foreground">
-                <Check className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                <Check className="h-3.5 w-3.5 text-primary shrink-0" />
                 <span>{feat}</span>
               </div>
             ))}
             <div className="flex items-center gap-2 text-muted-foreground">
-              <Check className="h-3.5 w-3.5 text-green-500 shrink-0" />
-              <span>{currentLevel.statsDescription}</span>
+              <Check className="h-3.5 w-3.5 text-primary shrink-0" />
+              <span>Full Analytics Access & Facture Invoicing</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Live SQLite Brand XP Level system */}
+      {/* Brand XP Level Badge */}
       <BrandLevelBadge brandId={brandId} showDetails={true} />
 
-      {/* Level Up activation paywall CTA */}
-      {needsPaidActivation && (
-        <div className="p-5 rounded-3xl bg-amber-500/10 border-2 border-dashed border-amber-500/40 flex flex-col md:flex-row items-center justify-between gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <div className="space-y-1 text-center md:text-left">
-            <h3 className="font-extrabold text-sm text-amber-700 dark:text-amber-400 flex items-center gap-1.5 justify-center md:justify-start">
-              <Sparkles className="h-4 w-4" /> Activate {currentLevel.name} Standing
-            </h3>
-            <p className="text-xs text-muted-foreground max-w-xl">
-              Pay the monthly subscription fee of **{currentLevel.levelUpPrice} TND/month** to activate this tier's privileges, decrease transaction fees, and unlock advanced statistic facture reports.
-            </p>
-          </div>
-          <button
-            onClick={() => onUpgradeTier(currentLevel.name, currentLevel.levelUpPrice)}
-            className="px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-full text-xs shadow-sm flex items-center gap-1 whitespace-nowrap"
-          >
-            Activate Level ({currentLevel.levelUpPrice} TND)
-          </button>
-        </div>
-      )}
-
-      {/* Simulated controls to review level locks easily */}
-      <div className="p-4 rounded-2xl bg-accent/40 border border-border/50 space-y-3">
-        <h4 className="text-xs font-bold text-muted-foreground flex items-center gap-1">
-          <RefreshCw className="h-3 w-3" /> Standing Simulation Controls
-        </h4>
-        <div className="flex flex-wrap gap-1.5">
-          {BRAND_LEVELS.map((level) => (
-            <button
-              key={level.name}
-              onClick={() => setRevenueTND(level.minRevenue + 1000)}
-              className={`px-3 py-1.5 rounded-xl text-[10px] font-semibold border transition-all ${
-                revenueTND >= level.minRevenue && (BRAND_LEVELS[BRAND_LEVELS.indexOf(level) + 1] === undefined || revenueTND < BRAND_LEVELS[BRAND_LEVELS.indexOf(level) + 1].minRevenue)
-                  ? "bg-primary text-white border-primary"
-                  : "bg-card hover:bg-accent border-border/40"
-              }`}
-            >
-              {level.name} ({level.minRevenue >= 1000000 ? `${level.minRevenue / 1000000}M` : `${level.minRevenue / 1000}K`})
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* Primary Financial Stats Cards */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="p-4 rounded-2xl bg-card border border-border/50 hover:shadow-md transition-all duration-200">
-          <div className="h-9 w-9 rounded-xl bg-green-500/10 flex items-center justify-center mb-3">
-            <DollarSign className="h-4 w-4 text-green-500" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="p-4 rounded-2xl bg-card border border-border/60 hover:border-primary/40 transition-all duration-200">
+          <div className="h-8 w-8 rounded-xl bg-muted/60 flex items-center justify-center mb-3 text-foreground border border-border/40">
+            <DollarSign className="h-4 w-4" />
           </div>
-          <p className="text-xl font-bold">{revenueTND.toLocaleString()} TND</p>
-          <p className="text-xs text-muted-foreground mt-0.5 font-medium">Total Revenue</p>
+          <p className="text-2xl font-black text-foreground">{revenueTND.toLocaleString()} TND</p>
+          <p className="text-xs text-muted-foreground mt-1 font-semibold">Total Revenue Volume</p>
         </div>
 
-        <div className="p-4 rounded-2xl bg-card border border-border/50 hover:shadow-md transition-all duration-200">
-          <div className="h-9 w-9 rounded-xl bg-blue-500/10 flex items-center justify-center mb-3">
-            <TrendingUp className="h-4 w-4 text-blue-500" />
+        <div className="p-4 rounded-2xl bg-card border border-border/60 hover:border-primary/40 transition-all duration-200">
+          <div className="h-8 w-8 rounded-xl bg-muted/60 flex items-center justify-center mb-3 text-foreground border border-border/40">
+            <TrendingUp className="h-4 w-4" />
           </div>
-          <p className="text-xl font-bold">{(revenueTND * 0.12).toLocaleString()} TND</p>
-          <p className="text-xs text-muted-foreground mt-0.5 font-medium">This Month Est.</p>
+          <p className="text-2xl font-black text-foreground">{(revenueTND * 0.14).toFixed(0)} TND</p>
+          <p className="text-xs text-muted-foreground mt-1 font-semibold">Estimated Monthly Run-Rate</p>
         </div>
 
-        <div className="p-4 rounded-2xl bg-card border border-border/50 hover:shadow-md transition-all duration-200">
-          <div className="h-9 w-9 rounded-xl bg-amber-500/10 flex items-center justify-center mb-3">
-            <Clock className="h-4 w-4 text-amber-500" />
+        <div className="p-4 rounded-2xl bg-card border border-border/60 hover:border-primary/40 transition-all duration-200">
+          <div className="h-8 w-8 rounded-xl bg-muted/60 flex items-center justify-center mb-3 text-foreground border border-border/40">
+            <Clock className="h-4 w-4" />
           </div>
-          <p className="text-xl font-bold">{pendingPayoutTND.toLocaleString()} TND</p>
-          <p className="text-xs text-muted-foreground mt-0.5 font-medium">Pending Payout</p>
+          <p className="text-2xl font-black text-foreground">{pendingPayoutTND.toFixed(2)} TND</p>
+          <p className="text-xs text-muted-foreground mt-1 font-semibold">Pending Influencer Payout</p>
         </div>
 
-        <div className="p-4 rounded-2xl bg-card border border-border/50 hover:shadow-md transition-all duration-200">
-          <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
-            <ShoppingBag className="h-4 w-4 text-primary" />
+        <div className="p-4 rounded-2xl bg-card border border-border/60 hover:border-primary/40 transition-all duration-200">
+          <div className="h-8 w-8 rounded-xl bg-muted/60 flex items-center justify-center mb-3 text-foreground border border-border/40">
+            <ShoppingBag className="h-4 w-4" />
           </div>
-          <p className="text-xl font-bold">{totalRealOrders}</p>
-          <p className="text-xs text-muted-foreground mt-0.5 font-medium">Total Orders</p>
+          <p className="text-2xl font-black text-foreground">{totalRealOrders}</p>
+          <p className="text-xs text-muted-foreground mt-1 font-semibold">Total Fulfilled Orders</p>
         </div>
       </div>
 
-      {/* Commission Calculator Widget */}
+      {/* Commission Estimator Calculator */}
       <CommissionCalculator commissionRate={currentLevel.commissionRate} />
 
-      {/* Advanced charts segment (Unlocked on Silver Partner) */}
-      <div className="relative">
-        {!showCharts && (
-          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center p-6 text-center rounded-2xl border border-dashed border-border/50">
-            <Lock className="h-7 w-7 text-primary mb-2" />
-            <p className="text-xs font-bold text-foreground">Analytics Charts Locked</p>
-            <p className="text-[10px] text-muted-foreground max-w-xs mt-0.5">Unlocks on Silver Partner level or higher. Keep driving sales to level up!</p>
-          </div>
-        )}
-        <div className="bg-card border border-border/50 p-5 rounded-2xl space-y-5 shadow-sm">
-          <div className="flex justify-between items-center">
-            <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
+      {/* Advanced Charts Section — Always Fully Unlocked */}
+      <div className="bg-card border border-border/60 p-6 rounded-3xl space-y-6 shadow-sm">
+        <div className="flex justify-between items-center">
+          <div>
+            <h3 className="text-base font-bold text-foreground flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-primary" />
-              Monthly Revenue & Orders
+              Monthly Sales Performance
             </h3>
-            <span className="text-[10px] text-muted-foreground font-semibold bg-accent px-2 py-0.5 rounded-full">Last 6 months</span>
+            <p className="text-xs text-muted-foreground mt-0.5">Real-time revenue aggregation from completed orders</p>
           </div>
+          <span className="text-[10px] text-muted-foreground font-bold bg-muted/60 border border-border/40 px-3 py-1 rounded-full uppercase tracking-wider">Live Synced</span>
+        </div>
 
-          {/* Revenue Area Chart - Live Data */}
-          <div className="h-40">
-            <ResponsiveContainer width="100%" height="100%">
-              {monthlyChartData.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
-                  No revenue data yet
-                </div>
-              ) : (
-              <AreaChart data={monthlyChartData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+        {/* Revenue Area Chart */}
+        <div className="h-48">
+          <ResponsiveContainer width="100%" height="100%">
+            {monthlyChartData.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
+                No revenue data recorded yet.
+              </div>
+            ) : (
+              <AreaChart data={monthlyChartData} margin={{ top: 8, right: 8, bottom: 0, left: -20 }}>
                 <defs>
                   <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.25} />
                     <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
-                <XAxis dataKey="month" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} />
-                <YAxis tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
+                <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
                 <Tooltip
-                  contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 10, fontSize: 11 }}
+                  contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 12, fontSize: 12, fontWeight: 'bold' }}
                   formatter={(value: number) => [`${value.toLocaleString()} TND`, 'Revenue']}
                 />
-                <Area type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#revenueGrad)" />
+                <Area type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={2.5} fill="url(#revenueGrad)" />
               </AreaChart>
-              )}
-            </ResponsiveContainer>
-          </div>
+            )}
+          </ResponsiveContainer>
+        </div>
 
-          {/* Orders Bar Chart - Live Data */}
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground mb-2">Orders per Month</p>
-            <div className="h-28">
-              <ResponsiveContainer width="100%" height="100%">
-                {monthlyChartData.length === 0 ? (
-                  <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
-                    No orders yet
-                  </div>
-                ) : (
-                <BarChart data={monthlyChartData} margin={{ top: 0, right: 4, bottom: 0, left: -20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
-                  <XAxis dataKey="month" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} />
-                  <YAxis tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} />
+        {/* Orders Bar Chart */}
+        <div className="pt-3 border-t border-border/40">
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Order Volume Trend</p>
+          <div className="h-32">
+            <ResponsiveContainer width="100%" height="100%">
+              {monthlyChartData.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
+                  No orders recorded yet.
+                </div>
+              ) : (
+                <BarChart data={monthlyChartData} margin={{ top: 0, right: 8, bottom: 0, left: -20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                  <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
+                  <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
                   <Tooltip
-                    contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 10, fontSize: 11 }}
+                    contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 12, fontSize: 12, fontWeight: 'bold' }}
                     formatter={(value: number) => [value, 'Orders']}
                   />
-                  <Bar dataKey="orders" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} opacity={0.85} />
+                  <Bar dataKey="orders" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} opacity={0.9} />
                 </BarChart>
-                )}
-              </ResponsiveContainer>
-            </div>
+              )}
+            </ResponsiveContainer>
           </div>
         </div>
       </div>
 
-      {/* Influencer performance breakdown (Unlocked on Gold Partner) */}
-      {showInfluencerBreakdown && (
-        <div className="bg-card border border-border/50 p-5 rounded-2xl space-y-3 shadow-sm animate-in fade-in duration-300">
-          <h3 className="text-sm font-bold text-foreground flex items-center gap-1">
-            <Award className="h-4 w-4 text-yellow-500" /> Gold Level: Influencer Revenue Share
-          </h3>
-          <div className="text-xs text-muted-foreground divide-y divide-border/40">
-            <div className="flex justify-between py-2 font-bold">
-              <span>Influencer name</span>
-              <span>Orders driven</span>
-              <span>Revenue share</span>
-            </div>
-            <div className="flex justify-between py-2">
-              <span>Amira Belhaj</span>
-              <span>45 orders</span>
-              <span>54,000 TND</span>
-            </div>
-            <div className="flex justify-between py-2">
-              <span>Yasmine Khelifi</span>
-              <span>22 orders</span>
-              <span>10,560 TND</span>
-            </div>
+      {/* Influencer Referral Revenue Share Table — Fully Active */}
+      <div className="bg-card border border-border/60 p-6 rounded-3xl space-y-4 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+              <Award className="h-4 w-4 text-primary" /> Influencer Referral Performance
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Top performing fashion creators generating sales</p>
+          </div>
+          <span className="text-xs font-semibold text-muted-foreground font-mono">Commission Share</span>
+        </div>
+
+        <div className="text-xs text-muted-foreground divide-y divide-border/30">
+          <div className="flex justify-between py-2.5 font-bold uppercase tracking-wider text-[10px] text-muted-foreground">
+            <span>Influencer Name</span>
+            <span>Orders Driven</span>
+            <span>Attributed Revenue</span>
+          </div>
+          <div className="flex justify-between py-3 items-center text-foreground font-semibold">
+            <span className="flex items-center gap-2">
+              <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-[10px]">A</div>
+              Amira Belhaj
+            </span>
+            <span className="font-mono text-muted-foreground">45 orders</span>
+            <span className="font-mono font-bold text-foreground">54,000 TND</span>
+          </div>
+          <div className="flex justify-between py-3 items-center text-foreground font-semibold">
+            <span className="flex items-center gap-2">
+              <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-[10px]">Y</div>
+              Yasmine Khelifi
+            </span>
+            <span className="font-mono text-muted-foreground">22 orders</span>
+            <span className="font-mono font-bold text-foreground">10,560 TND</span>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* Tagged Posts Section */}
+      {/* Approved Tagged Posts Section */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
-            <Award className="h-4 w-4 text-primary" /> Approved Tagged Posts
+          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+            <Tag className="h-4 w-4 text-primary" /> Verified Tagged Outfit Looks
           </h3>
-          <span className="text-xs text-muted-foreground">{approvedPosts.length} posts approved</span>
+          <span className="text-xs text-muted-foreground font-mono">{approvedPosts.length} posts live</span>
         </div>
 
         {approvedPosts.length === 0 ? (
-          <div className="p-6 bg-card border border-border/50 rounded-2xl text-center">
-            <p className="text-xs text-muted-foreground">No approved tagged posts found. Approve posts in the Store tab.</p>
+          <div className="p-8 bg-card border border-border/60 rounded-3xl text-center">
+            <p className="text-xs text-muted-foreground">No approved tagged posts found. Approve incoming look requests in the Store tab.</p>
           </div>
         ) : (
-          <div className="bg-card border border-border/50 rounded-2xl p-4 space-y-1 shadow-sm">
+          <div className="bg-card border border-border/60 rounded-3xl p-4 space-y-1 shadow-sm">
             {approvedPosts.map((post) => (
               <TaggedPostRow key={post.id} post={post} isFeatureUnlocked={isFeatureUnlocked} onSelect={onSelectPost} />
             ))}
@@ -1728,51 +1664,54 @@ function ProfitsTab({ revenueTND, setRevenueTND, activePaidTier, onUpgradeTier, 
       </div>
 
       {/* Brand Payout Ledger Section */}
-      <div className="space-y-4 pt-4 border-t border-border/40">
+      <div className="space-y-4 pt-2">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
-            <Banknote className="h-4 w-4 text-primary" /> Brand Payout Ledger
-          </h3>
-          <span className="text-xs text-muted-foreground">{commissions.length} payout requests</span>
+          <div>
+            <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+              <Banknote className="h-4 w-4 text-primary" /> Brand Commission Payout Ledger
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Manage and disburse verified creator commission requests</p>
+          </div>
+          <span className="text-xs text-muted-foreground font-mono">{commissions.length} requests</span>
         </div>
 
         {commissions.length === 0 ? (
-          <div className="p-6 bg-card border border-border/50 rounded-2xl text-center">
-            <p className="text-xs text-muted-foreground">No payout requests from influencers found yet.</p>
+          <div className="p-8 bg-card border border-border/60 rounded-3xl text-center">
+            <p className="text-xs text-muted-foreground">No influencer commission requests logged yet.</p>
           </div>
         ) : (
-          <div className="bg-card border border-border/50 rounded-2xl p-4 space-y-3 shadow-sm divide-y divide-border/20">
+          <div className="bg-card border border-border/60 rounded-3xl p-5 space-y-3 shadow-sm divide-y divide-border/20">
             {commissions.map((comm: any, idx: number) => (
               <div key={comm.id} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${idx > 0 ? "pt-3" : ""}`}>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-foreground">User #{comm.userId}</span>
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold text-white ${
-                      comm.status === "pending" ? "bg-amber-500" :
-                      comm.status === "approved" ? "bg-emerald-500" :
-                      comm.status === "paid" ? "bg-blue-500" : "bg-red-500"
+                    <span className="font-bold text-foreground">Creator #{comm.userId}</span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
+                      comm.status === "pending" ? "border-amber-500/30 bg-amber-500/10 text-amber-500" :
+                      comm.status === "approved" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500" :
+                      comm.status === "paid" ? "border-primary/30 bg-primary/10 text-primary" : "border-destructive/30 bg-destructive/10 text-destructive"
                     }`}>
-                      {comm.status}
+                      {comm.status.toUpperCase()}
                     </span>
                   </div>
-                  <p className="text-muted-foreground">{comm.description || "Commission Payout Request"}</p>
-                  <p className="text-[10px] text-muted-foreground/60">{new Date(comm.createdAt).toLocaleString()}</p>
+                  <p className="text-muted-foreground">{comm.description || "Referral commission request"}</p>
+                  <p className="text-[10px] text-muted-foreground font-mono">{new Date(comm.createdAt).toLocaleString()}</p>
                 </div>
                 
                 <div className="flex items-center gap-3 justify-between sm:justify-end">
-                  <span className="font-black text-sm text-foreground">{Number(comm.amount).toFixed(2)} TND</span>
-                  <div className="flex items-center gap-1.5">
+                  <span className="font-black text-sm text-foreground font-mono">{Number(comm.amount).toFixed(2)} TND</span>
+                  <div className="flex items-center gap-2">
                     {comm.status === "pending" && (
                       <>
                         <button
                           onClick={() => handleUpdateCommission(comm.id, "approved")}
-                          className="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500 text-emerald-600 hover:text-white border border-emerald-500/20 font-bold transition-all"
+                          className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-all shadow-sm"
                         >
                           Approve
                         </button>
                         <button
                           onClick={() => handleUpdateCommission(comm.id, "rejected")}
-                          className="px-2.5 py-1 rounded-lg bg-red-500/10 hover:bg-red-500 text-red-600 hover:text-white border border-red-500/20 font-bold transition-all"
+                          className="px-3 py-1.5 rounded-xl border border-destructive/30 text-destructive hover:bg-destructive/10 font-bold text-xs transition-all"
                         >
                           Decline
                         </button>
@@ -1781,7 +1720,7 @@ function ProfitsTab({ revenueTND, setRevenueTND, activePaidTier, onUpgradeTier, 
                     {comm.status === "approved" && (
                       <button
                         onClick={() => handleUpdateCommission(comm.id, "paid")}
-                        className="px-2.5 py-1 rounded-lg bg-blue-500/10 hover:bg-blue-500 text-blue-600 hover:text-white border border-blue-500/20 font-bold transition-all"
+                        className="px-3 py-1.5 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs transition-all shadow-sm"
                       >
                         Mark as Paid
                       </button>
@@ -2132,13 +2071,11 @@ function BrandDashboardInner({ userId, appUser }: { userId: number; appUser: any
                   <p className="text-xs text-muted-foreground mt-0.5">{brandOwner}</p>
                 </div>
                 <BrandLevelBadge brandId={brandId} showDetails={false} />
-                {currentLevel.name === "Stylista" && activePaidTier === "Stylista" ? (
-                  <span className="text-[9px] font-black tracking-wider uppercase text-yellow-500 bg-yellow-500/10 px-1.5 py-0.5 rounded border border-yellow-500/30 flex items-center gap-0.5">
-                    <Star className="h-2 w-2 fill-yellow-500" /> Stylista
+                {currentLevel.name && (
+                  <span className="text-[10px] font-bold text-foreground bg-muted/60 border border-border/50 px-2 py-0.5 rounded-full">
+                    {currentLevel.name.toUpperCase()}
                   </span>
-                ) : activePaidTier ? (
-                  <span className="text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">{activePaidTier.toUpperCase()}</span>
-                ) : null}
+                )}
               </div>
             </div>
 
