@@ -225,6 +225,107 @@ function pushNotification(notif: {
   } catch { /* ignore */ }
 }
 
+/** Renders a caption string, turning @mentions into orange clickable spans */
+function renderCaption(
+  caption: string,
+  liveBrands: Array<{ id: number; name: string }>,
+  onBrandClick: (brand: { id: number; name: string }) => void
+): React.ReactNode {
+  const parts = caption.split(/(@[\w]+)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("@")) {
+      const slug = part.slice(1).toLowerCase();
+      const matched = liveBrands.find(
+        b => b.name.toLowerCase().replace(/\s+/g, "") === slug ||
+             b.name.toLowerCase() === slug
+      );
+      return (
+        <button
+          key={i}
+          type="button"
+          onClick={() => matched && onBrandClick(matched)}
+          className={`font-bold transition-colors ${
+            matched
+              ? "text-primary hover:text-primary/80 cursor-pointer"
+              : "text-primary/70"
+          }`}
+        >
+          {part}
+        </button>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
+
+/** Brand profile mini-modal that opens when user taps an @brand tag */
+function BrandProfileModal({
+  brand,
+  posts,
+  onClose,
+  onFollow,
+}: {
+  brand: { id: number; name: string };
+  posts: Post[];
+  onClose: () => void;
+  onFollow: () => void;
+}) {
+  const brandPosts = posts
+    .filter(p => p.taggedProduct?.brandId === brand.id || p.creator.isBrand)
+    .slice(0, 6);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-sm bg-white dark:bg-[#131313] rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden animate-fade-up max-h-[85vh] flex flex-col">
+        {/* Header */}
+        <div className="relative h-20 bg-gradient-to-br from-primary/20 to-primary/5 shrink-0">
+          <button
+            onClick={onClose}
+            className="absolute top-3 right-3 h-7 w-7 rounded-full bg-black/20 backdrop-blur-sm flex items-center justify-center hover:bg-black/30 transition-colors"
+          >
+            <X className="h-4 w-4 text-white" />
+          </button>
+        </div>
+        <div className="px-5 pb-2 -mt-8 shrink-0">
+          <div className="h-14 w-14 rounded-2xl bg-primary/10 border-2 border-background flex items-center justify-center shadow-lg mb-2">
+            <span className="text-xl font-black text-primary">{brand.name.charAt(0).toUpperCase()}</span>
+          </div>
+          <div className="flex items-end justify-between">
+            <div>
+              <h2 className="font-extrabold text-base text-foreground">{brand.name}</h2>
+              <p className="text-xs text-muted-foreground">@{brand.name.replace(/\s+/g, "").toLowerCase()} · Brand</p>
+            </div>
+            <button
+              onClick={() => { onFollow(); onClose(); }}
+              className="h-9 px-4 rounded-full bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-colors shadow-sm shadow-primary/30"
+            >
+              Follow Brand
+            </button>
+          </div>
+        </div>
+        {/* Posts grid */}
+        <div className="flex-1 overflow-y-auto p-4 no-scrollbar">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2.5">Latest from {brand.name}</p>
+          {brandPosts.length === 0 ? (
+            <div className="py-8 text-center">
+              <p className="text-xs text-muted-foreground">No posts yet from this brand.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-1.5">
+              {brandPosts.map(p => (
+                <div key={p.id} className="aspect-square rounded-xl overflow-hidden bg-muted">
+                  <img src={p.image} alt={p.caption} className="w-full h-full object-cover" />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ PostComposer Modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 interface ComposerItem {
@@ -467,13 +568,32 @@ function PostComposerModal({
               placeholder="Share your outfit with a stylized title"
               className="w-full h-10 px-4 rounded-xl bg-muted border border-border/30 text-sm font-semibold placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/30 transit-all"
             />
-            <textarea
-              value={caption}
-              onChange={e => setCaption(e.target.value)}
-              rows={2}
-              placeholder="Describe your outfit, occasion, brands... (use @BrandName to tag)"
-              className="w-full px-4 py-3 rounded-xl bg-muted border border-border/30 text-sm placeholder:text-muted-foreground/60 resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 transit-all"
-            />
+            <div className="relative">
+              <textarea
+                ref={captionRef}
+                value={caption}
+                onChange={handleCaptionChange}
+                rows={2}
+                placeholder="Describe your outfit, occasion, brands... (use @BrandName to tag)"
+                className="w-full px-4 py-3 rounded-xl bg-muted border border-border/30 text-sm placeholder:text-muted-foreground/60 resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 transit-all"
+              />
+              {/* @ mention autocomplete dropdown */}
+              {mentionQuery !== null && filteredMentionBrands.length > 0 && (
+                <div className="absolute bottom-full mb-1 left-0 w-full bg-white dark:bg-[#1A1A1A] border border-border/50 rounded-2xl shadow-xl p-1.5 z-50 max-h-40 overflow-y-auto no-scrollbar">
+                  {filteredMentionBrands.map(b => (
+                    <button
+                      key={b.id}
+                      type="button"
+                      onMouseDown={e => { e.preventDefault(); handleSelectMentionBrand(b); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-primary/5 text-left transition-colors"
+                    >
+                      <span className="text-primary font-bold text-sm">@</span>
+                      <span className="text-xs font-semibold text-foreground">{b.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Ã¢â€â‚¬Ã¢â€â‚¬ Add Item Section Ã¢â€â‚¬Ã¢â€â‚¬ */}
@@ -958,6 +1078,8 @@ export default function HomeFeed() {
 
   // Post Composer
   const [showComposer, setShowComposer] = useState(false);
+  // Brand profile modal opened via @mention tap
+  const [brandProfileModal, setBrandProfileModal] = useState<{ id: number; name: string } | null>(null);
 
   useEffect(() => {
     const handler = () => setShowComposer(true);
@@ -1210,7 +1332,7 @@ export default function HomeFeed() {
                       onAddToBag={() => addToBag({ ...post.taggedProduct, size: "M" })}
                     />
                   </div>
-                  <PostActions post={post} onLike={() => handleLike(post.id)} onTryOn={() => handleTryOn(post.taggedProduct)} onAddToBag={() => addToBag({ ...post.taggedProduct, size: "M" })} />
+                  <PostActions post={post} onLike={() => handleLike(post.id)} onTryOn={() => handleTryOn(post.taggedProduct)} onAddToBag={() => addToBag({ ...post.taggedProduct, size: "M" })} liveBrands={liveBrands} onBrandClick={b => setBrandProfileModal(b)} />
                 </article>
               ))}
             </div>
@@ -1237,7 +1359,8 @@ export default function HomeFeed() {
                   </div>
                   <div className="p-3 space-y-2.5 flex-1 flex flex-col justify-between">
                     <p className="text-[11px] leading-snug text-foreground/80 line-clamp-2">
-                      <span className="font-bold mr-1">{post.creator.name}</span>{post.caption}
+                      <span className="font-bold mr-1">{post.creator.name}</span>
+                      {renderCaption(post.caption, liveBrands, b => setBrandProfileModal(b))}
                     </p>
                     {/* Tag and Try row */}
                     {localStorage.getItem(`styly_user_lock_${post.creator.name}`) === "black" ? (
@@ -1289,12 +1412,24 @@ export default function HomeFeed() {
 
       </div>
 
-      {/* Ã¢â€ â‚¬Ã¢â€ â‚¬ Post Composer Modal Ã¢â€ â‚¬Ã¢â€ â‚¬ */}
+      {/* ── Post Composer Modal ── */}
       {showComposer && (
         <PostComposerModal
           onClose={() => setShowComposer(false)}
           onPost={handleNewPost}
           liveBrands={liveBrands}
+        />
+      )}
+
+      {/* ── Brand Profile Modal (opened via @mention tap) ── */}
+      {brandProfileModal && (
+        <BrandProfileModal
+          brand={brandProfileModal}
+          posts={posts}
+          onClose={() => setBrandProfileModal(null)}
+          onFollow={() => {
+            toast.success(`You are now following ${brandProfileModal.name}!`);
+          }}
         />
       )}
 
@@ -1703,7 +1838,7 @@ function PostHeader({ post, compact = false, onFollow }: { post: Post; compact?:
         <div>
           <div className="flex items-center gap-1">
             <p className={`font-bold ${compact ? "text-[10px]" : "text-xs"} leading-none group-hover/header:text-primary transition-colors`}>{post.creator.name}</p>
-            {post.creator.verified && <CheckCircle className="h-3 w-3 text-blue-500 fill-blue-500" />}
+            {post.creator.verified && <CheckCircle className="h-3 w-3 text-primary fill-primary" />}
           </div>
           <p className={`${compact ? "text-[8px]" : "text-[10px]"} text-muted-foreground mt-0.5`}>{post.creator.username}</p>
 
@@ -1740,11 +1875,13 @@ function PostHeader({ post, compact = false, onFollow }: { post: Post; compact?:
   );
 }
 
-function PostActions({ post, onLike, onTryOn, onAddToBag }: {
+function PostActions({ post, onLike, onTryOn, onAddToBag, liveBrands, onBrandClick }: {
   post: Post;
   onLike: () => void;
   onTryOn: () => void;
   onAddToBag: () => void;
+  liveBrands: Array<{ id: number; name: string }>;
+  onBrandClick: (b: { id: number; name: string }) => void;
 }) {
   return (
     <div className="p-4 space-y-3">
@@ -1758,9 +1895,10 @@ function PostActions({ post, onLike, onTryOn, onAddToBag }: {
           <Share2 className="h-5 w-5" />
         </button>
       </div>
-      {/* Caption */}
+      {/* Caption with orange @brand links */}
       <p className="text-xs leading-relaxed text-foreground/90">
-        <span className="font-bold mr-1.5">{post.creator.name}</span>{post.caption}
+        <span className="font-bold mr-1.5">{post.creator.name}</span>
+        {renderCaption(post.caption, liveBrands, onBrandClick)}
       </p>
       {/* Product card with Price, Rating, Stock, and Orange Logo Button */}
       {localStorage.getItem(`styly_user_lock_${post.creator.name}`) === "black" ? (

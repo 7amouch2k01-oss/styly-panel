@@ -447,6 +447,34 @@ export const appRouter = router({
           throw new TRPCError({ code: "FORBIDDEN", message: "You do not own this brand" });
         }
         const product = await createDevice(input);
+        
+        // Auto-create a feed post so the brand item immediately appears in the community feed
+        const { createPost: createDbPost, getBrandById } = await import("./db");
+        const brand = await getBrandById(input.brandId);
+        await createDbPost(userId, {
+          brandId: input.brandId,
+          imageUrl: input.imageUrl || "/product_jacket.png",
+          caption: `New drop from @${(brand?.name || store.brandName).replace(/\s+/g, "")} — ${input.name}! Available now in store.`,
+          category: input.category || "Casual",
+          mediaType: "image",
+          status: "active",
+          approvalStatus: "green", // Brand's own products are auto-approved
+          taggedProduct: {
+            id: product.id,
+            name: input.name,
+            price: input.price,
+            image: input.imageUrl || "/product_jacket.png",
+            brandId: input.brandId,
+          },
+          creator: {
+            name: brand?.name || store.brandName,
+            username: `@${(brand?.name || store.brandName).replace(/\s+/g, "").toLowerCase()}`,
+            avatar: brand?.logoUrl || "/logo.png",
+            isBrand: true,
+            verified: true,
+          }
+        }).catch(err => console.error("[AutoPost] Failed to create brand feed post:", err));
+
         await logActivity(userId, "Brand Product Created", "device", product.id, `Brand owner created product "${input.name}"`);
         return { success: true, message: "Product created", product };
       }),
