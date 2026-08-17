@@ -2099,31 +2099,48 @@ function BrandDashboardInner({ userId, appUser }: { userId: number; appUser: any
 
             {/* Switcher Dropdown */}
             {showDropdown && (
-              <div className="absolute left-0 mt-2 w-52 bg-white dark:bg-[#1A1A1A] border border-border/50 rounded-2xl shadow-2xl p-2.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                <button
-                  onClick={() => {
-                    setShowDropdown(false);
-                    setLocation("/feed");
-                  }}
-                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold hover:bg-accent/60 transition-colors text-left text-foreground"
-                >
-                  <UserIcon className="h-4 w-4 text-muted-foreground" />
-                  <span>Switch to User Account</span>
-                </button>
-                <div className="h-px bg-border/20 my-1.5" />
-                <button
-                  onClick={() => {
-                    setShowDropdown(false);
-                    logout();
-                    toast.success("Logged out of Brand Dashboard successfully");
-                    setLocation("/");
-                  }}
-                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold hover:bg-red-500/10 text-red-500 transition-colors text-left"
-                >
-                  <LogOut className="h-4 w-4" />
-                  <span>Logout from Brand Dashboard</span>
-                </button>
-              </div>
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)} />
+                <div className="absolute left-0 top-full mt-2.5 w-60 bg-white dark:bg-[#1A1A1A] border border-border/60 rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="px-3 py-2 border-b border-border/30 mb-1">
+                    <p className="text-xs font-bold text-foreground truncate">{brandName}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{brandOwner}</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowDropdown(false);
+                      setLocation("/feed");
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold hover:bg-muted transition-colors text-left text-foreground"
+                  >
+                    <UserIcon className="h-4 w-4 text-muted-foreground" />
+                    <span>Switch to Consumer Feed</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowDropdown(false);
+                      setLocation("/profile");
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold hover:bg-muted transition-colors text-left text-foreground"
+                  >
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span>My User Profile</span>
+                  </button>
+                  <div className="h-px bg-border/30 my-1" />
+                  <button
+                    onClick={() => {
+                      setShowDropdown(false);
+                      logout();
+                      toast.success("Logged out successfully");
+                      setLocation("/");
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold hover:bg-destructive/10 text-destructive transition-colors text-left"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span>Log Out</span>
+                  </button>
+                </div>
+              </>
             )}
           </div>
 
