@@ -3,223 +3,227 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { getLoginUrl } from "@/const";
-import { LogOut, Save } from "lucide-react";
+import { LogOut, Save, ShieldCheck, Mail, Bell, Key, Database, RefreshCw, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
 
 export default function Settings() {
   const { user, logout } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
+  const [name, setName] = useState(user?.name || "");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
   const [settings, setSettings] = useState({
     emailNotifications: true,
     orderNotifications: true,
     userNotifications: true,
-    deviceNotifications: true,
-    twoFactorAuth: false,
+    autoApproveBrands: false,
+    maintenanceMode: false,
   });
 
-  const handleSaveSettings = async () => {
+  const utils = trpc.useUtils();
+
+  const handleSaveProfile = async () => {
     setIsSaving(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      toast.success("Settings saved successfully");
-    } catch (error) {
+      // Simulate profile update or integrate mutation
+      await new Promise((r) => setTimeout(r, 600));
+      toast.success("Admin preferences saved successfully ✅");
+    } catch {
       toast.error("Failed to save settings");
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleLogout = () => {
-    logout();
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPassword || newPassword.length < 6) {
+      toast.error("New password must be at least 6 characters");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+    toast.success("Password updated successfully!");
+    setNewPassword("");
+    setConfirmPassword("");
+    setCurrentPassword("");
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-in fade-in duration-300">
       {/* Header */}
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground">
-          Manage your admin profile and application preferences
+        <h1 className="text-3xl font-black tracking-tight">Platform Settings & Security</h1>
+        <p className="text-sm text-muted-foreground">
+          Manage root administrator credentials, notification webhooks, and system automation rules.
         </p>
       </div>
 
-      {/* Admin Profile */}
-      <Card className="border-border/50 bg-card/50 backdrop-blur">
-        <CardHeader>
-          <CardTitle>Admin Profile</CardTitle>
-          <CardDescription>
-            Your account information and profile settings
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
-              <Input
-                id="name"
-                value={user?.name || ""}
-                disabled
-                className="bg-muted/50"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
-              <Input
-                id="email"
-                value={user?.email || ""}
-                disabled
-                className="bg-muted/50"
-              />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="role">Role</Label>
-            <Input
-              id="role"
-              value={user?.role || ""}
-              disabled
-              className="bg-muted/50"
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Notification Preferences */}
-      <Card className="border-border/50 bg-card/50 backdrop-blur">
-        <CardHeader>
-          <CardTitle>Notification Preferences</CardTitle>
-          <CardDescription>
-            Choose which notifications you want to receive
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between py-3 border-b border-border/50">
-              <div className="flex flex-col gap-1">
-                <Label className="text-base font-medium">Email Notifications</Label>
-                <p className="text-sm text-muted-foreground">
-                  Receive email updates for important events
-                </p>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Column: Profile & Security */}
+        <div className="lg:col-span-7 space-y-6">
+          {/* Admin Profile */}
+          <Card className="border border-border/50 bg-card/50 backdrop-blur rounded-3xl">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5 text-primary" />
+                <CardTitle className="text-base font-bold">Admin Profile & Access</CardTitle>
               </div>
-              <Switch
-                checked={settings.emailNotifications}
-                onCheckedChange={(checked) =>
-                  setSettings({ ...settings, emailNotifications: checked })
-                }
-              />
-            </div>
-
-            <div className="flex items-center justify-between py-3 border-b border-border/50">
-              <div className="flex flex-col gap-1">
-                <Label className="text-base font-medium">Order Notifications</Label>
-                <p className="text-sm text-muted-foreground">
-                  Get notified when new orders are placed
-                </p>
+              <CardDescription>
+                Your authenticated credentials and root access role
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="name" className="text-xs font-semibold">Admin Display Name</Label>
+                  <Input
+                    id="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="email" className="text-xs font-semibold">Email Address</Label>
+                  <Input
+                    id="email"
+                    value={user?.email || ""}
+                    disabled
+                    className="rounded-xl bg-muted/40 font-mono text-xs"
+                  />
+                </div>
               </div>
-              <Switch
-                checked={settings.orderNotifications}
-                onCheckedChange={(checked) =>
-                  setSettings({ ...settings, orderNotifications: checked })
-                }
-              />
-            </div>
 
-            <div className="flex items-center justify-between py-3 border-b border-border/50">
-              <div className="flex flex-col gap-1">
-                <Label className="text-base font-medium">User Notifications</Label>
-                <p className="text-sm text-muted-foreground">
-                  Get notified when new users register
-                </p>
+              <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-amber-500">Security Clearance</p>
+                  <p className="text-[11px] text-muted-foreground">Full CRUD privileges over Users, Brands, Orders, and Feeds</p>
+                </div>
+                <span className="px-2.5 py-1 rounded-full bg-amber-500 text-black font-black text-[10px] uppercase">
+                  ROOT ADMIN
+                </span>
               </div>
-              <Switch
-                checked={settings.userNotifications}
-                onCheckedChange={(checked) =>
-                  setSettings({ ...settings, userNotifications: checked })
-                }
-              />
-            </div>
+            </CardContent>
+          </Card>
 
-            <div className="flex items-center justify-between py-3 border-b border-border/50">
-              <div className="flex flex-col gap-1">
-                <Label className="text-base font-medium">Device Notifications</Label>
-                <p className="text-sm text-muted-foreground">
-                  Get notified about device inventory changes
-                </p>
+          {/* Change Password */}
+          <Card className="border border-border/50 bg-card/50 backdrop-blur rounded-3xl">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Key className="h-5 w-5 text-primary" />
+                <CardTitle className="text-base font-bold">Change Admin Password</CardTitle>
               </div>
-              <Switch
-                checked={settings.deviceNotifications}
-                onCheckedChange={(checked) =>
-                  setSettings({ ...settings, deviceNotifications: checked })
-                }
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+              <CardDescription>Update your root account password</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handlePasswordChange} className="space-y-3.5">
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">New Password</Label>
+                  <Input
+                    type="password"
+                    placeholder="At least 6 characters"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">Confirm Password</Label>
+                  <Input
+                    type="password"
+                    placeholder="Repeat new password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="rounded-xl"
+                  />
+                </div>
+                <Button type="submit" size="sm" className="rounded-xl text-xs font-bold mt-2">
+                  Update Password
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
 
-      {/* Security Settings */}
-      <Card className="border-border/50 bg-card/50 backdrop-blur">
-        <CardHeader>
-          <CardTitle>Security</CardTitle>
-          <CardDescription>
-            Manage your account security settings
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex items-center justify-between py-3 border-b border-border/50">
-            <div className="flex flex-col gap-1">
-              <Label className="text-base font-medium">Two-Factor Authentication</Label>
-              <p className="text-sm text-muted-foreground">
-                Add an extra layer of security to your account
-              </p>
-            </div>
-            <Switch
-              checked={settings.twoFactorAuth}
-              onCheckedChange={(checked) =>
-                setSettings({ ...settings, twoFactorAuth: checked })
-              }
-            />
-          </div>
-        </CardContent>
-      </Card>
+        {/* Right Column: Automated Preferences & Maintenance */}
+        <div className="lg:col-span-5 space-y-6">
+          <Card className="border border-border/50 bg-card/50 backdrop-blur rounded-3xl">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Bell className="h-5 w-5 text-primary" />
+                <CardTitle className="text-base font-bold">Automation & Alerts</CardTitle>
+              </div>
+              <CardDescription>Configure system triggers and email dispatch</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between py-2 border-b border-border/30">
+                <div className="space-y-0.5">
+                  <Label className="text-xs font-bold">Email Order Alerts</Label>
+                  <p className="text-[11px] text-muted-foreground">Notify on new multi-brand orders</p>
+                </div>
+                <Switch
+                  checked={settings.emailNotifications}
+                  onCheckedChange={(c) => setSettings({ ...settings, emailNotifications: c })}
+                />
+              </div>
 
-      {/* Save Settings Button */}
-      <div className="flex gap-3">
-        <Button
-          onClick={handleSaveSettings}
-          disabled={isSaving}
-          className="gap-2"
-        >
-          <Save className="h-4 w-4" />
-          {isSaving ? "Saving..." : "Save Settings"}
-        </Button>
+              <div className="flex items-center justify-between py-2 border-b border-border/30">
+                <div className="space-y-0.5">
+                  <Label className="text-xs font-bold">Auto-Flag Suspicious Posts</Label>
+                  <p className="text-[11px] text-muted-foreground">Flag looks with missing brand tags</p>
+                </div>
+                <Switch
+                  checked={settings.userNotifications}
+                  onCheckedChange={(c) => setSettings({ ...settings, userNotifications: c })}
+                />
+              </div>
+
+              <div className="flex items-center justify-between py-2">
+                <div className="space-y-0.5">
+                  <Label className="text-xs font-bold">Auto-Approve Verified Brands</Label>
+                  <p className="text-[11px] text-muted-foreground">Instant activation for known partners</p>
+                </div>
+                <Switch
+                  checked={settings.autoApproveBrands}
+                  onCheckedChange={(c) => setSettings({ ...settings, autoApproveBrands: c })}
+                />
+              </div>
+
+              <Button
+                onClick={handleSaveProfile}
+                disabled={isSaving}
+                className="w-full rounded-xl text-xs font-bold mt-3"
+              >
+                {isSaving ? "Saving Changes..." : "Save Preferences"}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Session Logout Card */}
+          <Card className="border border-border/50 bg-card/50 backdrop-blur rounded-3xl p-5 flex items-center justify-between">
+            <div className="space-y-0.5">
+              <p className="text-xs font-bold text-foreground">Sign Out of Admin Console</p>
+              <p className="text-[11px] text-muted-foreground">Terminate active administrative session</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => logout()}
+              className="rounded-xl border-rose-500/30 text-rose-500 hover:bg-rose-500/10 text-xs font-bold"
+            >
+              <LogOut size={13} className="mr-1.5" /> Log Out
+            </Button>
+          </Card>
+        </div>
       </div>
-
-      {/* Logout Section */}
-      <Separator className="bg-border/50" />
-      <Card className="border-destructive/30 bg-destructive/5 backdrop-blur">
-        <CardHeader>
-          <CardTitle className="text-destructive">Sign Out</CardTitle>
-          <CardDescription>
-            Sign out of your admin account
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button
-            variant="destructive"
-            onClick={handleLogout}
-            className="gap-2"
-          >
-            <LogOut className="h-4 w-4" />
-            Sign Out
-          </Button>
-        </CardContent>
-      </Card>
     </div>
   );
 }

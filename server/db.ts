@@ -717,7 +717,7 @@ export async function getAllShipments() {
 export async function updateShipmentStatus(
   shipmentId: number,
   data: {
-    status: "pending"|"preparing"|"ready_for_pickup"|"shipped"|"delivered"|"canceled";
+    status: "pending"|"preparing"|"ready_for_pickup"|"shipped"|"delivered"|"canceled"|"refunded";
     carrier?: string; trackingNumber?: string; estimatedDeliveryDate?: string; notes?: string;
   }
 ) {

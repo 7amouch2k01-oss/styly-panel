@@ -278,9 +278,18 @@ export const appRouter = router({
         const token = crypto.randomBytes(32).toString("hex");
         await setPasswordResetToken(input.email.toLowerCase(), token);
 
-        // Origin for reset URL
-        const origin = ctx.req.headers.origin || "https://responsible-harmony-production-8371.up.railway.app";
-        const resetUrl = `${origin}/reset-password?token=${token}`;
+        // Origin for reset URL — prioritize production domain
+        const reqOrigin = ctx.req.headers.origin;
+        const appOrigin = process.env.APP_ORIGIN;
+        let baseUrl = "https://responsible-harmony-production-8371.up.railway.app";
+        
+        if (appOrigin && !appOrigin.includes("localhost")) {
+          baseUrl = appOrigin;
+        } else if (reqOrigin && !reqOrigin.includes("localhost") && !reqOrigin.includes("127.0.0.1")) {
+          baseUrl = reqOrigin;
+        }
+
+        const resetUrl = `${baseUrl.replace(/\/$/, "")}/reset-password?token=${token}`;
 
         sendPasswordResetEmail(input.email, resetUrl).catch((err: any) => {
           console.error("[Auth] Reset password email failed (non-fatal):", err.message);
@@ -324,7 +333,22 @@ export const appRouter = router({
   // Users management
   users: router({
     list: adminProcedure.query(async () => {
-      return await getAllUsers();
+      const { UserModel, UserGradeModel, toPlain } = await import("./mongodb");
+      const users = toPlain(await UserModel.find().sort({ createdAt: -1 }));
+      const grades = toPlain(await UserGradeModel.find());
+      const gradeMap = new Map(grades.map((g: any) => [g.userId, g]));
+
+      return users.map((u: any) => {
+        const gradeInfo: any = gradeMap.get(u.id);
+        return {
+          ...u,
+          grade: gradeInfo?.grade || 1,
+          gradeTitle: gradeInfo?.gradeTitle || "Newcomer",
+          stylePoints: gradeInfo?.stylePoints || 0,
+          commissionRate: gradeInfo?.commissionRate || 0.02,
+          totalEarned: gradeInfo?.totalEarned || 0,
+        };
+      });
     }),
     create: adminProcedure
       .input(z.object({
@@ -535,6 +559,10 @@ export const appRouter = router({
         name: z.string().min(1).optional(),
         country: z.string().min(1).optional(),
         category: z.string().min(1).optional(),
+        logoUrl: z.string().optional(),
+        description: z.string().optional(),
+        website: z.string().optional(),
+        isActive: z.boolean().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         await updateBrand(input.id, input);
@@ -615,6 +643,45 @@ export const appRouter = router({
         else monthMap[r._id] = { month: r._id, revenue: 0, orders: 0, newUsers: r.newUsers };
       }
       return Object.values(monthMap).sort((a: any, b: any) => a.month.localeCompare(b.month));
+    }),
+    financialSummary: adminProcedure.query(async () => {
+      const { OrderModel, CommissionModel } = await import("./mongodb");
+      const [orderStats, refundStats, commissionStats] = await Promise.all([
+        OrderModel.aggregate([
+          { $match: { status: { $ne: "canceled" } } },
+          { $group: { _id: null, totalGross: { $sum: "$totalAmount" }, count: { $sum: 1 } } }
+        ]),
+        OrderModel.aggregate([
+          { $match: { status: "refunded" } },
+          { $group: { _id: null, totalRefunded: { $sum: "$totalAmount" }, count: { $sum: 1 } } }
+        ]),
+        CommissionModel.aggregate([
+          { $group: {
+            _id: null,
+            totalCommissionsEarned: { $sum: "$amount" },
+            totalCommissionsPaid: {
+              $sum: {
+                $cond: [{ $eq: ["$status", "paid"] }, "$amount", 0]
+              }
+            }
+          }}
+        ])
+      ]);
+
+      const grossRevenue = orderStats[0]?.totalGross ?? 0;
+      const totalRefunds = refundStats[0]?.totalRefunded ?? 0;
+      const commissionsPaid = commissionStats[0]?.totalCommissionsPaid ?? 0;
+      const commissionsPending = (commissionStats[0]?.totalCommissionsEarned ?? 0) - commissionsPaid;
+      const netGain = Math.max(0, grossRevenue - totalRefunds - commissionsPaid);
+
+      return {
+        grossRevenue,
+        totalRefunds,
+        refundsCount: refundStats[0]?.count ?? 0,
+        commissionsPaid,
+        commissionsPending,
+        netGain,
+      };
     }),
   }),
 
@@ -1349,12 +1416,12 @@ export const appRouter = router({
         return result;
       }),
 
-    /** Brand or Admin: update a shipment's fulfillment status / tracking */
+    /** Brand or Admin: update a shipment's fulfillment status / tracking / refund */
     updateShipment: publicProcedure
       .input(
         z.object({
           shipmentId: z.number(),
-          status: z.enum(["pending", "preparing", "ready_for_pickup", "shipped", "delivered", "canceled"]),
+          status: z.enum(["pending", "preparing", "ready_for_pickup", "shipped", "delivered", "canceled", "refunded"]),
           carrier: z.string().optional(),
           trackingNumber: z.string().optional(),
           estimatedDeliveryDate: z.string().optional(),
