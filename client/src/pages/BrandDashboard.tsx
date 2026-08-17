@@ -1604,41 +1604,59 @@ function ProfitsTab({ revenueTND, setRevenueTND, activePaidTier, onUpgradeTier, 
         </div>
       </div>
 
-      {/* Influencer Referral Revenue Share Table — Fully Active */}
+      {/* Influencer Referral Revenue Share Table — Real Live Data */}
       <div className="bg-card border border-border/60 p-6 rounded-3xl space-y-4 shadow-sm">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
               <Award className="h-4 w-4 text-primary" /> Influencer Referral Performance
             </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Top performing fashion creators generating sales</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Top performing fashion creators generating sales for your brand</p>
           </div>
           <span className="text-xs font-semibold text-muted-foreground font-mono">Commission Share</span>
         </div>
 
-        <div className="text-xs text-muted-foreground divide-y divide-border/30">
-          <div className="flex justify-between py-2.5 font-bold uppercase tracking-wider text-[10px] text-muted-foreground">
-            <span>Influencer Name</span>
-            <span>Orders Driven</span>
-            <span>Attributed Revenue</span>
-          </div>
-          <div className="flex justify-between py-3 items-center text-foreground font-semibold">
-            <span className="flex items-center gap-2">
-              <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-[10px]">A</div>
-              Amira Belhaj
-            </span>
-            <span className="font-mono text-muted-foreground">45 orders</span>
-            <span className="font-mono font-bold text-foreground">54,000 TND</span>
-          </div>
-          <div className="flex justify-between py-3 items-center text-foreground font-semibold">
-            <span className="flex items-center gap-2">
-              <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-[10px]">Y</div>
-              Yasmine Khelifi
-            </span>
-            <span className="font-mono text-muted-foreground">22 orders</span>
-            <span className="font-mono font-bold text-foreground">10,560 TND</span>
-          </div>
-        </div>
+        {(() => {
+          // Group approved posts by creator
+          const creatorMap = new Map<string, { name: string; avatar: string; orders: number; revenue: number }>();
+          approvedPosts.forEach((p) => {
+            const existing = creatorMap.get(p.posterName) || { name: p.posterName, avatar: p.posterAvatar, orders: 0, revenue: 0 };
+            existing.orders += p.orders || 0;
+            existing.revenue += p.revenue || 0;
+            creatorMap.set(p.posterName, existing);
+          });
+          const creators = Array.from(creatorMap.values()).sort((a, b) => b.revenue - a.revenue);
+
+          if (creators.length === 0) {
+            return (
+              <div className="p-8 bg-muted/20 border border-border/40 rounded-2xl text-center">
+                <p className="text-xs text-muted-foreground">No creator referral orders recorded yet. As influencers post looks tagging your brand, their conversion performance will appear here.</p>
+              </div>
+            );
+          }
+
+          return (
+            <div className="text-xs text-muted-foreground divide-y divide-border/30">
+              <div className="flex justify-between py-2.5 font-bold uppercase tracking-wider text-[10px] text-muted-foreground">
+                <span>Influencer Name</span>
+                <span>Orders Driven</span>
+                <span>Attributed Revenue</span>
+              </div>
+              {creators.map((c) => (
+                <div key={c.name} className="flex justify-between py-3 items-center text-foreground font-semibold">
+                  <span className="flex items-center gap-2">
+                    <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-[10px] overflow-hidden">
+                      {c.avatar ? <img src={c.avatar} alt={c.name} className="w-full h-full object-cover" /> : c.name.charAt(0).toUpperCase()}
+                    </div>
+                    {c.name}
+                  </span>
+                  <span className="font-mono text-muted-foreground">{c.orders} orders</span>
+                  <span className="font-mono font-bold text-foreground">{c.revenue.toLocaleString()} TND</span>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Approved Tagged Posts Section */}
