@@ -78,21 +78,9 @@ export function serveStatic(app: Express) {
   }
 
   app.use(express.static(distPath));
-  
-  // Intercept /admin on consumer port in production to serve admin.html
-  app.use((req, res, next) => {
-    if (
-      process.env.APP_TYPE !== "admin" &&
-      (req.originalUrl === "/admin" || req.originalUrl.startsWith("/admin/"))
-    ) {
-      return res.sendFile(path.resolve(distPath, "admin.html"));
-    }
-    next();
-  });
 
-  // fall through to index.html/admin.html if the file doesn't exist
+  // Fall through to index.html for client-side routing (both consumer & admin)
   app.use("*", (_req, res) => {
-    const htmlFile = process.env.APP_TYPE === "admin" ? "admin.html" : "index.html";
-    res.sendFile(path.resolve(distPath, htmlFile));
+    res.sendFile(path.resolve(distPath, "index.html"));
   });
 }
