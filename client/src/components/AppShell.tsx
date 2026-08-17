@@ -3,7 +3,6 @@ import { useLocation } from "wouter";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import DeveloperSwitcherHub from "./DeveloperSwitcherHub";
 import {
   Home,
   Compass,
@@ -670,7 +669,6 @@ export default function AppShell({
               )}
             </button>
           </nav>
-          <DeveloperSwitcherHub />
         </div>
 
         {/* ── Heart / Likes Drawer ── */}
