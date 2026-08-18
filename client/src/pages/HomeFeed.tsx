@@ -70,7 +70,14 @@ function ImageWithHotspots({ image, mediaType, caption, hotspotsJson, taggedProd
       {mediaType === "video" ? (
         <video src={image} autoPlay loop muted playsInline className="w-full h-full object-cover" />
       ) : (
-        <img src={image} alt={caption} className="w-full h-full object-cover transition-transform duration-500 hover:scale-[1.02] select-none" />
+        <img
+          src={image || "/product_dress_1.png"}
+          alt={caption}
+          className="w-full h-full object-cover transition-transform duration-500 hover:scale-[1.02] select-none"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = "/product_dress_1.png";
+          }}
+        />
       )}
       
       {hotspots.map((hs: any, idx: number) => (
@@ -1394,7 +1401,14 @@ export default function HomeFeed() {
                       <div className="p-2.5 rounded-xl bg-muted/60 border border-border/30 flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 min-w-0">
                           <div className="h-9 w-9 rounded-lg overflow-hidden bg-muted shrink-0 border border-border/30">
-                            <img src={post.taggedProduct.image} className="w-full h-full object-cover" alt="" />
+                            <img
+                              src={post.taggedProduct.image || "/product_dress_1.png"}
+                              className="w-full h-full object-cover"
+                              alt=""
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = "/product_dress_1.png";
+                              }}
+                            />
                           </div>
                           <div className="min-w-0">
                             <p className="font-bold text-[10px] truncate leading-snug">{post.taggedProduct.name}</p>
@@ -1933,7 +1947,14 @@ function PostActions({ post, onLike, onTryOn, onAddToBag, liveBrands, onBrandCli
         <div className="p-3 rounded-2xl bg-muted/50 border border-border/30 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <div className="h-11 w-11 rounded-xl overflow-hidden bg-muted border border-border/30 shrink-0">
-              <img src={post.taggedProduct.image} className="w-full h-full object-cover" alt="" />
+              <img
+                src={post.taggedProduct.image || "/product_dress_1.png"}
+                className="w-full h-full object-cover"
+                alt=""
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = "/product_dress_1.png";
+                }}
+              />
             </div>
             <div className="min-w-0">
               <p className="font-bold text-xs truncate">{post.taggedProduct.name}</p>

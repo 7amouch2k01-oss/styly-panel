@@ -33,25 +33,38 @@ async function sendEmail(to: string, subject: string, html: string) {
     defaultBrevoKey;
   
   if (brevoKey) {
-    try {
-      const resp = await fetch("https://api.brevo.com/v3/smtp/email", {
-        method: "POST",
-        headers: {
-          "accept": "application/json",
-          "api-key": brevoKey,
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          sender: { name: senderName, email: senderEmail },
-          to: [{ email: to }],
-          subject,
-          htmlContent: html,
-        }),
-      });
-      if (resp.ok) { console.log(`[Email] ✅ Sent via Brevo HTTPS API`); return; }
-      const err = await resp.json().catch(() => ({ message: "unknown" }));
-      console.error(`[Email] Brevo error ${resp.status}:`, err.message || JSON.stringify(err));
-    } catch (e: any) { console.error(`[Email] Brevo fetch failed:`, e.message); }
+    const candidateSenders = Array.from(new Set([
+      senderEmail,
+      "7amouch2k01@gmail.com",
+      "mistymo0471@gmail.com",
+    ])).filter(Boolean);
+
+    for (const fromEmail of candidateSenders) {
+      try {
+        const resp = await fetch("https://api.brevo.com/v3/smtp/email", {
+          method: "POST",
+          headers: {
+            "accept": "application/json",
+            "api-key": brevoKey,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            sender: { name: senderName, email: fromEmail },
+            to: [{ email: to }],
+            subject,
+            htmlContent: html,
+          }),
+        });
+        if (resp.ok) {
+          console.log(`[Email] ✅ Sent via Brevo HTTPS API using sender: ${fromEmail}`);
+          return;
+        }
+        const err = await resp.json().catch(() => ({ message: "unknown" }));
+        console.warn(`[Email] Brevo attempt with sender ${fromEmail} failed (${resp.status}):`, err.message || JSON.stringify(err));
+      } catch (e: any) {
+        console.error(`[Email] Brevo fetch failed with sender ${fromEmail}:`, e.message);
+      }
+    }
   }
 
   // 2. Try SendGrid (supports Gmail single sender verification over HTTPS port 443)
