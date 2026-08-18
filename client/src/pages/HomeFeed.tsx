@@ -225,11 +225,11 @@ function pushNotification(notif: {
   } catch { /* ignore */ }
 }
 
-/** Renders a caption string, turning @mentions into orange clickable spans */
+/** Renders a caption string, turning ANY @mention into orange clickable spans */
 function renderCaption(
   caption: string,
   liveBrands: Array<{ id: number; name: string }>,
-  onBrandClick: (brand: { id: number; name: string }) => void
+  onBrandClick: (brand: { id: number; name: string; isUnregistered?: boolean }) => void
 ): React.ReactNode {
   const parts = caption.split(/(@[\w]+)/g);
   return parts.map((part, i) => {
@@ -239,16 +239,21 @@ function renderCaption(
         b => b.name.toLowerCase().replace(/\s+/g, "") === slug ||
              b.name.toLowerCase() === slug
       );
+      const brandToPass = matched || {
+        id: -1,
+        name: part.slice(1),
+        isUnregistered: true,
+      };
+
       return (
         <button
           key={i}
           type="button"
-          onClick={() => matched && onBrandClick(matched)}
-          className={`font-bold transition-colors ${
-            matched
-              ? "text-primary hover:text-primary/80 cursor-pointer"
-              : "text-primary/70"
-          }`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onBrandClick(brandToPass);
+          }}
+          className="font-bold text-primary hover:text-primary/80 transition-colors cursor-pointer inline-flex items-center"
         >
           {part}
         </button>
@@ -265,13 +270,18 @@ function BrandProfileModal({
   onClose,
   onFollow,
 }: {
-  brand: { id: number; name: string };
+  brand: { id: number; name: string; isUnregistered?: boolean };
   posts: Post[];
   onClose: () => void;
   onFollow: () => void;
 }) {
+  const brandSlug = brand.name.replace(/\s+/g, "").toLowerCase();
   const brandPosts = posts
-    .filter(p => p.taggedProduct?.brandId === brand.id || p.creator.isBrand)
+    .filter(p => 
+      (brand.id > 0 && p.taggedProduct?.brandId === brand.id) ||
+      p.caption?.toLowerCase().includes(`@${brandSlug}`) ||
+      p.taggedProduct?.name?.toLowerCase().includes(brand.name.toLowerCase())
+    )
     .slice(0, 6);
 
   return (
@@ -293,23 +303,34 @@ function BrandProfileModal({
           </div>
           <div className="flex items-end justify-between">
             <div>
-              <h2 className="font-extrabold text-base text-foreground">{brand.name}</h2>
-              <p className="text-xs text-muted-foreground">@{brand.name.replace(/\s+/g, "").toLowerCase()} · Brand</p>
+              <h2 className="font-extrabold text-base text-foreground flex items-center gap-1.5">
+                {brand.name}
+                {!brand.isUnregistered && <CheckCircle className="h-3.5 w-3.5 text-primary fill-primary shrink-0" />}
+              </h2>
+              <p className="text-xs text-muted-foreground">@{brandSlug} · {brand.isUnregistered ? "Community Tag" : "Verified Brand"}</p>
             </div>
             <button
               onClick={() => { onFollow(); onClose(); }}
               className="h-9 px-4 rounded-full bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-colors shadow-sm shadow-primary/30"
             >
-              Follow Brand
+              {brand.isUnregistered ? "Follow Tag" : "Follow Brand"}
             </button>
           </div>
         </div>
+
+        {brand.isUnregistered && (
+          <div className="mx-4 mt-2 p-2.5 rounded-xl bg-muted/40 border border-border/40 text-[11px] text-muted-foreground flex items-center gap-2">
+            <Tag className="h-3.5 w-3.5 text-primary shrink-0" />
+            <span>This brand isn't registered on Styly yet. Posts tagged with @{brandSlug} will be linked as soon as the brand joins!</span>
+          </div>
+        )}
+
         {/* Posts grid */}
         <div className="flex-1 overflow-y-auto p-4 no-scrollbar">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2.5">Latest from {brand.name}</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2.5">Tagged Community Looks</p>
           {brandPosts.length === 0 ? (
             <div className="py-8 text-center">
-              <p className="text-xs text-muted-foreground">No posts yet from this brand.</p>
+              <p className="text-xs text-muted-foreground">No posts yet tagging this brand.</p>
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-1.5">
@@ -1079,7 +1100,7 @@ export default function HomeFeed() {
   // Post Composer
   const [showComposer, setShowComposer] = useState(false);
   // Brand profile modal opened via @mention tap
-  const [brandProfileModal, setBrandProfileModal] = useState<{ id: number; name: string } | null>(null);
+  const [brandProfileModal, setBrandProfileModal] = useState<{ id: number; name: string; isUnregistered?: boolean } | null>(null);
 
   useEffect(() => {
     const handler = () => setShowComposer(true);
