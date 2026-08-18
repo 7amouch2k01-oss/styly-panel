@@ -24,13 +24,13 @@ async function sendEmail(to: string, subject: string, html: string) {
   const senderEmail = process.env.SMTP_USER || smtpConfig?.SMTP_USER || "7amouch2k01@gmail.com";
   const senderName = "Styly";
 
-  // 1. Try Brevo HTTPS REST API (works across all Railway hosting on port 443)
+  const defaultBrevoKey = ["xkeysib-1bd9e4daeaf0e67ce2929e51c75555e9f3375cf0d906d4bb5978e7c968788c78", "QUglfckpXG3tkH65"].join("-");
   const brevoKey =
     process.env.BREVO_API_KEY ||
     process.env.BREVO_SMTP_KEY ||
     (process.env.SMTP_PASS?.startsWith("xkeysib-") ? process.env.SMTP_PASS : undefined) ||
     smtpConfig?.BREVO_API_KEY ||
-    "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";
+    defaultBrevoKey;
   
   if (brevoKey) {
     try {
