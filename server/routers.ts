@@ -39,11 +39,18 @@ import {
   getGradeLeaderboard,
   getBrandLevel,
   addBrandXP,
-  // Commissions
+  // Commissions & Withdrawals
   getUserCommissions,
   getBrandCommissions,
   createCommission,
   updateCommissionStatus,
+  getUserCommissionFinancials,
+  getBrandFinancials,
+  createWithdrawalRequest,
+  getAllWithdrawals,
+  getUserWithdrawals,
+  getBrandWithdrawals,
+  updateWithdrawalStatus,
   // Profile, Password Reset & Notifications
   getUserDeliveryProfile,
   updateDeliveryProfile,
@@ -56,6 +63,13 @@ import {
   markNotificationsRead,
   getUnreadCountByUser,
   getUnreadCountByBrand,
+  // Follow system
+  followTarget,
+  unfollowTarget,
+  isFollowing,
+  getFollowing,
+  getFollowers,
+  getFollowCounts,
 } from "./db";
 import { hashPassword, verifyPassword } from "./authHelpers";
 import { sdk } from "./_core/sdk";
@@ -394,9 +408,25 @@ export const appRouter = router({
     updateRole: adminProcedure
       .input(z.object({ userId: z.number(), role: z.enum(["admin", "user"]) }))
       .mutation(async ({ input, ctx }) => {
+        const { updateUserRole, updateUserPermissions } = await import("./db");
         await updateUserRole(input.userId, input.role);
+        if (input.role === "admin") {
+          // Default permissions for new admin
+          await updateUserPermissions(input.userId, ["dashboard", "users", "products", "orders", "analytics", "brands", "settings"]);
+        }
         await logActivity(ctx.user.id, "Updated User Role", "user", input.userId, `Changed role of user #${input.userId} to ${input.role}`);
         return { success: true, message: "User role updated" };
+      }),
+    updatePermissions: adminProcedure
+      .input(z.object({
+        userId: z.number(),
+        permissions: z.array(z.string()),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { updateUserPermissions } = await import("./db");
+        await updateUserPermissions(input.userId, input.permissions);
+        await logActivity(ctx.user.id, "Updated Admin Permissions", "user", input.userId, `Updated permissions for team member #${input.userId}`);
+        return { success: true, message: "Permissions updated successfully" };
       }),
     updateStatus: adminProcedure
       .input(z.object({ userId: z.number(), status: z.enum(["active", "inactive", "banned"]) }))
@@ -404,6 +434,14 @@ export const appRouter = router({
         await updateUserStatus(input.userId, input.status);
         await logActivity(ctx.user.id, "Updated User Status", "user", input.userId, `Changed status of user #${input.userId} to ${input.status}`);
         return { success: true, message: "User status updated" };
+      }),
+    delete: adminProcedure
+      .input(z.object({ userId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const { deleteUser } = await import("./db");
+        await deleteUser(input.userId);
+        await logActivity(ctx.user.id, "Deleted User", "user", input.userId, `Deleted user account #${input.userId}`);
+        return { success: true, message: "User deleted" };
       }),
   }),
 
@@ -933,10 +971,51 @@ export const appRouter = router({
       .query(async () => {
         const posts = await getPosts();
         const users = await getAllUsers();
-        return posts.map((p: any) => ({
-          ...p,
-          author: users.find((u: any) => u.id === p.userId) || null,
-        }));
+        const { OrderItemModel, toPlain } = await import("./mongodb");
+        
+        // Fetch all order items once to compute sales per product/post
+        const orderItems = toPlain(await OrderItemModel.find());
+
+        return posts.map((p: any) => {
+          const author = users.find((u: any) => u.id === p.userId) || null;
+          
+          // Gather all tagged items (taggedProduct + taggedProducts list + hotspots)
+          const allItems: any[] = [];
+          if (p.taggedProducts && Array.isArray(p.taggedProducts) && p.taggedProducts.length > 0) {
+            p.taggedProducts.forEach((prod: any) => {
+              if (prod && !allItems.some(it => (it.id && it.id === prod.id) || (it.name && it.name === prod.name))) {
+                allItems.push(prod);
+              }
+            });
+          }
+          if (p.taggedProduct && !allItems.some(it => (it.id && it.id === p.taggedProduct.id) || (it.name && it.name === p.taggedProduct.name))) {
+            allItems.unshift(p.taggedProduct);
+          }
+
+          // Calculate actual orders and revenue converted from items in this post
+          const itemIds = allItems.map(it => it.id).filter(Boolean);
+          const matchedOrderItems = orderItems.filter((oi: any) => itemIds.includes(oi.deviceId));
+          
+          const realOrdersCount = matchedOrderItems.length;
+          const realRevenue = matchedOrderItems.reduce((sum: number, oi: any) => sum + (oi.priceAtPurchase * oi.quantity), 0);
+
+          // Simulated fallback baseline derived from likes if no direct DB orders yet
+          const likesCount = p.likes || 0;
+          const simOrders = Math.floor(likesCount * 0.05);
+          const firstPrice = allItems[0]?.price || 120;
+          const simRevenue = simOrders * firstPrice;
+
+          const totalOrdersPassed = realOrdersCount > 0 ? realOrdersCount : simOrders;
+          const totalMoneyGained = realRevenue > 0 ? realRevenue : simRevenue;
+
+          return {
+            ...p,
+            author,
+            itemsForSale: allItems,
+            totalOrdersPassed,
+            totalMoneyGained,
+          };
+        });
       }),
     updateStatus: adminProcedure
       .input(z.object({
@@ -970,7 +1049,14 @@ export const appRouter = router({
           price: z.number(),
           image: z.string(),
           brandId: z.number().nullable().optional()
-        }),
+        }).optional().nullable(),
+        taggedProducts: z.array(z.object({
+          id: z.number(),
+          name: z.string(),
+          price: z.number(),
+          image: z.string(),
+          brandId: z.number().nullable().optional()
+        })).optional(),
         hotspots: z.array(z.object({
           x: z.number(),
           y: z.number(),
@@ -994,7 +1080,8 @@ export const appRouter = router({
 
         // ── Auto-detect @BrandName mentions in caption ──
         // Priority: explicit taggedProduct.brandId > @mention in caption
-        let resolvedBrandId: number | null = input.taggedProduct?.brandId ?? null;
+        const firstProduct = input.taggedProduct || (input.taggedProducts?.[0] ?? null);
+        let resolvedBrandId: number | null = firstProduct?.brandId ?? null;
         let approvalStatus: "pending" | "grey" = "grey";
         let unregisteredBrand: string | null = input.unregisteredBrand ?? null;
 
@@ -1030,14 +1117,15 @@ export const appRouter = router({
         }
 
         await createPost(userId, {
-          image:         input.imageUrl,
-          caption:       input.caption,
-          category:      input.category,
-          mediaType:     input.mediaType,
+          image:          input.imageUrl,
+          caption:        input.caption,
+          category:       input.category,
+          mediaType:      input.mediaType,
           creator,
-          taggedProduct: input.taggedProduct,
-          hotspots:      input.hotspots || [],
-          brandId:       resolvedBrandId,
+          taggedProduct:  firstProduct,
+          taggedProducts: input.taggedProducts || (firstProduct ? [firstProduct] : []),
+          hotspots:       input.hotspots || [],
+          brandId:        resolvedBrandId,
           unregisteredBrand,
           approvalStatus,
         });
@@ -1200,6 +1288,131 @@ export const appRouter = router({
   }),
 
   // ─────────────────────────────────────────────────────────────
+  // WITHDRAWALS & PROFITS (User Commissions & Brand Earnings)
+  // ─────────────────────────────────────────────────────────────
+  withdrawals: router({
+    // User Financials & Balance
+    userFinancials: protectedProcedure.query(async ({ ctx }) => {
+      const userId = ctx.user.id;
+      return await getUserCommissionFinancials(userId);
+    }),
+
+    // User Withdrawal Request
+    requestUserWithdrawal: protectedProcedure
+      .input(z.object({
+        amount: z.number().min(5, "Minimum withdrawal amount is 5 TND"),
+        paymentMethod: z.enum(["d17", "flouci", "bank_transfer", "cash_pickup"]),
+        paymentDetails: z.object({
+          phone: z.string().optional(),
+          flouciNumber: z.string().optional(),
+          rib: z.string().optional(),
+          bankName: z.string().optional(),
+          beneficiaryName: z.string().optional(),
+          notes: z.string().optional(),
+        }),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const user = ctx.user;
+        const result = await createWithdrawalRequest({
+          userId: user.id,
+          type: "user",
+          requesterName: user.name || "Styly Creator",
+          requesterEmail: user.email || "",
+          amount: input.amount,
+          paymentMethod: input.paymentMethod,
+          paymentDetails: input.paymentDetails,
+        });
+        return {
+          success: true,
+          message: "Withdrawal request submitted successfully! An admin will review and process your payout.",
+          withdrawal: result
+        };
+      }),
+
+    // User's own withdrawals list
+    myWithdrawals: protectedProcedure.query(async ({ ctx }) => {
+      const userId = ctx.user.id;
+      return await getUserWithdrawals(userId);
+    }),
+
+    // Brand Financials & Profits
+    brandFinancials: publicProcedure
+      .input(z.object({ brandId: z.number() }))
+      .query(async ({ input }) => {
+        return await getBrandFinancials(input.brandId);
+      }),
+
+    // Brand Withdrawal Request
+    requestBrandWithdrawal: protectedProcedure
+      .input(z.object({
+        brandId: z.number(),
+        amount: z.number().min(10, "Minimum brand payout request is 10 TND"),
+        paymentMethod: z.enum(["d17", "flouci", "bank_transfer", "cash_pickup"]),
+        paymentDetails: z.object({
+          phone: z.string().optional(),
+          flouciNumber: z.string().optional(),
+          rib: z.string().optional(),
+          bankName: z.string().optional(),
+          beneficiaryName: z.string().optional(),
+          notes: z.string().optional(),
+        }),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const user = ctx.user;
+        const result = await createWithdrawalRequest({
+          userId: user.id,
+          brandId: input.brandId,
+          type: "brand",
+          requesterName: user.name || "Brand Partner",
+          requesterEmail: user.email || "",
+          amount: input.amount,
+          paymentMethod: input.paymentMethod,
+          paymentDetails: input.paymentDetails,
+        });
+        return {
+          success: true,
+          message: "Brand payout request submitted successfully!",
+          withdrawal: result
+        };
+      }),
+
+    // Brand Withdrawals History
+    brandWithdrawals: publicProcedure
+      .input(z.object({ brandId: z.number() }))
+      .query(async ({ input }) => {
+        return await getBrandWithdrawals(input.brandId);
+      }),
+
+    // Admin List all withdrawals (with optional type/status filters)
+    adminList: adminProcedure
+      .input(z.object({
+        type: z.string().optional(),
+        status: z.string().optional(),
+      }).optional())
+      .query(async ({ input }) => {
+        return await getAllWithdrawals(input);
+      }),
+
+    // Admin Update status (Approve, Complete/Pay, Reject)
+    adminUpdateStatus: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        status: z.enum(["pending", "approved", "completed", "rejected"]),
+        adminNotes: z.string().optional(),
+        rejectionReason: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const updated = await updateWithdrawalStatus(
+          input.id,
+          input.status,
+          input.adminNotes,
+          input.rejectionReason
+        );
+        return { success: true, withdrawal: updated };
+      }),
+  }),
+
+  // ─────────────────────────────────────────────────────────────
   // DEV SIMULATION (Admin-restricted)
   // ─────────────────────────────────────────────────────────────
   devSimulation: router({
@@ -1288,6 +1501,54 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         await markNotificationsRead(input.ids);
         return { success: true };
+      }),
+  }),
+
+  // ─── FOLLOW SYSTEM ────────────────────────────────────────────────────────
+  follows: router({
+    follow: protectedProcedure
+      .input(z.object({
+        targetType: z.enum(["user", "brand"]),
+        targetId: z.number(),
+        targetName: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const result = await followTarget(ctx.user.id, input.targetType, input.targetId, input.targetName);
+        return { success: true, follow: result };
+      }),
+
+    unfollow: protectedProcedure
+      .input(z.object({
+        targetType: z.enum(["user", "brand"]),
+        targetId: z.number(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        return await unfollowTarget(ctx.user.id, input.targetType, input.targetId);
+      }),
+
+    checkIsFollowing: protectedProcedure
+      .input(z.object({ targetType: z.enum(["user", "brand"]), targetId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const following = await isFollowing(ctx.user.id, input.targetType, input.targetId);
+        return { following };
+      }),
+
+    myFollowing: protectedProcedure.query(async ({ ctx }) => {
+      return await getFollowing(ctx.user.id);
+    }),
+
+    myFollowers: protectedProcedure.query(async ({ ctx }) => {
+      return await getFollowers("user", ctx.user.id);
+    }),
+
+    myFollowCounts: protectedProcedure.query(async ({ ctx }) => {
+      return await getFollowCounts(ctx.user.id);
+    }),
+
+    brandFollowers: publicProcedure
+      .input(z.object({ brandId: z.number() }))
+      .query(async ({ input }) => {
+        return await getFollowers("brand", input.brandId);
       }),
   }),
 
@@ -1575,6 +1836,136 @@ export const appRouter = router({
           revenue: Math.round(r.revenue),
           orders: r.orders,
         }));
+      }),
+  }),
+
+  // ─── STYLISTA AI CHAT ────────────────────────────────────────────────────────
+  stylista: router({
+    chat: publicProcedure
+      .input(z.object({
+        messages: z.array(z.object({
+          role: z.enum(["user", "model"]),
+          content: z.string(),
+        })),
+        userId: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+        if (!GEMINI_API_KEY) {
+          // Fallback smart response without API key
+          const lastMsg = input.messages[input.messages.length - 1]?.content?.toLowerCase() || "";
+          let reply = "Hey! I'm Styly AI 👗 I'm here to help you build the perfect outfit. What's the occasion you're dressing for?";
+          if (lastMsg.includes("casual")) reply = "Love casual vibes! Are you more into streetwear, minimalist, or boho? Also, what colours do you usually reach for?";
+          else if (lastMsg.includes("formal") || lastMsg.includes("office")) reply = "Sharp choice! For formal looks, I recommend clean lines and neutral palettes. Would you like classic suits, smart-casual, or full formal?";
+          else if (lastMsg.includes("date")) reply = "Date night outfit! 🔥 Do you want something elegant and confident, or more relaxed and stylish? And what's your colour preference?";
+          else if (lastMsg.includes("street") || lastMsg.includes("urban")) reply = "Streetwear it is! Oversized silhouettes, bold graphics, cargo trousers? Tell me more about your go-to brands or aesthetic.";
+          else if (lastMsg.includes("colour") || lastMsg.includes("color") || lastMsg.includes("neutral") || lastMsg.includes("bold")) reply = "Great taste! Based on your style vibe and colour preference, I can curate 3 outfits for you. What's the main occasion — work, going out, or everyday wear?";
+          else if (lastMsg.includes("yes") || lastMsg.includes("sure") || lastMsg.includes("ok")) reply = "Perfect! Let me put together some outfit ideas for you. What's your budget range roughly — affordable (under 300 TND), mid-range (300–800 TND), or premium (800+ TND)?";
+          else if (lastMsg.includes("budget") || lastMsg.includes("price") || lastMsg.includes("tnd") || lastMsg.includes("cheap") || lastMsg.includes("expensive")) reply = "Noted! I'll curate outfits that fit your budget. Type **show me outfits** and I'll generate your personalised picks! ✨";
+          else if (lastMsg.includes("show") || lastMsg.includes("generate") || lastMsg.includes("outfit")) reply = "🎨 **GENERATE_OUTFITS** Based on your preferences, here are 3 curated looks for you!";
+          else reply = "Tell me a bit more about your style — are you into casual, formal, streetwear, date night looks? I'll build your perfect outfit! 👗";
+          return { reply, generateOutfits: reply.includes("GENERATE_OUTFITS") };
+        }
+
+        // Build Gemini-compatible history
+        const systemPrompt = `You are Stylista, a smart and friendly AI fashion stylist for Styly — a fashion platform for Tunisia and North Africa.
+Your job is to have a natural conversation to understand the user's style preferences, then recommend outfits.
+Ask follow-up questions naturally. Keep messages short (1-3 sentences max). Use emojis occasionally.
+Available brands on platform: Urban Threads, Kenzo Luxury, Nike, Zara, H&M, Massimo Dutti, Mango.
+When you have enough info (style vibe, colour, occasion, budget), end your message with the exact token [GENERATE_OUTFITS] to signal outfit generation.
+Respond only in the same language the user writes in (French or English).`;
+
+        const historyForGemini = input.messages.slice(0, -1).map(m => ({
+          role: m.role,
+          parts: [{ text: m.content }],
+        }));
+
+        const lastMessage = input.messages[input.messages.length - 1]?.content || "";
+
+        try {
+          const res = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                system_instruction: { parts: [{ text: systemPrompt }] },
+                contents: [
+                  ...historyForGemini,
+                  { role: "user", parts: [{ text: lastMessage }] },
+                ],
+                generationConfig: {
+                  maxOutputTokens: 300,
+                  temperature: 0.85,
+                },
+              }),
+            }
+          );
+
+          if (!res.ok) {
+            const err = await res.text();
+            console.error("[Stylista Gemini Error]", err);
+            return { reply: "Sorry, I had a connection issue. Could you try again? 😊", generateOutfits: false };
+          }
+
+          const data = await res.json() as any;
+          const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Tell me more about your style! 👗";
+          const generateOutfits = reply.includes("[GENERATE_OUTFITS]");
+          return { reply: reply.replace("[GENERATE_OUTFITS]", "").trim(), generateOutfits };
+        } catch (e: any) {
+          console.error("[Stylista fetch error]", e.message);
+          return { reply: "Connection issue — let me try again. What style are you going for?", generateOutfits: false };
+        }
+      }),
+
+    getOutfitSuggestions: publicProcedure
+      .input(z.object({
+        style: z.string(),
+        color: z.string(),
+        occasion: z.string().optional(),
+        budget: z.string().optional(),
+      }))
+      .query(async ({ input }) => {
+        // Get real products from DB and return them as outfit suggestions
+        const { DeviceModel } = await import("./mongodb");
+        const products = await DeviceModel.find({ isActive: { $ne: false } }).limit(20).lean();
+        
+        // Filter and group into outfit combos (3 random combos)
+        const shuffled = [...products].sort(() => Math.random() - 0.5);
+        
+        const outfits = [];
+        for (let i = 0; i < Math.min(3, Math.floor(shuffled.length / 2)); i++) {
+          const item1 = shuffled[i * 2];
+          const item2 = shuffled[i * 2 + 1];
+          if (!item1) continue;
+          const items = [item1, item2].filter(Boolean);
+          const total = items.reduce((s: number, p: any) => s + (p.price || 0), 0);
+          outfits.push({
+            id: i + 1,
+            name: `${input.style} Look ${i + 1}`,
+            desc: items.map((p: any) => p.name).join(" + "),
+            price: total,
+            image: (item1 as any).imageUrl || "/product_dress_1.png",
+            items: items.map((p: any) => ({
+              id: p.id,
+              name: p.name,
+              price: p.price,
+              image: p.imageUrl || "/product_dress_1.png",
+              brandId: p.brandId,
+            })),
+          });
+        }
+
+        // Fallback if no products in DB
+        if (outfits.length === 0) {
+          outfits.push(
+            { id: 1, name: `${input.style} Essential`, desc: "Classic outfit curated for your vibe", price: 349, image: "/product_dress_1.png", items: [] },
+            { id: 2, name: `${input.style} Statement`, desc: "Bold, confident, on-trend", price: 628, image: "/product_jacket.png", items: [] },
+            { id: 3, name: `${input.style} Everyday`, desc: "Comfortable, stylish, effortless", price: 189, image: "/product_dress_1.png", items: [] },
+          );
+        }
+
+        return outfits;
       }),
   }),
 

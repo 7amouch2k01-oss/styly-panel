@@ -54,6 +54,8 @@ const UserSchema = new Schema({
   email:                { type: String, sparse: true },
   loginMethod:          String,
   role:                 { type: String, enum: ["user", "admin"], default: "user" },
+  isOwner:              { type: Boolean, default: false },
+  permissions:          { type: [String], default: ["dashboard", "users", "products", "orders", "analytics", "brands", "settings"] },
   status:               { type: String, enum: ["active", "inactive", "banned"], default: "active" },
   passwordHash:         String,
   avatarUrl:            String,
@@ -201,8 +203,9 @@ const PostSchema = new Schema({
   comments:       { type: Number, default: 0 },
   status:         { type: String, enum: ["active", "hidden", "flagged"], default: "active" },
   approvalStatus: { type: String, enum: ["pending", "green", "red", "grey"], default: "pending" },
-  // ─ Structured product tag (not a JSON string) ─
+  // ─ Structured product tag(s) (single product + full outfit list) ─
   taggedProduct:  { type: TaggedProductSchema, default: null },
+  taggedProducts: { type: [TaggedProductSchema], default: [] },
   // ─ Creator info stored as object ─
   creator: {
     name:     String,
@@ -219,6 +222,21 @@ const PostSchema = new Schema({
 }, { collection: "posts" });
 
 export const PostModel = mongoose.models.Post || model("Post", PostSchema);
+
+// ─── FOLLOWS ──────────────────────────────────────────────────────────────────
+
+const FollowSchema = new Schema({
+  id:         { type: Number, unique: true, index: true },
+  followerId: { type: Number, required: true, index: true },
+  targetType: { type: String, enum: ["user", "brand"], required: true },
+  targetId:   { type: Number, required: true, index: true },
+  targetName: String,
+  createdAt:  { type: String, default: () => new Date().toISOString() },
+}, { collection: "follows" });
+
+FollowSchema.index({ followerId: 1, targetType: 1, targetId: 1 }, { unique: true });
+
+export const FollowModel = mongoose.models.Follow || model("Follow", FollowSchema);
 
 // ─── BAG ITEMS ────────────────────────────────────────────────────────────────
 
@@ -349,6 +367,35 @@ const AnalyticsSnapshotSchema = new Schema({
 }, { collection: "analyticsSnapshots" });
 
 export const AnalyticsSnapshotModel = mongoose.models.AnalyticsSnapshot || model("AnalyticsSnapshot", AnalyticsSnapshotSchema);
+
+// ─── WITHDRAWALS (Profits / Payouts) ──────────────────────────────────────────
+
+const WithdrawalSchema = new Schema({
+  id:              { type: Number, unique: true, index: true },
+  userId:          { type: Number, required: true, index: true },
+  brandId:         { type: Number, default: null, index: true },
+  type:            { type: String, enum: ["user", "brand"], required: true },
+  requesterName:   { type: String, required: true },
+  requesterEmail:  { type: String, required: true },
+  amount:          { type: Number, required: true },
+  paymentMethod:   { type: String, enum: ["d17", "flouci", "bank_transfer", "cash_pickup"], default: "d17" },
+  paymentDetails: {
+    phone:           String,
+    flouciNumber:    String,
+    rib:             String,
+    bankName:        String,
+    beneficiaryName: String,
+    notes:           String,
+  },
+  status:          { type: String, enum: ["pending", "approved", "completed", "rejected"], default: "pending" },
+  adminNotes:      String,
+  rejectionReason: String,
+  createdAt:       { type: String, default: () => new Date().toISOString() },
+  updatedAt:       { type: String, default: () => new Date().toISOString() },
+  processedAt:     String,
+}, { collection: "withdrawals" });
+
+export const WithdrawalModel = mongoose.models.Withdrawal || model("Withdrawal", WithdrawalSchema);
 
 // ─── Helper: convert Mongoose doc to plain object with numeric id ─────────────
 export function toPlain(doc: any): any {

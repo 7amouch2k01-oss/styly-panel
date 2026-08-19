@@ -9,11 +9,11 @@ import { connectMongo, toPlain, nextId,
   UserModel, BrandModel, DeviceModel, OrderModel, OrderItemModel,
   ShipmentModel, PostModel, BagItemModel, MannequinProfileModel,
   BrandStoreModel, UserGradeModel, BrandLevelModel, CommissionModel,
-  ActivityLogModel, NotificationModel
+  WithdrawalModel, ActivityLogModel, NotificationModel, FollowModel
 } from "./mongodb.js";
 
 // Re-export Mongoose models and helpers needed by routers
-export { ShipmentModel, OrderModel, toPlain };
+export { ShipmentModel, OrderModel, WithdrawalModel, CommissionModel, toPlain };
 
 // ─────────────────────────────────────────────────────────────
 // INIT (called once at server startup)
@@ -115,6 +115,10 @@ export async function updateUserStatus(id: number, status: "active" | "inactive"
 
 export async function updateUserRole(id: number, role: "user" | "admin") {
   await UserModel.updateOne({ id }, { role, updatedAt: new Date().toISOString() });
+}
+
+export async function updateUserPermissions(id: number, permissions: string[]) {
+  await UserModel.updateOne({ id }, { permissions, updatedAt: new Date().toISOString() });
 }
 
 export async function deleteUser(id: number) {
@@ -283,7 +287,14 @@ export async function createPost(arg1: any, arg2?: any) {
 
   // Extract brandId from taggedProduct (top-level for fast querying)
   const taggedProduct = postData.taggedProduct || null;
-  const brandId: number | null = taggedProduct?.brandId ?? postData.brandId ?? null;
+  // Multi-item outfit support — array of all tagged products
+  const taggedProducts = Array.isArray(postData.taggedProducts) && postData.taggedProducts.length > 0
+    ? postData.taggedProducts
+    : taggedProduct ? [taggedProduct] : [];
+
+  const brandId: number | null = taggedProduct?.brandId
+    ?? (taggedProducts[0]?.brandId ?? null)
+    ?? postData.brandId ?? null;
 
   // Hotspots — accept array of objects directly
   const hotspots = Array.isArray(postData.hotspots)
@@ -307,6 +318,7 @@ export async function createPost(arg1: any, arg2?: any) {
     status: postData.status || "active",
     approvalStatus: postData.approvalStatus || "pending",
     taggedProduct,
+    taggedProducts,
     creator,
     hotspots,
     createdAt: now,
@@ -337,7 +349,63 @@ export async function updatePostStatus(id: number, status: "active" | "hidden" |
 }
 
 export async function updatePostApproval(id: number, approvalStatus: "pending" | "green" | "red" | "grey") {
+  const post = await PostModel.findOne({ id });
   await PostModel.updateOne({ id }, { approvalStatus, updatedAt: new Date().toISOString() });
+
+  if (post && approvalStatus === "green") {
+    // 1. Award creator commission reward and points
+    const productPrice = post.taggedProduct?.price || 120;
+    const userGrade = await getUserGrade(post.userId);
+    const rate = userGrade?.commissionRate || 0.05;
+    const commissionAmount = Math.max(5, Math.round(productPrice * rate * 10) / 10);
+
+    // Check if commission for this approved post already exists
+    const existing = await CommissionModel.findOne({ postId: id, userId: post.userId });
+    if (!existing) {
+      const now = new Date().toISOString();
+      const commId = await nextId("commissions");
+      const comm = new CommissionModel({
+        id: commId,
+        userId: post.userId,
+        brandId: post.brandId || undefined,
+        postId: id,
+        amount: commissionAmount,
+        description: `Creator commission for approved post #${id} tagging "${post.taggedProduct?.name || 'Brand Product'}"`,
+        status: "approved",
+        createdAt: now,
+        updatedAt: now,
+      });
+      await comm.save();
+
+      // Add Style Points XP
+      await addStylePoints(post.userId, 50, `Post #${id} approved by brand`);
+
+      // Update UserGrade totalEarned
+      await UserGradeModel.updateOne(
+        { userId: post.userId },
+        { $inc: { totalEarned: commissionAmount } }
+      );
+
+      // Create in-app notification for creator
+      const notifId = await nextId("notifications");
+      const notif = new NotificationModel({
+        id: notifId,
+        userId: post.userId,
+        type: "brand_approval",
+        title: "Post Tag Approved! 🌟",
+        message: `Your outfit post was approved! You earned a ${commissionAmount} TND commission and 50 Style Points.`,
+        createdAt: now,
+      });
+      await notif.save();
+    } else if (existing.status === "pending") {
+      await CommissionModel.updateOne({ id: existing.id }, { status: "approved", updatedAt: new Date().toISOString() });
+    }
+  } else if (post && approvalStatus === "red") {
+    await CommissionModel.updateMany(
+      { postId: id, userId: post.userId, status: "pending" },
+      { status: "rejected", updatedAt: new Date().toISOString() }
+    );
+  }
 }
 
 export async function deletePost(id: number) {
@@ -609,6 +677,217 @@ export async function createCommission(data: {
 
 export async function updateCommissionStatus(id: number, status: "approved" | "paid" | "rejected") {
   await CommissionModel.updateOne({ id }, { status, updatedAt: new Date().toISOString() });
+}
+
+// ─────────────────────────────────────────────────────────────
+// WITHDRAWALS & FINANCIALS (User & Brand)
+// ─────────────────────────────────────────────────────────────
+
+export async function getUserCommissionFinancials(userId: number) {
+  const commissions = toPlain(await CommissionModel.find({ userId }).sort({ createdAt: -1 }));
+  const withdrawals = toPlain(await WithdrawalModel.find({ userId, type: "user" }).sort({ createdAt: -1 }));
+
+  // Total earned from approved and paid commissions
+  const approvedCommissions = commissions.filter((c: any) => c.status === "approved" || c.status === "paid");
+  const totalEarned = approvedCommissions.reduce((sum: number, c: any) => sum + (c.amount || 0), 0);
+
+  // Pending commissions not yet approved
+  const pendingCommissions = commissions
+    .filter((c: any) => c.status === "pending")
+    .reduce((sum: number, c: any) => sum + (c.amount || 0), 0);
+
+  // Total completed payouts
+  const totalWithdrawn = withdrawals
+    .filter((w: any) => w.status === "completed")
+    .reduce((sum: number, w: any) => sum + (w.amount || 0), 0);
+
+  // Pending / processing withdrawals
+  const pendingWithdrawal = withdrawals
+    .filter((w: any) => w.status === "pending" || w.status === "approved")
+    .reduce((sum: number, w: any) => sum + (w.amount || 0), 0);
+
+  // Available balance for new withdrawal requests
+  const availableBalance = Math.max(0, Math.round((totalEarned - totalWithdrawn - pendingWithdrawal) * 100) / 100);
+
+  return {
+    availableBalance,
+    totalEarned: Math.round(totalEarned * 100) / 100,
+    totalWithdrawn: Math.round(totalWithdrawn * 100) / 100,
+    pendingCommissions: Math.round(pendingCommissions * 100) / 100,
+    pendingWithdrawal: Math.round(pendingWithdrawal * 100) / 100,
+    commissions,
+    withdrawals,
+  };
+}
+
+export async function getBrandFinancials(brandId: number) {
+  // 1. Fetch shipments for this brand
+  const shipments = await ShipmentModel.find({ brandId });
+  const completedShipments = shipments.filter(s => s.status === "delivered" || s.status === "shipped");
+
+  // 2. Fetch order items for these shipments
+  const shipmentIds = completedShipments.map(s => s.id);
+  const items = await OrderItemModel.find({ shipmentId: { $in: shipmentIds } });
+
+  // Gross sales volume
+  const grossSales = items.reduce((sum, item) => sum + ((item.priceAtPurchase || 0) * (item.quantity || 1)), 0);
+
+  // Platform commission fee (e.g. 5% - 9% based on brand tier)
+  const brandLevel = await getBrandLevel(brandId);
+  const feeRate = (brandLevel?.level || 1) >= 3 ? 0.05 : ((brandLevel?.level || 1) === 2 ? 0.07 : 0.09);
+  const platformFee = Math.round(grossSales * feeRate * 100) / 100;
+  const netProfit = Math.max(0, Math.round((grossSales - platformFee) * 100) / 100);
+
+  // 3. Fetch brand withdrawals
+  const withdrawals = toPlain(await WithdrawalModel.find({ brandId, type: "brand" }).sort({ createdAt: -1 }));
+
+  const totalWithdrawn = withdrawals
+    .filter((w: any) => w.status === "completed")
+    .reduce((sum: number, w: any) => sum + (w.amount || 0), 0);
+
+  const pendingWithdrawal = withdrawals
+    .filter((w: any) => w.status === "pending" || w.status === "approved")
+    .reduce((sum: number, w: any) => sum + (w.amount || 0), 0);
+
+  const availableBalance = Math.max(0, Math.round((netProfit - totalWithdrawn - pendingWithdrawal) * 100) / 100);
+
+  return {
+    brandId,
+    grossSales: Math.round(grossSales * 100) / 100,
+    platformFee,
+    netProfit,
+    feeRatePercentage: Math.round(feeRate * 100),
+    totalWithdrawn: Math.round(totalWithdrawn * 100) / 100,
+    pendingWithdrawal: Math.round(pendingWithdrawal * 100) / 100,
+    availableBalance,
+    totalOrders: completedShipments.length,
+    withdrawals,
+  };
+}
+
+export async function createWithdrawalRequest(data: {
+  userId: number;
+  brandId?: number | null;
+  type: "user" | "brand";
+  requesterName: string;
+  requesterEmail: string;
+  amount: number;
+  paymentMethod: "d17" | "flouci" | "bank_transfer" | "cash_pickup";
+  paymentDetails: {
+    phone?: string;
+    flouciNumber?: string;
+    rib?: string;
+    bankName?: string;
+    beneficiaryName?: string;
+    notes?: string;
+  };
+}) {
+  if (data.amount <= 0) {
+    throw new Error("Withdrawal amount must be greater than 0");
+  }
+
+  // Validate balance
+  if (data.type === "user") {
+    const financials = await getUserCommissionFinancials(data.userId);
+    if (data.amount > financials.availableBalance) {
+      throw new Error(`Insufficient balance. Available: ${financials.availableBalance} TND, Requested: ${data.amount} TND`);
+    }
+  } else if (data.type === "brand" && data.brandId) {
+    const financials = await getBrandFinancials(data.brandId);
+    if (data.amount > financials.availableBalance) {
+      throw new Error(`Insufficient brand profit balance. Available: ${financials.availableBalance} TND, Requested: ${data.amount} TND`);
+    }
+  }
+
+  const now = new Date().toISOString();
+  const id = await nextId("withdrawals");
+  const doc = new WithdrawalModel({
+    id,
+    ...data,
+    status: "pending",
+    createdAt: now,
+    updatedAt: now,
+  });
+  await doc.save();
+
+  // Create notification for requester
+  const notifId = await nextId("notifications");
+  const notif = new NotificationModel({
+    id: notifId,
+    userId: data.userId,
+    type: "new_order",
+    title: "Withdrawal Requested 💸",
+    message: `Your withdrawal request of ${data.amount} TND via ${data.paymentMethod.toUpperCase()} has been submitted for admin review.`,
+    createdAt: now,
+  });
+  await notif.save();
+
+  return toPlain(doc);
+}
+
+export async function getAllWithdrawals(filters?: { type?: string; status?: string }) {
+  const query: any = {};
+  if (filters?.type && filters.type !== "all") query.type = filters.type;
+  if (filters?.status && filters.status !== "all") query.status = filters.status;
+  return toPlain(await WithdrawalModel.find(query).sort({ createdAt: -1 }));
+}
+
+export async function getUserWithdrawals(userId: number) {
+  return toPlain(await WithdrawalModel.find({ userId, type: "user" }).sort({ createdAt: -1 }));
+}
+
+export async function getBrandWithdrawals(brandId: number) {
+  return toPlain(await WithdrawalModel.find({ brandId, type: "brand" }).sort({ createdAt: -1 }));
+}
+
+export async function updateWithdrawalStatus(
+  id: number,
+  status: "pending" | "approved" | "completed" | "rejected",
+  adminNotes?: string,
+  rejectionReason?: string
+) {
+  const now = new Date().toISOString();
+  const withdrawal = await WithdrawalModel.findOne({ id });
+  if (!withdrawal) throw new Error("Withdrawal request not found");
+
+  await WithdrawalModel.updateOne(
+    { id },
+    {
+      status,
+      adminNotes: adminNotes ?? withdrawal.adminNotes,
+      rejectionReason: rejectionReason ?? withdrawal.rejectionReason,
+      processedAt: (status === "completed" || status === "rejected") ? now : withdrawal.processedAt,
+      updatedAt: now,
+    }
+  );
+
+  // If completed and user withdrawal, update user grade totalPaid
+  if (status === "completed" && withdrawal.type === "user") {
+    await UserGradeModel.updateOne(
+      { userId: withdrawal.userId },
+      { $inc: { totalPaid: withdrawal.amount } }
+    );
+  }
+
+  // Create notification for requester
+  const notifId = await nextId("notifications");
+  const notif = new NotificationModel({
+    id: notifId,
+    userId: withdrawal.userId,
+    type: status === "completed" ? "new_order" : "brand_approval",
+    title: status === "completed"
+      ? "Payout Completed! 💰"
+      : (status === "rejected" ? "Withdrawal Update ❌" : "Withdrawal Processing ⏳"),
+    message: status === "completed"
+      ? `Your payout of ${withdrawal.amount} TND has been sent to your ${withdrawal.paymentMethod.toUpperCase()}!`
+      : (status === "rejected"
+        ? `Your withdrawal request of ${withdrawal.amount} TND was rejected.${rejectionReason ? ` Reason: ${rejectionReason}` : ''} The amount is returned to your available balance.`
+        : `Your withdrawal request of ${withdrawal.amount} TND is now being processed.`),
+    createdAt: now,
+  });
+  await notif.save();
+
+  return toPlain(await WithdrawalModel.findOne({ id }));
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -891,4 +1170,45 @@ export async function linkPendingPostsToBrand(brandName: string, brandId: number
     }
     console.log(`[Styly Pipeline] Successfully linked ${posts.length} posts to brand "${brandName}" (ID: ${brandId})`);
   }
+}
+
+// ─────────────────────────────────────────────────────────────
+// FOLLOWS
+// ─────────────────────────────────────────────────────────────
+
+export async function followTarget(followerId: number, targetType: "user" | "brand", targetId: number, targetName?: string) {
+  const existing = await FollowModel.findOne({ followerId, targetType, targetId });
+  if (existing) return toPlain(existing); // already following
+  const id = await nextId("follows");
+  const doc = new FollowModel({ id, followerId, targetType, targetId, targetName: targetName || "" });
+  await doc.save();
+  return toPlain(doc);
+}
+
+export async function unfollowTarget(followerId: number, targetType: "user" | "brand", targetId: number) {
+  await FollowModel.deleteOne({ followerId, targetType, targetId });
+  return { success: true };
+}
+
+export async function isFollowing(followerId: number, targetType: "user" | "brand", targetId: number): Promise<boolean> {
+  const doc = await FollowModel.findOne({ followerId, targetType, targetId });
+  return !!doc;
+}
+
+export async function getFollowing(followerId: number) {
+  const docs = await FollowModel.find({ followerId }).sort({ createdAt: -1 });
+  return toPlain(docs);
+}
+
+export async function getFollowers(targetType: "user" | "brand", targetId: number) {
+  const docs = await FollowModel.find({ targetType, targetId }).sort({ createdAt: -1 });
+  return toPlain(docs);
+}
+
+export async function getFollowCounts(userId: number) {
+  const [following, followers] = await Promise.all([
+    FollowModel.countDocuments({ followerId: userId }),
+    FollowModel.countDocuments({ targetType: "user", targetId: userId }),
+  ]);
+  return { following, followers };
 }

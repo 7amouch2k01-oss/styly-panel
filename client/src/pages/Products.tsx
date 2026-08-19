@@ -320,20 +320,20 @@ export default function Products() {
         </CardContent>
       </Card>
 
-      {/* Post Detailed Modal with Analytics (No Comments, Clean Financial Insights) */}
+      {/* Post Detailed Modal with Tagged Sale Items & Performance Commerce Analytics */}
       {selectedPost && (
         <Dialog open={!!selectedPost} onOpenChange={() => setSelectedPost(null)}>
-          <DialogContent className="max-w-2xl rounded-3xl p-6">
+          <DialogContent className="max-w-3xl rounded-3xl p-6 max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-lg font-bold flex items-center justify-between">
-                <span>Post Details & Analytics #{selectedPost.id}</span>
+                <span>Post Details & Commerce Analytics #{selectedPost.id}</span>
                 <StatusBadge status={selectedPost.status || "active"} />
               </DialogTitle>
             </DialogHeader>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-3">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mt-3">
               {/* Photo */}
-              <div className="rounded-2xl overflow-hidden border border-border/50 max-h-[340px] bg-black/5 flex items-center justify-center">
+              <div className="md:col-span-5 rounded-2xl overflow-hidden border border-border/50 max-h-[380px] bg-black/5 flex items-center justify-center">
                 <img
                   src={selectedPost.image || "/product_dress_1.png"}
                   alt="Post visual"
@@ -342,11 +342,18 @@ export default function Products() {
               </div>
 
               {/* Analytics & Meta */}
-              <div className="space-y-4">
-                <div>
-                  <p className="text-xs font-bold uppercase text-muted-foreground">Creator</p>
-                  <p className="text-sm font-black text-foreground mt-0.5">{selectedPost.author?.name || selectedPost.creator?.name || "Styly Creator"}</p>
-                  <p className="text-xs text-muted-foreground font-mono">{selectedPost.author?.email || "No email"}</p>
+              <div className="md:col-span-7 space-y-4">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-border/40">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase text-muted-foreground">Creator</p>
+                    <p className="text-sm font-black text-foreground">{selectedPost.author?.name || selectedPost.creator?.name || "Styly Creator"}</p>
+                    <p className="text-[11px] text-muted-foreground font-mono">{selectedPost.author?.email || "No email"}</p>
+                  </div>
+                  {selectedPost.unregisteredBrand && (
+                    <Badge variant="outline" className="text-[10px] border-amber-500/40 text-amber-500">
+                      @{selectedPost.unregisteredBrand}
+                    </Badge>
+                  )}
                 </div>
 
                 <div>
@@ -356,27 +363,63 @@ export default function Products() {
                   </p>
                 </div>
 
-                {/* Performance Analytics Grid */}
-                <div className="grid grid-cols-2 gap-2 pt-1">
+                {/* 4 Financial & Conversion Analytics Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
                   <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20">
                     <p className="text-[10px] uppercase font-bold text-rose-500">Likes</p>
-                    <p className="text-lg font-black text-rose-500">{selectedPost.likes || 0}</p>
+                    <p className="text-base font-black text-rose-500">{selectedPost.likes || 0}</p>
                   </div>
                   <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20">
-                    <p className="text-[10px] uppercase font-bold text-blue-500">Shares</p>
-                    <p className="text-lg font-black text-blue-500">{Math.floor((selectedPost.likes || 0) * 0.15)}</p>
+                    <p className="text-[10px] uppercase font-bold text-blue-500">Orders Converted</p>
+                    <p className="text-base font-black text-blue-500">{selectedPost.totalOrdersPassed ?? Math.floor((selectedPost.likes || 0) * 0.05)}</p>
                   </div>
                   <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                    <p className="text-[10px] uppercase font-bold text-emerald-500">Est. Sales Value</p>
-                    <p className="text-lg font-black text-emerald-500">
-                      +{Math.floor((selectedPost.likes || 0) * 0.08) * (selectedPost.taggedProduct?.price || 140)} TND
+                    <p className="text-[10px] uppercase font-bold text-emerald-500">Revenue Gained</p>
+                    <p className="text-base font-black text-emerald-500">
+                      {(selectedPost.totalMoneyGained ?? 0).toLocaleString()} TND
                     </p>
                   </div>
                   <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                    <p className="text-[10px] uppercase font-bold text-amber-500">Creator Earnings</p>
-                    <p className="text-lg font-black text-amber-500">
-                      +{((Math.floor((selectedPost.likes || 0) * 0.08) * (selectedPost.taggedProduct?.price || 140)) * 0.05).toFixed(1)} TND
+                    <p className="text-[10px] uppercase font-bold text-amber-500">Creator Commission</p>
+                    <p className="text-base font-black text-amber-500">
+                      {((selectedPost.totalMoneyGained ?? 0) * 0.05).toFixed(1)} TND
                     </p>
+                  </div>
+                </div>
+
+                {/* Tagged Items Added for Sale */}
+                <div className="space-y-2 pt-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-1.5">
+                      <Tag className="h-3.5 w-3.5 text-primary" /> Items Added to Post for Sale ({selectedPost.itemsForSale?.length || 1})
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    {(selectedPost.itemsForSale && selectedPost.itemsForSale.length > 0
+                      ? selectedPost.itemsForSale
+                      : [selectedPost.taggedProduct || { name: "Tagged Garment", price: 120, image: selectedPost.image }]
+                    ).map((item: any, idx: number) => (
+                      <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-muted/40 border border-border/40 hover:border-primary/20 transition-all">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <img
+                            src={item.image || "/product_dress_1.png"}
+                            alt={item.name}
+                            className="w-10 h-10 rounded-lg object-cover bg-black/5 shrink-0 border border-border/20"
+                          />
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-foreground truncate">{item.name || "Outfit Piece"}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {item.brandName ? `Brand: ${item.brandName}` : "Direct Post Item"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-xs font-black text-primary">{item.price || 0} TND</p>
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 font-bold">For Sale</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
@@ -385,7 +428,7 @@ export default function Products() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="flex-1 rounded-xl text-xs"
+                    className="flex-1 rounded-xl text-xs font-semibold"
                     onClick={() => handleStatus(selectedPost, selectedPost.status === "active" ? "hidden" : "active")}
                   >
                     {selectedPost.status === "active" ? "Hide from Feed" : "Make Active"}
@@ -393,7 +436,7 @@ export default function Products() {
                   <Button
                     size="sm"
                     variant="destructive"
-                    className="rounded-xl text-xs"
+                    className="rounded-xl text-xs font-semibold"
                     onClick={() => {
                       setPostToDelete(selectedPost);
                       setSelectedPost(null);

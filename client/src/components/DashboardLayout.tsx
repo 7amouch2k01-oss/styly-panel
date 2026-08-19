@@ -213,6 +213,54 @@ function DashboardLayoutContent({
           <SidebarContent className="gap-0">
             <SidebarMenu className="px-2 py-1">
               {menuItems.map(item => {
+                if (item.path === "/admin/users") {
+                  const isUsersActive = location.startsWith("/admin/users");
+                  return (
+                    <SidebarMenuItem key="users-dropdown">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <SidebarMenuButton
+                            isActive={isUsersActive}
+                            tooltip="Users & Team"
+                            className={`h-10 transition-all font-normal w-full flex items-center justify-between`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Users className={`h-4 w-4 ${isUsersActive ? "text-primary" : ""}`} />
+                              <span>Users</span>
+                            </div>
+                            <span className="text-[10px] text-muted-foreground font-mono">▾</span>
+                          </SidebarMenuButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" side="right" className="w-56 rounded-2xl p-2 shadow-xl border border-border/40">
+                          <div className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                            Account Types
+                          </div>
+                          <DropdownMenuItem
+                            onClick={() => setLocation("/admin/users?tab=app")}
+                            className="flex items-center gap-2 rounded-xl text-xs font-semibold py-2 cursor-pointer"
+                          >
+                            <Users className="h-4 w-4 text-blue-500" />
+                            <div className="flex flex-col">
+                              <span>App Users</span>
+                              <span className="text-[10px] text-muted-foreground font-normal">Brands, Creators & Shoppers</span>
+                            </div>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => setLocation("/admin/users?tab=team")}
+                            className="flex items-center gap-2 rounded-xl text-xs font-semibold py-2 cursor-pointer"
+                          >
+                            <Settings className="h-4 w-4 text-purple-500" />
+                            <div className="flex flex-col">
+                              <span>Styly Members</span>
+                              <span className="text-[10px] text-muted-foreground font-normal">Admin team & permissions</span>
+                            </div>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </SidebarMenuItem>
+                  );
+                }
+
                 const isActive = location === item.path;
                 return (
                   <SidebarMenuItem key={item.path}>

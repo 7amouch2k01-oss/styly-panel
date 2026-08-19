@@ -159,6 +159,7 @@ export interface Post {
   likes: number;
   comments: number;
   taggedProduct: Product;
+  taggedProducts?: Product[];
   hasLiked?: boolean;
   category?: string;
   hotspots?: string | null;
@@ -987,7 +988,7 @@ export default function HomeFeed() {
   const { addToBag } = useAppShell();
 
   // Load from database query
-  const { data: dbPosts = [], isLoading: isPostsLoading } = trpc.posts.list.useQuery();
+  const { data: dbPosts = [], isLoading: isPostsLoading, refetch: refetchPosts } = trpc.posts.list.useQuery();
   // Load live brands for @mention autocomplete and brand tag display
   const { data: liveBrandsData = [] } = trpc.brands.list.useQuery();
   const liveBrands: Array<{ id: number; name: string }> = (liveBrandsData as any[]).map((b: any) => ({ id: b.id, name: b.name }));
@@ -1214,30 +1215,40 @@ export default function HomeFeed() {
         : { id: 0, name: "Outfit", price: 0, image: postData.imagePreview },
       category: postData.category,
       hasLiked: false,
+      taggedProducts: postData.items.map((item, idx) => ({
+        id: Date.now() + idx,
+        name: `${item.brand} ${item.type}`.trim() || "Item",
+        price: parseFloat(item.price) || 0,
+        image: postData.imagePreview,
+      })),
     };
 
     setPosts(prev => [newPost, ...prev]);
     setShowComposer(false);
 
-    // Call backend to persist
+    // Build taggedProducts array from all outfit items
+    const taggedProducts = postData.items.map((item, idx) => ({
+      id: Date.now() + idx,
+      name: `${item.brand} ${item.type}`.trim() || "Item",
+      price: parseFloat(item.price) || 0,
+      image: postData.imagePreview,
+    }));
+    const firstProduct = taggedProducts[0] || { id: 0, name: "Outfit", price: 0, image: postData.imagePreview };
+
+    // Call backend to persist — send ALL items
     createPostMutation.mutate({
       imageUrl: postData.imagePreview,
       caption: [postData.title, postData.caption].filter(Boolean).join(" — "),
       category: postData.category,
       mediaType: postData.mediaType,
-      taggedProduct: postData.items[0]
-        ? {
-            id: Date.now(),
-            name: `${postData.items[0].brand} ${postData.items[0].type}`,
-            price: parseFloat(postData.items[0].price) || 0,
-            image: postData.imagePreview,
-          }
-        : { id: 0, name: "Outfit", price: 0, image: postData.imagePreview }
+      taggedProduct: taggedProducts.length > 0 ? firstProduct : null,
+      taggedProducts: taggedProducts.length > 0 ? taggedProducts : undefined,
+    }, {
+      onSuccess: () => { refetchPosts?.(); },
+      onError: (err: any) => { console.error("[Post persist error]", err?.message); },
     });
 
     toast.success("Your post is live! 🎉");
-    setShowComposer(false);
-    toast.success("Your post is live! Ã°Å¸Å½â€°");
   };
 
   return (
@@ -1360,12 +1371,12 @@ export default function HomeFeed() {
                       onAddToBag={() => addToBag({ ...post.taggedProduct, size: "M" })}
                     />
                   </div>
-                  <PostActions post={post} onLike={() => handleLike(post.id)} onTryOn={() => handleTryOn(post.taggedProduct)} onAddToBag={() => addToBag({ ...post.taggedProduct, size: "M" })} liveBrands={liveBrands} onBrandClick={b => setBrandProfileModal(b)} />
+                  <PostActions post={post} onLike={() => handleLike(post.id)} onTryOn={() => handleTryOn(post.taggedProduct)} onAddToBag={() => addToBag({ ...post.taggedProduct, brandId: (post as any).brandId || (post.taggedProduct as any)?.brandId, brandName: post.creator?.name || "Styly Brand", size: "M" })} liveBrands={liveBrands} onBrandClick={b => setBrandProfileModal(b)} />
                 </article>
               ))}
             </div>
           ) : (
-            /* Ã¢â€ â‚¬Ã¢â€ â‚¬ Grid View (3-col) Ã¢â€ â‚¬Ã¢â€ â‚¬ */
+            /* ── Grid View (3-col) ── */
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredPosts.map((post, i) => (
                 <article
@@ -1382,7 +1393,7 @@ export default function HomeFeed() {
                       hotspotsJson={post.hotspots}
                       taggedProduct={post.taggedProduct}
                       onTryOn={() => handleTryOn(post.taggedProduct)}
-                      onAddToBag={() => addToBag({ ...post.taggedProduct, size: "M" })}
+                      onAddToBag={() => addToBag({ ...post.taggedProduct, brandId: (post as any).brandId || (post.taggedProduct as any)?.brandId, brandName: post.creator?.name || "Styly Brand", size: "M" })}
                     />
                   </div>
                   <div className="p-3 space-y-2.5 flex-1 flex flex-col justify-between">
@@ -1420,7 +1431,7 @@ export default function HomeFeed() {
                           </div>
                         </div>
                         <button
-                          onClick={() => addToBag({ ...post.taggedProduct, size: "M" })}
+                          onClick={() => addToBag({ ...post.taggedProduct, brandId: (post as any).brandId || (post.taggedProduct as any)?.brandId, brandName: post.creator?.name || "Styly Brand", size: "M" })}
                           className="h-8 w-8 rounded-full bg-gradient-to-tr from-orange-500 via-amber-500 to-orange-400 text-white shadow-md shadow-orange-500/30 flex items-center justify-center hover:scale-110 active:scale-95 transit-all shrink-0"
                           title="Add to Bag"
                         >

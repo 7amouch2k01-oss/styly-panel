@@ -33,11 +33,14 @@ import { toast } from "sonner";
 
 interface BagItem {
   id: number;
+  productId?: number;
   name: string;
   price: number;
   image: string;
   size: string;
   qty: number;
+  brandId?: number;
+  brandName?: string;
 }
 
 interface AppShellContextValue {
@@ -240,27 +243,38 @@ export default function AppShell({
   const shipping = bagItems.length > 0 ? 5.99 : 0;
   const orderTotal = bagTotal + shipping;
 
+  const placeOrderMutation = trpc.checkout.placeOrder.useMutation({
+    onSuccess: (data) => {
+      clearBag();
+      setIsPlacingOrder(false);
+      setOrderPlaced(true);
+      toast.success("Order placed successfully! 🎉 Check your profile for delivery updates.");
+      setTimeout(() => {
+        setOrderPlaced(false);
+        setShowBag(false);
+      }, 2000);
+    },
+    onError: (err) => {
+      console.error("Order error:", err);
+      setIsPlacingOrder(false);
+      toast.error(err.message || "Failed to place order. Please try again.");
+    }
+  });
+
   const handlePlaceOrder = async () => {
     if (bagItems.length === 0) return;
-    setIsPlacingOrder(true);
-    // Simulate async order creation
-    await new Promise(r => setTimeout(r, 1200));
-    const order = {
-      id: `ORD-${Date.now()}`,
-      items: bagItems,
-      total: orderTotal,
-      status: "pending",
-      createdAt: new Date().toISOString(),
-    };
-    try {
-      const prev = JSON.parse(localStorage.getItem("styly_orders") || "[]");
-      localStorage.setItem("styly_orders", JSON.stringify([order, ...prev]));
-    } catch { /* ignore */ }
-    clearBag();
-    setIsPlacingOrder(false);
-    setOrderPlaced(true);
-    toast.success("Order placed successfully! 🎉");
-    setTimeout(() => { setOrderPlaced(false); setShowBag(false); }, 2500);
+    
+    // If not logged in, redirect to auth or prompt login
+    if (!user) {
+      toast.error("Please sign in or create an account to complete your purchase");
+      setLocation("/auth");
+      setShowBag(false);
+      return;
+    }
+
+    // If user needs to fill custom address or we have delivery profile, navigate to /checkout
+    setLocation("/checkout");
+    setShowBag(false);
   };
 
   return (

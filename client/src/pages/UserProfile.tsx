@@ -78,11 +78,31 @@ const LEVELS = [
 ];
 
 function CommissionsPanel() {
-  const mockCommissions = [
-    { id: 1, brandName: "Zara", orderId: "ORD-9482", amount: 180, rate: 6, earned: 10.8, status: "completed", date: "2026-07-20" },
-    { id: 2, brandName: "Gucci", orderId: "ORD-8472", amount: 1200, rate: 6, earned: 72.0, status: "completed", date: "2026-07-18" },
-    { id: 3, brandName: "Nike", orderId: "ORD-7392", amount: 250, rate: 6, earned: 15.0, status: "pending", date: "2026-07-22" },
-  ];
+  const { data: commissions = [], isLoading } = trpc.commissions.myCommissions.useQuery();
+
+  if (isLoading) {
+    return (
+      <div className="bg-white dark:bg-[#1A1A1A] border border-border/40 rounded-2xl p-5 shadow-sm">
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-14 rounded-xl bg-muted/40 animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!commissions.length) {
+    return (
+      <div className="bg-white dark:bg-[#1A1A1A] border border-border/40 rounded-2xl p-8 shadow-sm text-center space-y-2">
+        <DollarSign className="h-10 w-10 text-muted-foreground/30 mx-auto" />
+        <p className="text-sm font-bold">No commissions yet</p>
+        <p className="text-xs text-muted-foreground">Tag brands in your posts and earn when followers buy!</p>
+      </div>
+    );
+  }
+
+  const totalEarned = commissions.reduce((s: number, c: any) => s + (c.amount || 0), 0);
 
   return (
     <div className="bg-white dark:bg-[#1A1A1A] border border-border/40 rounded-2xl p-5 space-y-4 shadow-sm text-left">
@@ -92,28 +112,34 @@ function CommissionsPanel() {
           <p className="text-[11px] text-muted-foreground">Earnings from posts tagging brands</p>
         </div>
         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center gap-1">
-          <Sparkles className="h-3 w-3 text-emerald-500" /> Active status
+          <Sparkles className="h-3 w-3 text-emerald-500" /> {totalEarned.toFixed(1)} TND total
         </span>
       </div>
 
       <div className="space-y-2.5">
-        {mockCommissions.map((comm) => (
+        {commissions.map((comm: any) => (
           <div key={comm.id} className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-border/10 text-xs">
             <div className="space-y-1">
               <div className="flex items-center gap-1.5 font-bold">
-                <span className="font-black text-foreground">{comm.brandName}</span>
-                <span className="text-[10px] text-muted-foreground">({comm.orderId})</span>
+                <span className="font-black text-foreground">{comm.description || "Commission"}</span>
+                {comm.brandId && <span className="text-[10px] text-muted-foreground">(Brand #{comm.brandId})</span>}
               </div>
-              <p className="text-[10px] text-muted-foreground">{comm.date} • {comm.rate}% of {comm.amount} TND</p>
+              <p className="text-[10px] text-muted-foreground">
+                {comm.createdAt ? new Date(comm.createdAt).toLocaleDateString() : "—"}
+              </p>
             </div>
             <div className="text-right space-y-1">
-              <p className="font-black text-foreground">+{comm.earned.toFixed(1)} TND</p>
+              <p className="font-black text-foreground">+{(comm.amount || 0).toFixed(1)} TND</p>
               <span className={`inline-block text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${
-                comm.status === "completed" 
-                  ? "bg-emerald-500/10 text-emerald-500" 
+                comm.status === "paid"
+                  ? "bg-emerald-500/10 text-emerald-500"
+                  : comm.status === "approved"
+                  ? "bg-blue-500/10 text-blue-500"
+                  : comm.status === "rejected"
+                  ? "bg-red-500/10 text-red-500"
                   : "bg-amber-500/10 text-amber-500"
               }`}>
-                {comm.status}
+                {comm.status || "pending"}
               </span>
             </div>
           </div>
@@ -358,6 +384,9 @@ export default function UserProfile() {
   const { data: brands = [] } = trpc.brands.list.useQuery();
   const { data: products = [] } = trpc.devices.list.useQuery();
   const createPostMutation = trpc.posts.create.useMutation();
+  const { data: followCounts } = trpc.follows.myFollowCounts.useQuery();
+  const { data: myFollowers = [] } = trpc.follows.myFollowers.useQuery();
+  const { data: myFollowing = [] } = trpc.follows.myFollowing.useQuery();
 
   // Create post states
   const [showPostDialog, setShowPostDialog] = useState(false);
@@ -566,19 +595,25 @@ export default function UserProfile() {
             {/* Stats */}
             <div className="flex items-center justify-center gap-6 mt-4 py-2 px-6 rounded-2xl bg-muted/40 border border-border/10 w-full max-w-xs">
               <div className="text-center">
-                <p className="text-xs font-black text-foreground">12</p>
+                <p className="text-xs font-black text-foreground">{(dbPosts as any[]).filter((p: any) => p.userId === user?.id).length || 0}</p>
                 <p className="text-[9px] text-muted-foreground">Outfits</p>
               </div>
               <div className="h-6 w-px bg-border/40" />
-              <div className="text-center">
-                <p className="text-xs font-black text-foreground">1.4K</p>
+              <button
+                className="text-center hover:opacity-80 transition-opacity cursor-pointer"
+                onClick={() => setActiveTab("followers")}
+              >
+                <p className="text-xs font-black text-foreground">{followCounts?.followers ?? 0}</p>
                 <p className="text-[9px] text-muted-foreground">Followers</p>
-              </div>
+              </button>
               <div className="h-6 w-px bg-border/40" />
-              <div className="text-center">
-                <p className="text-xs font-black text-foreground">840</p>
-                <p className="text-[9px] text-muted-foreground">Likes</p>
-              </div>
+              <button
+                className="text-center hover:opacity-80 transition-opacity cursor-pointer"
+                onClick={() => setActiveTab("followers")}
+              >
+                <p className="text-xs font-black text-foreground">{followCounts?.following ?? 0}</p>
+                <p className="text-[9px] text-muted-foreground">Following</p>
+              </button>
             </div>
 
             {/* Switch / Store Button */}
@@ -879,13 +914,66 @@ export default function UserProfile() {
 
 
         {/* ── FOLLOWERS TAB ── */}
-        {activeTab === "followers" && (
-          <div className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-border/40 p-4 text-center py-12 space-y-3 shadow-sm">
-            <Users className="h-12 w-12 text-muted-foreground/45 mx-auto" />
-            <h3 className="text-base font-bold">No followers yet</h3>
-            <p className="text-xs text-muted-foreground">Post daily styles to grow your fashion circle!</p>
-          </div>
-        )}
+        {activeTab === "followers" && (() => {
+          const [followSubTab, setFollowSubTab] = useState<"followers" | "following">("followers");
+          const displayList = followSubTab === "followers" ? myFollowers : myFollowing;
+
+          return (
+            <div className="space-y-4 animate-fade-up">
+              {/* Sub-tabs */}
+              <div className="flex rounded-xl bg-muted/40 p-1 gap-1">
+                {(["followers", "following"] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setFollowSubTab(tab)}
+                    className={`flex-1 h-8 rounded-lg text-xs font-bold capitalize transition-all ${
+                      followSubTab === tab
+                        ? "bg-white dark:bg-[#2A2A2A] text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {tab} ({tab === "followers" ? (followCounts?.followers ?? 0) : (followCounts?.following ?? 0)})
+                  </button>
+                ))}
+              </div>
+
+              {displayList.length === 0 ? (
+                <div className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-border/40 p-8 text-center space-y-3 shadow-sm">
+                  <Users className="h-12 w-12 text-muted-foreground/45 mx-auto" />
+                  <h3 className="text-sm font-bold">
+                    {followSubTab === "followers" ? "No followers yet" : "Not following anyone"}
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    {followSubTab === "followers"
+                      ? "Post daily styles to grow your fashion circle!"
+                      : "Follow brands and creators to see their latest looks."}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {displayList.map((f: any) => (
+                    <div key={f.id} className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-border/30 p-3 flex items-center gap-3 shadow-sm">
+                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        {f.targetType === "brand" ? (
+                          <Building2 className="h-5 w-5 text-primary" />
+                        ) : (
+                          <User className="h-5 w-5 text-primary" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold truncate">{f.targetName || (f.targetType === "brand" ? "Brand" : "User")}</p>
+                        <p className="text-[10px] text-muted-foreground capitalize">{f.targetType}</p>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground">
+                        {f.createdAt ? new Date(f.createdAt).toLocaleDateString() : ""}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ── PROFITS TAB ── */}
         {activeTab === "profits" && (
@@ -1713,188 +1801,288 @@ function MoonIcon() {
   );
 }
 
-// ─── AI Stylista Generator Tab ────────────────────────────────────────────────
+// ─── AI Stylista Chat Tab ────────────────────────────────────────────────────
 
-const AI_OUTFIT_POOL = [
-  { id: 1, name: "The Power Casual",        desc: "Linen blazer + straight-leg denim + white tee. Effortlessly curated.",         price: 389,  image: "/product_jacket.png"  },
-  { id: 2, name: "Evening Silk Edit",       desc: "Silk midi dress + pearl earrings + block-heel mule. Timeless elegance.",        price: 1289, image: "/product_dress_1.png" },
-  { id: 3, name: "Street-Ready Stack",      desc: "Cargo trousers + ribbed tank + oversized bomber. Bold, relaxed, statement.",    price: 628,  image: "/product_jacket.png"  },
-  { id: 4, name: "Bohemian Garden",         desc: "Floral midi + woven sandals + straw tote. Free-spirited summer perfection.",    price: 349,  image: "/product_dress_1.png" },
-  { id: 5, name: "Monochrome Moment",       desc: "Cream-on-cream trench + wide-leg trousers + loafers. Quiet luxury.",           price: 899,  image: "/product_jacket.png"  },
-  { id: 6, name: "Gym-to-Street Look",      desc: "Performance shorts + zip-up hoodie + chunky sneakers. Moves with you.",        price: 479,  image: "/product_dress_1.png" },
-];
-
-const STYLE_TYPES = ["Casual", "Formal", "Streetwear", "Bohemian", "Minimalist", "Activewear"];
-const COLOR_PREFS = ["Neutrals", "Bold Colors", "Pastels", "Earth Tones", "Monochrome", "Prints"];
+interface ChatMessage {
+  id: string;
+  role: "user" | "model";
+  content: string;
+  timestamp: Date;
+}
 
 function StylistaAITab({ onTryOn }: { onTryOn: () => void }) {
-  const [styleType, setStyleType] = useState("");
-  const [colorPref, setColorPref] = useState("");
-  const [occasion, setOccasion] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<typeof AI_OUTFIT_POOL>([]);
-  const [generated, setGenerated] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: "welcome",
+      role: "model",
+      content: "Hey! 👗 I'm Stylista, your personal AI fashion stylist. Tell me what you're looking for — an occasion, a vibe, or just describe how you want to feel in your outfit, and I'll build the perfect look for you!",
+      timestamp: new Date(),
+    },
+  ]);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [showOutfits, setShowOutfits] = useState(false);
+  const [outfitStyle, setOutfitStyle] = useState("Casual");
+  const [suggestedOutfits, setSuggestedOutfits] = useState<any[]>([]);
+  const [outfitsLoading, setOutfitsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const handleGenerate = () => {
-    if (!styleType || !colorPref) {
-      toast.error("Please select a style type and color preference");
-      return;
+  const chatMutation = trpc.stylista.chat.useMutation();
+  const { refetch: fetchOutfits } = trpc.stylista.getOutfitSuggestions.useQuery(
+    { style: outfitStyle, color: "Mixed", occasion: "", budget: "" },
+    { enabled: false }
+  );
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isLoading]);
+
+  const sendMessage = async (overrideText?: string) => {
+    const text = (overrideText ?? input).trim();
+    if (!text || isLoading) return;
+
+    const userMsg: ChatMessage = {
+      id: `u_${Date.now()}`,
+      role: "user",
+      content: text,
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => [...prev, userMsg]);
+    setInput("");
+    setIsLoading(true);
+
+    try {
+      const allMessages = [...messages, userMsg].map(m => ({
+        role: m.role,
+        content: m.content,
+      }));
+
+      const result = await chatMutation.mutateAsync({ messages: allMessages });
+
+      const aiMsg: ChatMessage = {
+        id: `a_${Date.now()}`,
+        role: "model",
+        content: result.reply,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, aiMsg]);
+
+      if (result.generateOutfits) {
+        setOutfitsLoading(true);
+        // Extract style from conversation
+        const convoText = allMessages.map(m => m.content).join(" ").toLowerCase();
+        const detectedStyle =
+          convoText.includes("casual") ? "Casual" :
+          convoText.includes("formal") ? "Formal" :
+          convoText.includes("street") ? "Streetwear" :
+          convoText.includes("date") ? "Date Night" :
+          convoText.includes("sport") || convoText.includes("gym") ? "Activewear" :
+          "Casual";
+        setOutfitStyle(detectedStyle);
+        const { data } = await fetchOutfits();
+        if (data) setSuggestedOutfits(data);
+        setShowOutfits(true);
+        setOutfitsLoading(false);
+      }
+    } catch (err: any) {
+      const errMsg: ChatMessage = {
+        id: `err_${Date.now()}`,
+        role: "model",
+        content: "Oops, I had a little hiccup! Could you say that again? 😊",
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errMsg]);
+    } finally {
+      setIsLoading(false);
+      setTimeout(() => inputRef.current?.focus(), 100);
     }
-    setLoading(true);
-    setResults([]);
-    setTimeout(() => {
-      // Simulate AI selection: pick 3 relevant outfits
-      const shuffled = [...AI_OUTFIT_POOL].sort(() => Math.random() - 0.5).slice(0, 3);
-      setResults(shuffled);
-      setLoading(false);
-      setGenerated(true);
-      toast.success("Styly AI found your perfect outfits! ✨");
-    }, 2000);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  const resetChat = () => {
+    setMessages([{
+      id: "welcome",
+      role: "model",
+      content: "Hey! 👗 I'm Stylista, your personal AI fashion stylist. Tell me what you're looking for — an occasion, a vibe, or just describe how you want to feel in your outfit, and I'll build the perfect look for you!",
+      timestamp: new Date(),
+    }]);
+    setShowOutfits(false);
+    setSuggestedOutfits([]);
+    setInput("");
   };
 
   return (
-    <div className="space-y-5 animate-fade-up">
+    <div className="flex flex-col h-full space-y-3 animate-fade-up">
       {/* Header */}
-      <div className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-primary/10 to-orange-400/10 border border-primary/15">
-        <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-primary to-orange-400 flex items-center justify-center shrink-0">
-          <Sparkles className="h-5 w-5 text-white" />
-        </div>
-        <div>
-          <p className="font-black text-sm">Styly AI Stylista</p>
-          <p className="text-[10px] text-muted-foreground leading-snug">Tell us your vibe and we'll build your perfect outfit from your wardrobe and top brands.</p>
-        </div>
-      </div>
-
-      {/* Preferences form */}
-      <div className="space-y-4">
-        {/* Style type */}
-        <div>
-          <p className="text-xs font-bold mb-2">Your Style Vibe</p>
-          <div className="flex flex-wrap gap-2">
-            {STYLE_TYPES.map((s) => (
-              <button
-                key={s}
-                onClick={() => setStyleType(s)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transit-all ${
-                  styleType === s
-                    ? "bg-primary text-white border-primary shadow-sm shadow-primary/20"
-                    : "bg-muted border-border/30 text-muted-foreground hover:border-primary/30"
-                }`}
-              >
-                {s}
-              </button>
-            ))}
+      <div className="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-primary/10 to-orange-400/10 border border-primary/15">
+        <div className="flex items-center gap-2.5">
+          <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-primary to-orange-400 flex items-center justify-center shrink-0">
+            <Sparkles className="h-4 w-4 text-white" />
+          </div>
+          <div>
+            <p className="font-black text-xs">Styly AI Stylista</p>
+            <div className="flex items-center gap-1">
+              <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <p className="text-[10px] text-muted-foreground">Active · Ready to style you</p>
+            </div>
           </div>
         </div>
-
-        {/* Color preference */}
-        <div>
-          <p className="text-xs font-bold mb-2">Color Preference</p>
-          <div className="flex flex-wrap gap-2">
-            {COLOR_PREFS.map((c) => (
-              <button
-                key={c}
-                onClick={() => setColorPref(c)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transit-all ${
-                  colorPref === c
-                    ? "bg-primary text-white border-primary shadow-sm shadow-primary/20"
-                    : "bg-muted border-border/30 text-muted-foreground hover:border-primary/30"
-                }`}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Occasion */}
-        <div>
-          <p className="text-xs font-bold mb-1.5">Occasion <span className="text-muted-foreground font-normal">(optional)</span></p>
-          <input
-            type="text"
-            value={occasion}
-            onChange={(e) => setOccasion(e.target.value)}
-            placeholder="e.g. Office meeting, Beach day, Date night…"
-            className="w-full h-10 px-4 rounded-xl bg-muted border border-border/30 text-xs focus:outline-none focus:ring-2 focus:ring-primary/30 transit-all"
-          />
-        </div>
-
-        {/* Generate button */}
         <button
-          onClick={handleGenerate}
-          disabled={loading}
-          className="w-full h-12 rounded-full bg-gradient-to-r from-primary to-orange-500 text-white font-bold text-sm hover:opacity-95 hover:scale-[1.01] transit-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-70"
+          onClick={resetChat}
+          className="text-[10px] text-muted-foreground hover:text-foreground px-2 py-1 rounded-lg hover:bg-accent transition-all font-semibold"
         >
-          {loading ? (
-            <>
-              <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-              Generating outfits…
-            </>
-          ) : (
-            <><Sparkles className="h-4 w-4" /> Generate My Outfits</>
-          )}
+          New chat
         </button>
       </div>
 
-      {/* Loading skeletons */}
-      {loading && (
-        <div className="space-y-4 pt-2">
-          {[1, 2, 3].map((n) => (
-            <div key={n} className="flex items-center gap-3 p-3 rounded-2xl border border-border/30 animate-fade-up" style={{ animationDelay: `${n * 100}ms` }}>
-              <div className="skeleton h-20 w-20 rounded-xl shrink-0" />
-              <div className="flex-1 space-y-2">
-                <div className="skeleton h-3 w-2/3" />
-                <div className="skeleton h-2.5 w-full" />
-                <div className="skeleton h-2.5 w-3/4" />
-                <div className="skeleton h-6 w-24 rounded-full" />
+      {/* Chat messages */}
+      <div className="flex flex-col gap-3 max-h-[380px] overflow-y-auto no-scrollbar pr-1">
+        {messages.map((msg) => (
+          <div
+            key={msg.id}
+            className={`flex gap-2 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}
+          >
+            {/* Avatar */}
+            {msg.role === "model" && (
+              <div className="h-7 w-7 rounded-full bg-gradient-to-tr from-primary to-orange-400 flex items-center justify-center shrink-0 mt-0.5">
+                <Sparkles className="h-3.5 w-3.5 text-white" />
               </div>
+            )}
+
+            {/* Bubble */}
+            <div
+              className={`max-w-[82%] px-3 py-2.5 rounded-2xl text-xs leading-relaxed ${
+                msg.role === "user"
+                  ? "bg-primary text-white rounded-tr-sm"
+                  : "bg-white dark:bg-[#2A2A2A] border border-border/30 text-foreground rounded-tl-sm shadow-sm"
+              }`}
+            >
+              {msg.content.split("**").map((part, i) =>
+                i % 2 === 1 ? <strong key={i}>{part}</strong> : <span key={i}>{part}</span>
+              )}
             </div>
+          </div>
+        ))}
+
+        {/* Typing indicator */}
+        {isLoading && (
+          <div className="flex gap-2">
+            <div className="h-7 w-7 rounded-full bg-gradient-to-tr from-primary to-orange-400 flex items-center justify-center shrink-0">
+              <Sparkles className="h-3.5 w-3.5 text-white" />
+            </div>
+            <div className="bg-white dark:bg-[#2A2A2A] border border-border/30 px-4 py-3 rounded-2xl rounded-tl-sm shadow-sm flex items-center gap-1.5">
+              <div className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }} />
+              <div className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
+              <div className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }} />
+            </div>
+          </div>
+        )}
+
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Outfit results */}
+      {outfitsLoading && (
+        <div className="space-y-2">
+          {[1, 2, 3].map(n => (
+            <div key={n} className="h-20 rounded-2xl bg-muted/40 animate-pulse" />
           ))}
         </div>
       )}
 
-      {/* Generated outfit results */}
-      {generated && !loading && results.length > 0 && (
-        <div className="space-y-4 pt-1">
-          <div className="flex items-center gap-2">
-            <CheckCircle className="h-4 w-4 text-primary" />
-            <p className="text-xs font-bold text-primary">3 outfits curated for you — {styleType} × {colorPref}</p>
+      {showOutfits && !outfitsLoading && suggestedOutfits.length > 0 && (
+        <div className="space-y-2 pt-1">
+          <div className="flex items-center gap-1.5">
+            <CheckCircle className="h-3.5 w-3.5 text-primary" />
+            <p className="text-[11px] font-bold text-primary">{suggestedOutfits.length} outfits curated for you ✨</p>
           </div>
-          {results.map((outfit, i) => (
+          {suggestedOutfits.map((outfit, i) => (
             <div
               key={outfit.id}
-              className="flex items-center gap-3 p-3 rounded-2xl border border-border/30 bg-white dark:bg-[#1A1A1A] transit-all hover:border-primary/20 hover:shadow-md hover:shadow-primary/5 animate-fade-up"
+              className="flex items-center gap-3 p-3 rounded-2xl border border-border/30 bg-white dark:bg-[#1A1A1A] hover:border-primary/20 hover:shadow-md transition-all animate-fade-up"
               style={{ animationDelay: `${i * 80}ms` }}
             >
-              <div className="h-20 w-20 rounded-xl bg-muted overflow-hidden shrink-0 border border-border/30">
-                <img src={outfit.image} alt={outfit.name} className="w-full h-full object-cover" />
+              <div className="h-16 w-16 rounded-xl bg-muted overflow-hidden shrink-0 border border-border/20">
+                <img
+                  src={outfit.image}
+                  alt={outfit.name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => { (e.target as HTMLImageElement).src = "/product_dress_1.png"; }}
+                />
               </div>
               <div className="flex-1 min-w-0 space-y-1">
                 <div className="flex items-center gap-1.5">
-                  <p className="font-bold text-xs leading-tight truncate">{outfit.name}</p>
+                  <p className="font-bold text-xs truncate">{outfit.name}</p>
                   <span className="shrink-0 text-[8px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-bold">AI Pick</span>
                 </div>
-                <p className="text-[10px] text-muted-foreground leading-snug line-clamp-2">{outfit.desc}</p>
-                <p className="text-primary font-black text-sm">${outfit.price.toLocaleString()}</p>
-                <button
-                  onClick={onTryOn}
-                  className="flex items-center gap-1 text-[9px] font-bold bg-primary/10 text-primary px-2.5 py-1 rounded-full hover:bg-primary hover:text-white transit-all"
-                >
-                  <Sparkles className="h-2.5 w-2.5" /> Try On
-                </button>
+                <p className="text-[10px] text-muted-foreground line-clamp-2">{outfit.desc}</p>
+                <p className="text-primary font-black text-sm">{outfit.price} TND</p>
               </div>
+              <button
+                onClick={onTryOn}
+                className="shrink-0 h-8 px-3 rounded-full bg-primary/10 text-primary text-[10px] font-bold hover:bg-primary hover:text-white transition-all flex items-center gap-1"
+              >
+                <Sparkles className="h-3 w-3" /> Try On
+              </button>
             </div>
           ))}
-
           <button
-            onClick={() => { setGenerated(false); setResults([]); setStyleType(""); setColorPref(""); setOccasion(""); }}
-            className="w-full h-10 text-xs font-semibold text-muted-foreground hover:text-foreground border border-border/30 rounded-full transit-all hover:border-primary/30"
+            onClick={resetChat}
+            className="w-full h-9 text-xs font-semibold text-muted-foreground hover:text-foreground border border-border/30 rounded-full transition-all hover:border-primary/30"
           >
-            ↺ Generate New Outfits
+            ↺ Start new style session
           </button>
         </div>
       )}
+
+      {/* Quick suggestion chips */}
+      {messages.length <= 2 && !isLoading && (
+        <div className="flex flex-wrap gap-2">
+          {["I need a date night outfit 🌹", "Casual everyday look", "Office-ready style", "Streetwear look 🔥"].map(s => (
+            <button
+              key={s}
+              onClick={() => sendMessage(s)}
+              className="px-3 py-1.5 rounded-full text-[11px] font-semibold bg-muted border border-border/30 text-muted-foreground hover:border-primary/40 hover:text-primary transition-all"
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Input bar */}
+      <div className="flex items-end gap-2 bg-white dark:bg-[#1A1A1A] border border-border/40 rounded-2xl p-2 shadow-sm focus-within:ring-2 focus-within:ring-primary/30 transition-all">
+        <textarea
+          ref={inputRef}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Tell me your vibe, occasion, or style..."
+          rows={1}
+          className="flex-1 text-xs bg-transparent outline-none resize-none leading-relaxed pt-1 px-1 max-h-24 no-scrollbar"
+          style={{ minHeight: "28px" }}
+        />
+        <button
+          onClick={() => sendMessage()}
+          disabled={!input.trim() || isLoading}
+          className="h-9 w-9 rounded-xl bg-primary text-white flex items-center justify-center shrink-0 hover:opacity-90 disabled:opacity-40 transition-all"
+        >
+          {isLoading ? (
+            <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+          ) : (
+            <ChevronRight className="h-4 w-4" />
+          )}
+        </button>
+      </div>
+      <p className="text-center text-[9px] text-muted-foreground/50">Powered by Styly AI · Press Enter to send</p>
     </div>
   );
 }
-
