@@ -617,12 +617,189 @@ export const appRouter = router({
     updateStatus: adminProcedure
       .input(z.object({
         orderId: z.number(),
-        status: z.enum(["pending", "processing", "shipped", "delivered"]),
+        status: z.enum(["pending", "processing", "shipped", "delivered", "canceled", "refund_requested", "refunded"]),
+        notes: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
+        const { updateOrderStatus, OrderModel, ShipmentModel, toPlain } = await import("./db");
         await updateOrderStatus(input.orderId, input.status);
+
+        // Synchronize all shipments for this order if status changed to canceled or refunded or delivered
+        if (input.status === "canceled") {
+          await ShipmentModel.updateMany({ orderId: input.orderId }, { status: "canceled", updatedAt: new Date().toISOString() });
+        } else if (input.status === "refunded") {
+          await ShipmentModel.updateMany({ orderId: input.orderId }, { status: "refunded", updatedAt: new Date().toISOString() });
+        } else if (input.status === "delivered") {
+          await ShipmentModel.updateMany({ orderId: input.orderId }, { status: "delivered", updatedAt: new Date().toISOString() });
+        }
+
+        try {
+          const order = toPlain(await OrderModel.findOne({ id: input.orderId }));
+          if (order?.customerId) {
+            if (input.status === "canceled") {
+              await createNotification({
+                userId: order.customerId,
+                orderId: input.orderId,
+                type: "order_status",
+                title: "❌ Order Canceled",
+                message: `Your order #${input.orderId} has been canceled by platform administration.`,
+              });
+            } else if (input.status === "refunded") {
+              await createNotification({
+                userId: order.customerId,
+                orderId: input.orderId,
+                type: "order_status",
+                title: "💰 Refund Processed",
+                message: `Refund of ${order.totalAmount} TND for order #${input.orderId} has been completed.`,
+              });
+            }
+          }
+        } catch (err: any) {
+          console.error("[Orders] Notification error:", err.message);
+        }
+
         await logActivity(ctx.user.id, "Order Status Updated", "order", input.orderId, `Updated status of order #${input.orderId} to ${input.status}`);
         return { success: true, message: "Order status updated" };
+      }),
+
+    /** User self-cancel if placed within 3 hours, or admin cancel anytime */
+    cancelOrder: publicProcedure
+      .input(z.object({
+        orderId: z.number(),
+        reason: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { OrderModel, ShipmentModel, toPlain } = await import("./db");
+        const order = toPlain(await OrderModel.findOne({ id: input.orderId }));
+        if (!order) {
+          throw new Error("Order not found");
+        }
+
+        const isAdmin = ctx.user?.role === "admin";
+        const isCustomer = ctx.user && ctx.user.id === order.customerId;
+
+        if (!isAdmin && !isCustomer) {
+          throw new Error("You do not have permission to cancel this order");
+        }
+
+        if (order.status === "canceled") {
+          throw new Error("Order is already canceled");
+        }
+        if (order.status === "refunded") {
+          throw new Error("Order is already refunded");
+        }
+
+        // 3-hour limit rule for users
+        if (!isAdmin) {
+          if (order.status === "delivered") {
+            throw new Error("Order has already been delivered. Please submit a refund request instead.");
+          }
+          const orderTime = new Date(order.createdAt).getTime();
+          const now = Date.now();
+          const elapsedHours = (now - orderTime) / (1000 * 60 * 60);
+
+          if (elapsedHours > 3) {
+            throw new Error("Cancellation window expired (more than 3 hours since order was placed). Please wait for the order to be delivered to request a refund.");
+          }
+        }
+
+        // Cancel order and associated shipments
+        await OrderModel.updateOne(
+          { id: input.orderId },
+          { status: "canceled", cancelReason: input.reason || "Canceled by user", updatedAt: new Date().toISOString() }
+        );
+        await ShipmentModel.updateMany(
+          { orderId: input.orderId },
+          { status: "canceled", updatedAt: new Date().toISOString() }
+        );
+
+        try {
+          if (order.customerId) {
+            await createNotification({
+              userId: order.customerId,
+              orderId: input.orderId,
+              type: "order_status",
+              title: "❌ Order Canceled",
+              message: isAdmin
+                ? `Your order #${input.orderId} was canceled by platform administration.`
+                : `You successfully canceled order #${input.orderId}.`,
+            });
+          }
+        } catch (err: any) {
+          console.error("[Orders] Notification error:", err.message);
+        }
+
+        await logActivity(
+          ctx.user?.id ?? order.customerId ?? 1,
+          "Order Canceled",
+          "order",
+          input.orderId,
+          `Order #${input.orderId} canceled (${isAdmin ? "by admin" : "by user within 3h"})`
+        );
+
+        return { success: true, message: "Order canceled successfully" };
+      }),
+
+    /** Customer: Request a refund after order is delivered */
+    requestRefund: publicProcedure
+      .input(z.object({
+        orderId: z.number(),
+        reason: z.string().min(1, "Please provide a reason for the refund request"),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const { OrderModel, ShipmentModel, toPlain } = await import("./db");
+        const order = toPlain(await OrderModel.findOne({ id: input.orderId }));
+        if (!order) {
+          throw new Error("Order not found");
+        }
+
+        const isCustomer = ctx.user && ctx.user.id === order.customerId;
+        const isAdmin = ctx.user?.role === "admin";
+        if (!isCustomer && !isAdmin) {
+          throw new Error("You do not have permission to request a refund for this order");
+        }
+
+        if (order.status !== "delivered") {
+          throw new Error("Refund requests are only accepted after the order has been delivered.");
+        }
+
+        await OrderModel.updateOne(
+          { id: input.orderId },
+          {
+            status: "refund_requested",
+            refundReason: input.reason,
+            refundRequestedAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }
+        );
+        await ShipmentModel.updateMany(
+          { orderId: input.orderId },
+          { notes: `Refund requested: ${input.reason}` }
+        );
+
+        try {
+          if (order.customerId) {
+            await createNotification({
+              userId: order.customerId,
+              orderId: input.orderId,
+              type: "order_status",
+              title: "🔄 Refund Request Submitted",
+              message: `Your refund request for order #${input.orderId} has been sent to the Styly team for review.`,
+            });
+          }
+        } catch (err: any) {
+          console.error("[Orders] Notification error:", err.message);
+        }
+
+        await logActivity(
+          ctx.user?.id ?? order.customerId ?? 1,
+          "Refund Requested",
+          "order",
+          input.orderId,
+          `Customer requested refund for delivered order #${input.orderId}: ${input.reason}`
+        );
+
+        return { success: true, message: "Refund request submitted successfully. Our team will review it shortly." };
       }),
   }),
 

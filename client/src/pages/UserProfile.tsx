@@ -592,7 +592,44 @@ const SHIP_STATUS_CFG: Record<string, { label: string; color: string; bg: string
 };
 
 function OrdersTrackingPanel() {
-  const { data: orders = [], isLoading } = trpc.delivery.myOrders.useQuery();
+  const { data: orders = [], isLoading, refetch } = trpc.delivery.myOrders.useQuery();
+  const cancelOrderMutation = trpc.orders.cancelOrder.useMutation();
+  const requestRefundMutation = trpc.orders.requestRefund.useMutation();
+
+  const [refundModalOrder, setRefundModalOrder] = useState<any | null>(null);
+  const [refundReason, setRefundReason] = useState("");
+  const [cancelModalOrder, setCancelModalOrder] = useState<any | null>(null);
+
+  const handleConfirmCancel = async () => {
+    if (!cancelModalOrder) return;
+    try {
+      await cancelOrderMutation.mutateAsync({ orderId: cancelModalOrder.id });
+      await refetch();
+      toast.success(`Order #${cancelModalOrder.id} has been canceled.`);
+      setCancelModalOrder(null);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to cancel order");
+    }
+  };
+
+  const handleConfirmRefund = async () => {
+    if (!refundModalOrder || !refundReason.trim()) {
+      toast.error("Please explain why you are requesting a refund");
+      return;
+    }
+    try {
+      await requestRefundMutation.mutateAsync({
+        orderId: refundModalOrder.id,
+        reason: refundReason.trim(),
+      });
+      await refetch();
+      toast.success("Refund request submitted to Styly admin team!");
+      setRefundModalOrder(null);
+      setRefundReason("");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to submit refund request");
+    }
+  };
 
   if (isLoading) {
     return (
@@ -614,103 +651,286 @@ function OrdersTrackingPanel() {
 
   return (
     <div className="space-y-4 animate-fade-up">
-      {orders.map((order: any) => (
-        <div key={order.id} className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-border/30 shadow-sm overflow-hidden">
-          {/* Order header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border/20 bg-muted/30">
-            <div>
-              <p className="text-xs font-black">Order #{order.id}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">
-                {new Date(order.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-xs font-black text-primary">{order.totalAmount?.toLocaleString()} TND</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1 justify-end">
-                <MapPin className="h-2.5 w-2.5" /> {order.city || order.shippingAddress || "—"}
-              </p>
-            </div>
-          </div>
+      {orders.map((order: any) => {
+        const orderDate = new Date(order.createdAt).getTime();
+        const hoursPassed = (Date.now() - orderDate) / (1000 * 60 * 60);
+        const canSelfCancel = hoursPassed <= 3 && order.status !== "delivered" && order.status !== "canceled" && order.status !== "refunded" && order.status !== "refund_requested";
+        const isDelivered = order.status === "delivered";
+        const isRefundRequested = order.status === "refund_requested";
+        const isCanceled = order.status === "canceled";
+        const isRefunded = order.status === "refunded";
+        const remainingMinutes = Math.max(0, Math.floor(180 - hoursPassed * 60));
 
-          {/* Shipments */}
-          <div className="divide-y divide-border/15">
-            {(order.shipments ?? []).map((sh: any) => {
-              const cfg = SHIP_STATUS_CFG[sh.status] ?? SHIP_STATUS_CFG.pending;
-              const stepIdx = SHIP_STATUS_STEPS.indexOf(sh.status);
-              const isCanceled = sh.status === "canceled";
-              return (
-                <div key={sh.id} className="p-4 space-y-3">
-                  {/* Brand + status */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <Package className="h-3.5 w-3.5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold">{sh.brandName}</p>
-                        <p className="text-[10px] text-muted-foreground">Shipment #{sh.id}</p>
-                      </div>
-                    </div>
-                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${cfg.color} ${cfg.bg}`}>
-                      {cfg.label}
+        return (
+          <div key={order.id} className={`bg-white dark:bg-[#1A1A1A] rounded-2xl border shadow-sm overflow-hidden transition ${
+            isCanceled ? "border-rose-500/30 opacity-80" : isRefundRequested ? "border-amber-500/40" : "border-border/30"
+          }`}>
+            {/* Order header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border/20 bg-muted/30 flex-wrap gap-2">
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="text-xs font-black">Order #{order.id}</p>
+                  {isCanceled && (
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-500 border border-rose-500/30">
+                      Canceled
                     </span>
-                  </div>
-
-                  {/* Progress timeline */}
-                  {!isCanceled && (
-                    <div className="flex items-center gap-0">
-                      {SHIP_STATUS_STEPS.map((step, i) => {
-                        const done = i <= stepIdx;
-                        const isLast = i === SHIP_STATUS_STEPS.length - 1;
-                        return (
-                          <div key={step} className="flex items-center flex-1">
-                            <div className={`h-2 w-2 rounded-full shrink-0 transit-all ${done ? "bg-primary" : "bg-border"}`} />
-                            {!isLast && (
-                              <div className={`flex-1 h-0.5 transit-all ${i < stepIdx ? "bg-primary" : "bg-border"}`} />
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
                   )}
-
-                  {/* Tracking info */}
-                  {sh.carrier && (
-                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground bg-muted/40 rounded-lg px-3 py-1.5">
-                      <Truck className="h-3 w-3 text-primary shrink-0" />
-                      <span className="font-semibold">{sh.carrier}</span>
-                      {sh.trackingNumber && <span className="font-mono ml-1 text-foreground">{sh.trackingNumber}</span>}
-                      {sh.estimatedDeliveryDate && (
-                        <span className="ml-auto">ETA: {new Date(sh.estimatedDeliveryDate).toLocaleDateString()}</span>
-                      )}
-                    </div>
+                  {isRefundRequested && (
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/30 animate-pulse">
+                      Refund Requested
+                    </span>
                   )}
-
-                  {/* Items in this shipment */}
-                  {sh.items?.length > 0 && (
-                    <div className="space-y-1.5">
-                      {sh.items.map((item: any) => (
-                        <div key={item.id} className="flex items-center gap-2 text-xs">
-                          {item.productImage && (
-                            <img src={item.productImage} alt={item.productName} className="h-8 w-8 rounded-lg object-cover shrink-0" />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold truncate">{item.productName ?? "Item"}</p>
-                            <p className="text-[10px] text-muted-foreground">
-                              ×{item.quantity}{item.size ? ` · ${item.size}` : ""}
-                            </p>
-                          </div>
-                          <p className="font-bold text-primary shrink-0">{(item.priceAtPurchase * item.quantity).toLocaleString()} TND</p>
-                        </div>
-                      ))}
-                    </div>
+                  {isRefunded && (
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-500 border border-purple-500/30">
+                      Refunded
+                    </span>
+                  )}
+                  {isDelivered && (
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/30">
+                      Delivered
+                    </span>
                   )}
                 </div>
-              );
-            })}
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  {new Date(order.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })} at {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-black text-primary">{order.totalAmount?.toLocaleString()} TND</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1 justify-end">
+                  <MapPin className="h-2.5 w-2.5" /> {order.city || order.shippingAddress || "—"}
+                </p>
+              </div>
+            </div>
+
+            {/* Shipments */}
+            <div className="divide-y divide-border/15">
+              {(order.shipments ?? []).map((sh: any) => {
+                const cfg = SHIP_STATUS_CFG[sh.status] ?? SHIP_STATUS_CFG.pending;
+                const stepIdx = SHIP_STATUS_STEPS.indexOf(sh.status);
+                const shIsCanceled = sh.status === "canceled";
+                return (
+                  <div key={sh.id} className="p-4 space-y-3">
+                    {/* Brand + status */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <Package className="h-3.5 w-3.5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold">{sh.brandName}</p>
+                          <p className="text-[10px] text-muted-foreground">Shipment #{sh.id}</p>
+                        </div>
+                      </div>
+                      <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${cfg.color} ${cfg.bg}`}>
+                        {cfg.label}
+                      </span>
+                    </div>
+
+                    {/* Progress timeline */}
+                    {!shIsCanceled && (
+                      <div className="flex items-center gap-0">
+                        {SHIP_STATUS_STEPS.map((step, i) => {
+                          const done = i <= stepIdx;
+                          const isLast = i === SHIP_STATUS_STEPS.length - 1;
+                          return (
+                            <div key={step} className="flex items-center flex-1">
+                              <div className={`h-2 w-2 rounded-full shrink-0 transit-all ${done ? "bg-primary" : "bg-border"}`} />
+                              {!isLast && (
+                                <div className={`flex-1 h-0.5 transit-all ${i < stepIdx ? "bg-primary" : "bg-border"}`} />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Tracking info */}
+                    {sh.carrier && (
+                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground bg-muted/40 rounded-lg px-3 py-1.5">
+                        <Truck className="h-3 w-3 text-primary shrink-0" />
+                        <span className="font-semibold">{sh.carrier}</span>
+                        {sh.trackingNumber && <span className="font-mono ml-1 text-foreground">{sh.trackingNumber}</span>}
+                        {sh.estimatedDeliveryDate && (
+                          <span className="ml-auto">ETA: {new Date(sh.estimatedDeliveryDate).toLocaleDateString()}</span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Items in this shipment */}
+                    {sh.items?.length > 0 && (
+                      <div className="space-y-1.5">
+                        {sh.items.map((item: any) => (
+                          <div key={item.id} className="flex items-center gap-2 text-xs">
+                            {item.productImage && (
+                              <img src={item.productImage} alt={item.productName} className="h-8 w-8 rounded-lg object-cover shrink-0" />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold truncate">{item.productName ?? "Item"}</p>
+                              <p className="text-[10px] text-muted-foreground">
+                                ×{item.quantity}{item.size ? ` · ${item.size}` : ""}
+                              </p>
+                            </div>
+                            <p className="font-bold text-primary shrink-0">{(item.priceAtPurchase * item.quantity).toLocaleString()} TND</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Order Cancellation & Refund Action Footer */}
+            <div className="p-3 bg-muted/20 border-t border-border/20 flex items-center justify-between gap-3 flex-wrap">
+              {canSelfCancel && (
+                <div className="flex items-center justify-between w-full">
+                  <span className="text-[11px] text-muted-foreground flex items-center gap-1 font-medium">
+                    <Clock className="h-3.5 w-3.5 text-amber-500" />
+                    Cancel available for next {remainingMinutes} min(s)
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setCancelModalOrder(order)}
+                    className="rounded-xl text-xs font-bold border-rose-500/30 text-rose-500 hover:bg-rose-500/10 h-8"
+                  >
+                    <Ban size={13} className="mr-1.5" />
+                    Cancel Order
+                  </Button>
+                </div>
+              )}
+
+              {!canSelfCancel && !isDelivered && !isCanceled && !isRefunded && !isRefundRequested && (
+                <div className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                  <ShieldCheck className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                  Order is being fulfilled. After delivery, you can request a return & refund if needed.
+                </div>
+              )}
+
+              {isDelivered && (
+                <div className="flex items-center justify-between w-full">
+                  <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Package delivered safely
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setRefundModalOrder(order);
+                      setRefundReason("");
+                    }}
+                    className="rounded-xl text-xs font-bold border-purple-500/30 text-purple-500 hover:bg-purple-500/10 h-8"
+                  >
+                    <Undo2 size={13} className="mr-1.5" />
+                    Request Refund / Return
+                  </Button>
+                </div>
+              )}
+
+              {isRefundRequested && (
+                <div className="text-[11px] text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1.5 w-full bg-amber-500/10 p-2 rounded-xl border border-amber-500/20">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>Refund request under review by Styly support team. Reason: <em>"{order.refundReason}"</em></span>
+                </div>
+              )}
+
+              {isCanceled && (
+                <div className="text-[11px] text-rose-500 font-medium flex items-center gap-1">
+                  <Ban className="h-3.5 w-3.5" />
+                  This order was canceled {order.cancelReason ? `(${order.cancelReason})` : ""}.
+                </div>
+              )}
+
+              {isRefunded && (
+                <div className="text-[11px] text-purple-500 font-medium flex items-center gap-1">
+                  <Undo2 className="h-3.5 w-3.5" />
+                  Refund of {order.totalAmount} TND processed.
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
+
+      {/* Customer Cancel Confirmation Modal */}
+      <Dialog open={!!cancelModalOrder} onOpenChange={() => setCancelModalOrder(null)}>
+        <DialogContent className="max-w-sm rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2 text-rose-500">
+              <Ban className="h-5 w-5" />
+              Cancel Order #{cancelModalOrder?.id}?
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground mt-2">
+            Are you sure you want to cancel this order? This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCancelModalOrder(null)}
+              className="rounded-xl text-xs"
+            >
+              Keep Order
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleConfirmCancel}
+              disabled={cancelOrderMutation.isPending}
+              className="rounded-xl text-xs bg-rose-600 hover:bg-rose-500 text-white font-bold"
+            >
+              {cancelOrderMutation.isPending ? "Canceling..." : "Yes, Cancel Order"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Customer Post-Delivery Refund Request Modal */}
+      <Dialog open={!!refundModalOrder} onOpenChange={() => setRefundModalOrder(null)}>
+        <DialogContent className="max-w-md rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2 text-purple-500">
+              <Undo2 className="h-5 w-5" />
+              Request Refund for Order #{refundModalOrder?.id}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground mt-1">
+            Please tell us why you are requesting a return or refund for this delivered package ({refundModalOrder?.totalAmount} TND).
+          </p>
+          <div className="space-y-3 mt-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-foreground">Reason for Refund</label>
+              <textarea
+                rows={3}
+                placeholder="e.g. Size didn't fit, item defective or not matching the photos..."
+                value={refundReason}
+                onChange={(e) => setRefundReason(e.target.value)}
+                className="w-full p-3 rounded-xl bg-muted border border-border/60 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500/30 resize-none"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setRefundModalOrder(null)}
+                className="rounded-xl text-xs font-bold"
+              >
+                Close
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleConfirmRefund}
+                disabled={requestRefundMutation.isPending}
+                className="rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white"
+              >
+                {requestRefundMutation.isPending ? "Submitting..." : "Submit Refund Request"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
