@@ -76,7 +76,23 @@ export default function Users() {
   const updateWithdrawalStatusMutation = trpc.withdrawals.adminUpdateStatus.useMutation();
   const utils = trpc.useUtils();
 
-  // Listen to URL search param changes and custom sidebar event
+  // Determine if the currently logged-in admin is an Owner or Co-Owner
+  // Owners: name contains "soumaya" (case-insensitive)
+  // Co-owner: 3rd admin by lowest ID (sorted ascending)
+  const { data: currentUser } = trpc.auth.me.useQuery(undefined, { refetchOnWindowFocus: false });
+
+  const canManageAdminPermissions = (() => {
+    if (!currentUser || !users.length) return false;
+    const callerName = (currentUser.name || "").toLowerCase().trim();
+    if (callerName.includes("soumaya")) return true; // Owner
+    // Co-owner = 3rd admin by ID
+    const admins = users
+      .filter((u: any) => u.role === "admin")
+      .sort((a: any, b: any) => a.id - b.id);
+    return admins[2]?.id === currentUser.id;
+  })();
+
+  // Classify users
   useEffect(() => {
     const syncTabFromUrl = () => {
       const params = new URLSearchParams(window.location.search);
@@ -770,20 +786,45 @@ export default function Users() {
                     const isCreator = (user.grade || 1) >= 2 || (user.stylePoints || 0) > 100;
                     const perms = user.permissions || ["dashboard", "users", "products", "orders", "analytics", "brands", "settings"];
 
+                    // Determine owner/co-owner rank for display
+                    const sortedAdmins = users
+                      .filter((u: any) => u.role === "admin")
+                      .sort((a: any, b: any) => a.id - b.id);
+                    const userName = (user.name || "").toLowerCase().trim();
+                    const isOwnerUser = userName.includes("soumaya");
+                    const isCoOwner = !isOwnerUser && sortedAdmins[2]?.id === user.id;
+                    const adminRankLabel = isOwnerUser ? "Owner" : isCoOwner ? "Co-Owner" : null;
+
                     return (
                       <TableRow key={user.id} className="border-border/50 hover:bg-muted/30 transition">
                         <TableCell>
                           <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-rose-500/20 to-orange-500/20 border border-primary/20 flex items-center justify-center font-bold text-xs text-primary shrink-0">
+                            <div className={`h-10 w-10 rounded-full border flex items-center justify-center font-bold text-xs shrink-0 ${
+                              isOwnerUser
+                                ? "bg-gradient-to-tr from-amber-500/30 to-yellow-500/20 border-amber-500/40 text-amber-600"
+                                : isCoOwner
+                                ? "bg-gradient-to-tr from-purple-500/20 to-blue-500/10 border-purple-500/30 text-purple-600"
+                                : "bg-gradient-to-tr from-rose-500/20 to-orange-500/20 border-primary/20 text-primary"
+                            }`}>
                               {user.name ? user.name[0].toUpperCase() : (user.email ? user.email[0].toUpperCase() : "U")}
                             </div>
                             <div>
-                              <div className="flex items-center gap-1.5">
+                              <div className="flex items-center gap-1.5 flex-wrap">
                                 <p className="font-bold text-sm text-foreground">{user.name || "Anonymous Member"}</p>
                                 {user.role === "admin" && (
                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-500 text-[10px] font-black tracking-wider uppercase">
                                     <Crown size={10} className="fill-amber-500" />
                                     Admin Staff
+                                  </span>
+                                )}
+                                {adminRankLabel && (
+                                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider uppercase ${
+                                    isOwnerUser
+                                      ? "bg-yellow-500/15 border border-yellow-500/40 text-yellow-600"
+                                      : "bg-purple-500/10 border border-purple-500/30 text-purple-500"
+                                  }`}>
+                                    <Shield size={9} />
+                                    {adminRankLabel}
                                   </span>
                                 )}
                               </div>
@@ -795,8 +836,14 @@ export default function Users() {
                         <TableCell>
                           {activeTab === "team" ? (
                             <div className="flex flex-col gap-1">
-                              <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 font-bold w-fit">
-                                Styly Panel Admin
+                              <Badge variant="outline" className={`font-bold w-fit ${
+                                isOwnerUser
+                                  ? "bg-yellow-500/10 text-yellow-600 border-yellow-500/30"
+                                  : isCoOwner
+                                  ? "bg-purple-500/10 text-purple-400 border-purple-500/30"
+                                  : "bg-amber-500/10 text-amber-400 border-amber-500/30"
+                              }`}>
+                                {isOwnerUser ? "Platform Owner" : isCoOwner ? "Co-Owner" : "Styly Panel Admin"}
                               </Badge>
                               <span className="text-[10px] text-muted-foreground font-mono">
                                 {perms.length} Access Areas Granted
@@ -866,29 +913,40 @@ export default function Users() {
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-52 rounded-xl shadow-xl">
+                            <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-xl">
                               <DropdownMenuItem onClick={() => handleViewDetails(user)} className="text-xs font-semibold cursor-pointer">
                                 View Profile Overview
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleEditUser(user)} className="text-xs font-semibold cursor-pointer">
-                                Edit Details & Password
+                                Edit Details &amp; Password
                               </DropdownMenuItem>
                               
                               {user.role === "admin" ? (
                                 <>
-                                  <DropdownMenuItem onClick={() => handleOpenPermissions(user)} className="text-xs font-semibold text-purple-500 cursor-pointer">
-                                    <Key className="h-3.5 w-3.5 mr-1.5" />
-                                    Manage Permissions
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleToggleRole(user)} className="text-xs font-semibold text-amber-500 cursor-pointer">
-                                    Demote to App User
-                                  </DropdownMenuItem>
+                                  {canManageAdminPermissions ? (
+                                    <>
+                                      <DropdownMenuItem onClick={() => handleOpenPermissions(user)} className="text-xs font-semibold text-purple-500 cursor-pointer">
+                                        <Key className="h-3.5 w-3.5 mr-1.5" />
+                                        Manage Permissions
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleToggleRole(user)} className="text-xs font-semibold text-amber-500 cursor-pointer">
+                                        Demote to App User
+                                      </DropdownMenuItem>
+                                    </>
+                                  ) : (
+                                    <DropdownMenuItem disabled className="text-xs font-semibold text-muted-foreground cursor-not-allowed opacity-60">
+                                      <Shield className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                                      Owner-Only: Permissions Locked
+                                    </DropdownMenuItem>
+                                  )}
                                 </>
                               ) : (
-                                <DropdownMenuItem onClick={() => handleToggleRole(user)} className="text-xs font-semibold text-amber-500 cursor-pointer">
-                                  <Crown className="h-3.5 w-3.5 mr-1.5" />
-                                  Promote to Styly Admin
-                                </DropdownMenuItem>
+                                canManageAdminPermissions ? (
+                                  <DropdownMenuItem onClick={() => handleToggleRole(user)} className="text-xs font-semibold text-amber-500 cursor-pointer">
+                                    <Crown className="h-3.5 w-3.5 mr-1.5" />
+                                    Promote to Styly Admin
+                                  </DropdownMenuItem>
+                                ) : null
                               )}
 
                               {(user.status || "active") !== "banned" ? (

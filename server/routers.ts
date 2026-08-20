@@ -418,10 +418,21 @@ export const appRouter = router({
     updateRole: adminProcedure
       .input(z.object({ userId: z.number(), role: z.enum(["admin", "user"]) }))
       .mutation(async ({ input, ctx }) => {
+        // Only owners and co-owner can change admin roles
+        const callerName = (ctx.user.name || "").toLowerCase().trim();
+        const isOwner = callerName.includes("soumaya");
+        if (!isOwner) {
+          // Check if caller is the co-owner (3rd admin by lowest ID among admins)
+          const allUsers = await getAllUsers();
+          const admins = allUsers.filter((u: any) => u.role === "admin").sort((a: any, b: any) => a.id - b.id);
+          const coOwnerId = admins[2]?.id;
+          if (ctx.user.id !== coOwnerId) {
+            throw new Error("Only platform owners and the co-owner can change admin roles.");
+          }
+        }
         const { updateUserRole, updateUserPermissions } = await import("./db");
         await updateUserRole(input.userId, input.role);
         if (input.role === "admin") {
-          // Default permissions for new admin
           await updateUserPermissions(input.userId, ["dashboard", "users", "products", "orders", "analytics", "brands", "settings"]);
         }
         await logActivity(ctx.user.id, "Updated User Role", "user", input.userId, `Changed role of user #${input.userId} to ${input.role}`);
@@ -433,6 +444,18 @@ export const appRouter = router({
         permissions: z.array(z.string()),
       }))
       .mutation(async ({ input, ctx }) => {
+        // Only owners and co-owner can change admin permissions
+        const callerName = (ctx.user.name || "").toLowerCase().trim();
+        const isOwner = callerName.includes("soumaya");
+        if (!isOwner) {
+          // Check if caller is the co-owner (3rd admin by lowest ID among admins)
+          const allUsers = await getAllUsers();
+          const admins = allUsers.filter((u: any) => u.role === "admin").sort((a: any, b: any) => a.id - b.id);
+          const coOwnerId = admins[2]?.id;
+          if (ctx.user.id !== coOwnerId) {
+            throw new Error("Only platform owners and the co-owner can manage admin permissions.");
+          }
+        }
         const { updateUserPermissions } = await import("./db");
         await updateUserPermissions(input.userId, input.permissions);
         await logActivity(ctx.user.id, "Updated Admin Permissions", "user", input.userId, `Updated permissions for team member #${input.userId}`);
