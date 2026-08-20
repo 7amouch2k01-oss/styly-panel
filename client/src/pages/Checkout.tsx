@@ -60,7 +60,7 @@ export default function Checkout() {
   });
 
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'card' | 'd17' | 'flouci' | 'cod' | null>(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'card' | 'd17' | 'flouci' | 'cod'>('cod');
 
   const [verificationCode, setVerificationCode] = useState("");
 
@@ -333,69 +333,194 @@ export default function Checkout() {
           {step === 2 && (
             <div className="space-y-6 animate-fade-up">
               <h2 className="text-lg font-black flex items-center gap-2">
-                <CreditCard className="h-5 w-5 text-primary" /> Payment Details
+                <CreditCard className="h-5 w-5 text-primary" /> Choose Payment Method
               </h2>
-              <div className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-border/30 p-5 space-y-4">
-                <div className="p-3 rounded-xl bg-primary/5 border border-primary/15 flex items-center gap-2 text-xs text-muted-foreground">
-                  <Lock className="h-3.5 w-3.5 text-primary shrink-0" />
-                  <span>Payments are encrypted and secure. Select a payment method on the next step.</span>
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Name on Card</label>
-                  <input
-                    type="text"
-                    value={payment.cardName}
-                    onChange={(e) => setPayment((p) => ({ ...p, cardName: e.target.value }))}
-                    placeholder="Aria Fenix"
-                    className="w-full h-11 px-4 rounded-xl bg-muted border border-border/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transit-all"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Card Number</label>
-                  <input
-                    type="text"
-                    value={payment.cardNumber}
-                    onChange={(e) => {
-                      const v = e.target.value.replace(/\D/g, "").slice(0, 16);
-                      setPayment((p) => ({ ...p, cardNumber: v.replace(/(.{4})/g, "$1 ").trim() }));
-                    }}
-                    placeholder="1234 5678 9012 3456"
-                    className="w-full h-11 px-4 rounded-xl bg-muted border border-border/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transit-all font-mono tracking-wider"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Expiry Date</label>
-                    <input
-                      type="text"
-                      value={payment.expiryDate}
-                      onChange={(e) => {
-                        let v = e.target.value.replace(/\D/g, "").slice(0, 4);
-                        if (v.length > 2) v = v.slice(0, 2) + "/" + v.slice(2);
-                        setPayment((p) => ({ ...p, expiryDate: v }));
-                      }}
-                      placeholder="MM/YY"
-                      className="w-full h-11 px-4 rounded-xl bg-muted border border-border/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transit-all font-mono"
-                    />
+
+              {/* Payment Methods Selection Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* 1. Cash on Delivery (DEFAULT) */}
+                <div
+                  onClick={() => setSelectedPaymentMethod("cod")}
+                  className={`cursor-pointer p-4 rounded-2xl border-2 transition-all relative ${
+                    selectedPaymentMethod === "cod"
+                      ? "border-emerald-500 bg-emerald-500/10 shadow-md shadow-emerald-500/10"
+                      : "border-border/40 bg-white dark:bg-[#1A1A1A] hover:border-border"
+                  }`}
+                >
+                  {selectedPaymentMethod === "cod" && (
+                    <span className="absolute top-3 right-3 text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500 text-white">
+                      Selected
+                    </span>
+                  )}
+                  <div className="h-9 w-9 rounded-xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center mb-2.5">
+                    <Truck className="h-5 w-5" />
                   </div>
-                  <div>
-                    <label className="text-xs font-semibold text-muted-foreground block mb-1.5">CVV</label>
-                    <input
-                      type="password"
-                      value={payment.cvv}
-                      onChange={(e) => setPayment((p) => ({ ...p, cvv: e.target.value.replace(/\D/g, "").slice(0, 4) }))}
-                      placeholder="•••"
-                      className="w-full h-11 px-4 rounded-xl bg-muted border border-border/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transit-all font-mono tracking-widest"
-                    />
+                  <h3 className="font-bold text-sm text-foreground">Pay When Delivered (COD)</h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Pay with cash directly to the courier when your package arrives at your door.
+                  </p>
+                </div>
+
+                {/* 2. D17 Mobile Wallet */}
+                <div
+                  onClick={() => setSelectedPaymentMethod("d17")}
+                  className={`cursor-pointer p-4 rounded-2xl border-2 transition-all relative ${
+                    selectedPaymentMethod === "d17"
+                      ? "border-orange-500 bg-orange-500/10 shadow-md shadow-orange-500/10"
+                      : "border-border/40 bg-white dark:bg-[#1A1A1A] hover:border-border"
+                  }`}
+                >
+                  {selectedPaymentMethod === "d17" && (
+                    <span className="absolute top-3 right-3 text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-orange-500 text-white">
+                      Selected
+                    </span>
+                  )}
+                  <div className="h-9 w-9 rounded-xl bg-orange-500/15 text-orange-500 flex items-center justify-center mb-2.5">
+                    <Smartphone className="h-5 w-5" />
                   </div>
+                  <h3 className="font-bold text-sm text-foreground">D17 Mobile Wallet</h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Instant transfer using the La Poste Tunisienne D17 app.
+                  </p>
+                </div>
+
+                {/* 3. Flouci Digital Wallet */}
+                <div
+                  onClick={() => setSelectedPaymentMethod("flouci")}
+                  className={`cursor-pointer p-4 rounded-2xl border-2 transition-all relative ${
+                    selectedPaymentMethod === "flouci"
+                      ? "border-amber-500 bg-amber-500/10 shadow-md shadow-amber-500/10"
+                      : "border-border/40 bg-white dark:bg-[#1A1A1A] hover:border-border"
+                  }`}
+                >
+                  {selectedPaymentMethod === "flouci" && (
+                    <span className="absolute top-3 right-3 text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500 text-white">
+                      Selected
+                    </span>
+                  )}
+                  <div className="h-9 w-9 rounded-xl bg-amber-500/15 text-amber-500 flex items-center justify-center mb-2.5">
+                    <Wallet className="h-5 w-5" />
+                  </div>
+                  <h3 className="font-bold text-sm text-foreground">Flouci Wallet</h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Fast checkout via your verified Flouci mobile account.
+                  </p>
+                </div>
+
+                {/* 4. Bank Card */}
+                <div
+                  onClick={() => setSelectedPaymentMethod("card")}
+                  className={`cursor-pointer p-4 rounded-2xl border-2 transition-all relative ${
+                    selectedPaymentMethod === "card"
+                      ? "border-primary bg-primary/10 shadow-md shadow-primary/10"
+                      : "border-border/40 bg-white dark:bg-[#1A1A1A] hover:border-border"
+                  }`}
+                >
+                  {selectedPaymentMethod === "card" && (
+                    <span className="absolute top-3 right-3 text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-primary text-white">
+                      Selected
+                    </span>
+                  )}
+                  <div className="h-9 w-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center mb-2.5">
+                    <CreditCard className="h-5 w-5" />
+                  </div>
+                  <h3 className="font-bold text-sm text-foreground">Bank / Credit Card</h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Secure online payment via Visa, Mastercard, or e-Dinar.
+                  </p>
                 </div>
               </div>
-              <button
-                onClick={() => setShowPaymentModal(true)}
-                className="w-full h-12 bg-gradient-to-r from-primary to-orange-500 text-white rounded-full font-bold hover:opacity-95 hover:scale-[1.01] transit-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
-              >
-                <Lock className="h-4 w-4" /> Confirm Order — {total.toLocaleString()} TND
-              </button>
+
+              {/* Extra Inputs for Bank Card */}
+              {selectedPaymentMethod === "card" && (
+                <div className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-border/30 p-5 space-y-4 animate-fade-in">
+                  <div className="p-3 rounded-xl bg-primary/5 border border-primary/15 flex items-center gap-2 text-xs text-muted-foreground">
+                    <Lock className="h-3.5 w-3.5 text-primary shrink-0" />
+                    <span>256-bit SSL encrypted bank card transaction.</span>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Name on Card</label>
+                    <input
+                      type="text"
+                      value={payment.cardName}
+                      onChange={(e) => setPayment((p) => ({ ...p, cardName: e.target.value }))}
+                      placeholder="e.g. Aria Fenix"
+                      className="w-full h-11 px-4 rounded-xl bg-muted border border-border/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transit-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Card Number</label>
+                    <input
+                      type="text"
+                      value={payment.cardNumber}
+                      onChange={(e) => {
+                        const v = e.target.value.replace(/\D/g, "").slice(0, 16);
+                        setPayment((p) => ({ ...p, cardNumber: v.replace(/(.{4})/g, "$1 ").trim() }));
+                      }}
+                      placeholder="1234 5678 9012 3456"
+                      className="w-full h-11 px-4 rounded-xl bg-muted border border-border/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transit-all font-mono tracking-wider"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-semibold text-muted-foreground block mb-1.5">Expiry Date</label>
+                      <input
+                        type="text"
+                        value={payment.expiryDate}
+                        onChange={(e) => {
+                          let v = e.target.value.replace(/\D/g, "").slice(0, 4);
+                          if (v.length > 2) v = v.slice(0, 2) + "/" + v.slice(2);
+                          setPayment((p) => ({ ...p, expiryDate: v }));
+                        }}
+                        placeholder="MM/YY"
+                        className="w-full h-11 px-4 rounded-xl bg-muted border border-border/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transit-all font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-muted-foreground block mb-1.5">CVV</label>
+                      <input
+                        type="password"
+                        value={payment.cvv}
+                        onChange={(e) => setPayment((p) => ({ ...p, cvv: e.target.value.replace(/\D/g, "").slice(0, 4) }))}
+                        placeholder="•••"
+                        className="w-full h-11 px-4 rounded-xl bg-muted border border-border/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transit-all font-mono tracking-widest"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Order Confirmation button */}
+              <div className="space-y-3 pt-2">
+                <button
+                  onClick={handlePlaceOrder}
+                  disabled={placing}
+                  className="w-full h-14 bg-gradient-to-r from-primary to-orange-500 text-white rounded-full font-bold hover:opacity-95 hover:scale-[1.01] transit-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50 text-sm"
+                >
+                  {placing ? (
+                    <>
+                      <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                      Placing Your Order…
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="h-4 w-4" />
+                      Place Order with {
+                        selectedPaymentMethod === "cod" ? "Cash on Delivery" :
+                        selectedPaymentMethod === "d17" ? "D17 Wallet" :
+                        selectedPaymentMethod === "flouci" ? "Flouci" : "Bank Card"
+                      } — {total.toLocaleString()} TND
+                    </>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => setStep(1)}
+                  className="w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors py-1 font-semibold"
+                >
+                  ← Edit Delivery Address
+                </button>
+              </div>
             </div>
           )}
 

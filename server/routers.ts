@@ -1604,8 +1604,8 @@ export const appRouter = router({
         const userId = ctx.user?.id ?? 1;
         const email = ctx.user?.email ?? undefined;
 
-        // 1. Create order & brand shipments in MongoDB
-        const order = await createFullOrder(userId, email, input.address, input.items, input.total);
+        // 1. Create order & brand shipments in MongoDB with payment method
+        const order = await createFullOrder(userId, email, input.address, input.items, input.total, input.paymentMethod);
 
         // 2. Save delivery profile to user DB if logged in
         if (ctx.user) {
@@ -1700,17 +1700,30 @@ export const appRouter = router({
       return result;
     }),
 
-    /** Brand: see shipments for their brand */
+    /** Brand: see shipments for their brand with full order & payment info */
     brandListShipments: publicProcedure
       .input(z.object({ brandId: z.number() }))
       .query(async ({ input }) => {
         const { getShipmentsByBrand } = await import("./db");
-        const { OrderItemModel, toPlain } = await import("./mongodb");
+        const { OrderItemModel, OrderModel, toPlain } = await import("./mongodb");
         const shs = await getShipmentsByBrand(input.brandId);
         const result = [];
         for (const s of shs) {
           const items = toPlain(await OrderItemModel.find({ shipmentId: s.id }));
-          result.push({ ...s, items });
+          const order = toPlain(await OrderModel.findOne({ id: s.orderId }));
+          result.push({
+            ...s,
+            items,
+            order: order ? {
+              id: order.id,
+              customerName: order.customerName,
+              customerEmail: order.customerEmail,
+              phone: order.phone,
+              paymentMethod: order.paymentMethod || "cod",
+              totalAmount: order.totalAmount,
+              createdAt: order.createdAt,
+            } : null,
+          });
         }
         return result;
       }),

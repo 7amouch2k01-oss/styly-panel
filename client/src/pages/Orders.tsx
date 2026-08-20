@@ -204,9 +204,12 @@ export default function Orders() {
                           <Badge variant="outline" className={`font-bold ${orderCfg.cls}`}>
                             {orderCfg.label}
                           </Badge>
+                          <Badge variant="secondary" className="font-bold text-[10px] uppercase">
+                            {order.paymentMethod === "cod" ? "Pay When Delivered (COD)" : order.paymentMethod === "d17" ? "D17 Wallet" : order.paymentMethod === "flouci" ? "Flouci" : "Bank Card"}
+                          </Badge>
                         </div>
                         <p className="text-xs text-muted-foreground font-mono">
-                          {order.customerEmail || "No email"} · {order.city || "Tunisia"} · {order.paymentMethod?.toUpperCase()}
+                          {order.customerEmail || "No email"} · {order.city || "Tunisia"} · Tel: {order.phone || "N/A"}
                         </p>
                       </div>
                     </div>

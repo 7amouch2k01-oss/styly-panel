@@ -912,7 +912,8 @@ export type CheckoutAddress = {
 
 export async function createFullOrder(
   customerId: number, customerEmail: string | undefined,
-  checkout: CheckoutAddress, items: CheckoutItem[], totalAmount: number
+  checkout: CheckoutAddress, items: CheckoutItem[], totalAmount: number,
+  paymentMethod: "card" | "d17" | "flouci" | "cod" = "cod"
 ) {
   const now = new Date().toISOString();
   const shippingLine = `${checkout.address}, ${checkout.city} ${checkout.postCode}, ${checkout.country}`;
@@ -929,6 +930,7 @@ export async function createFullOrder(
     city:            checkout.city,
     postCode:        checkout.postCode,
     country:         checkout.country,
+    paymentMethod,
     status:          "pending",
     totalAmount,
     itemCount:       items.reduce((s, i) => s + i.qty, 0),
@@ -957,6 +959,7 @@ export async function createFullOrder(
       brandName:       bName,
       status:          "pending",
       shippingAddress: shippingLine,
+      notes:           `Payment: ${paymentMethod.toUpperCase()}`,
       createdAt: now, updatedAt: now,
     });
     await sh.save();

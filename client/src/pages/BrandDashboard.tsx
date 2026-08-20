@@ -2745,12 +2745,20 @@ function ShipmentCard({ shipment, onUpdate }: { shipment: any; onUpdate: (s: any
 
   return (
     <div className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-border/30 p-4 space-y-3">
-      {/* Customer Info Card */}
-      <div className="p-3 bg-muted/50 rounded-xl border border-border/30 text-xs">
-         <p className="font-semibold text-foreground flex items-center gap-1.5 mb-1"><UserIcon className="h-3.5 w-3.5" /> Customer Details</p>
-         <p className="text-muted-foreground"><span className="font-medium text-foreground">Name:</span> {shipment.deliveryAddress?.split(',')[0] || "Customer Name"}</p>
-         <p className="text-muted-foreground"><span className="font-medium text-foreground">Phone:</span> {shipment.order?.phone || "N/A"}</p>
-         <p className="text-muted-foreground"><span className="font-medium text-foreground">Address:</span> {shipment.deliveryAddress || shipment.shippingAddress}</p>
+      {/* Customer & Payment Info Card */}
+      <div className="p-3.5 bg-muted/40 rounded-xl border border-border/30 text-xs space-y-2">
+         <div className="flex items-center justify-between">
+           <p className="font-bold text-foreground flex items-center gap-1.5"><UserIcon className="h-3.5 w-3.5 text-primary" /> Customer & Order Info</p>
+           {/* Payment Method Badge */}
+           <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
+             Payment: {shipment.order?.paymentMethod === "cod" ? "Pay When Delivered (COD)" : (shipment.order?.paymentMethod?.toUpperCase() || (shipment.notes?.replace("Payment: ", "") || "COD"))}
+           </span>
+         </div>
+         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-muted-foreground">
+           <p><span className="font-medium text-foreground">Name:</span> {shipment.order?.customerName || shipment.deliveryAddress?.split(',')[0] || "Customer"}</p>
+           <p><span className="font-medium text-foreground">Phone:</span> {shipment.order?.phone || "N/A"}</p>
+           <p className="sm:col-span-2"><span className="font-medium text-foreground">Delivery Address:</span> {shipment.shippingAddress || shipment.deliveryAddress}</p>
+         </div>
       </div>
 
       {/* Header row */}
