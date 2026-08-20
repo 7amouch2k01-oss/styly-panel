@@ -368,19 +368,29 @@ export const appRouter = router({
       .input(z.object({
         name: z.string().min(1),
         email: z.string().email(),
-        role: z.enum(["admin", "user"]),
+        role: z.enum(["admin", "user"]).default("admin"),
         password: z.string().min(6),
+        permissions: z.array(z.string()).optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const pwdHash = hashPassword(input.password);
         const user = await createUser({
           name: input.name,
           email: input.email,
-          role: input.role,
+          role: "admin", // Always create Styly admin member
           passwordHash: pwdHash,
         });
-        await logActivity(ctx.user.id, "User Created", "user", user.id, `Created user account for ${input.name}`);
-        return { success: true, message: "User created" };
+        
+        // Initial view-only permission (dashboard overview only) unless specified
+        const initialPerms = input.permissions && input.permissions.length > 0
+          ? input.permissions
+          : ["dashboard"];
+
+        const { updateUserPermissions } = await import("./db");
+        await updateUserPermissions(user.id, initialPerms);
+
+        await logActivity(ctx.user.id, "Styly Member Created", "user", user.id, `Created Styly admin member ${input.name} with initial permissions [${initialPerms.join(", ")}]`);
+        return { success: true, message: "Styly admin member created" };
       }),
     update: adminProcedure
       .input(z.object({
@@ -1300,7 +1310,7 @@ export const appRouter = router({
     // User Withdrawal Request
     requestUserWithdrawal: protectedProcedure
       .input(z.object({
-        amount: z.number().min(5, "Minimum withdrawal amount is 5 TND"),
+        amount: z.number().min(50, "Minimum withdrawal amount is 50 TND"),
         paymentMethod: z.enum(["d17", "flouci", "bank_transfer", "cash_pickup"]),
         paymentDetails: z.object({
           phone: z.string().optional(),

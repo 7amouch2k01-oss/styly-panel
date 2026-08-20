@@ -561,10 +561,10 @@ export default function Users() {
           </div>
         )}
 
-        {activeTab !== "withdrawals" && (
-          <Button className="gap-2 rounded-xl shrink-0" onClick={handleAddUser}>
+        {activeTab === "team" && (
+          <Button className="gap-2 rounded-xl shrink-0 bg-gradient-to-r from-primary to-orange-500 text-white font-bold" onClick={handleAddUser}>
             <Plus className="h-4 w-4" />
-            {activeTab === "team" ? "Add Admin Member" : "Add User"}
+            Add Admin Member
           </Button>
         )}
       </div>

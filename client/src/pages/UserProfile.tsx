@@ -109,8 +109,8 @@ function ProfitsAndWithdrawalsPanel() {
   const handleWithdrawSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const numAmount = parseFloat(amount);
-    if (isNaN(numAmount) || numAmount < 5) {
-      toast.error("Minimum withdrawal amount is 5 TND");
+    if (isNaN(numAmount) || numAmount < 50) {
+      toast.error("Minimum withdrawal amount is 50 TND");
       return;
     }
     if (numAmount > availableBalance) {
@@ -196,22 +196,37 @@ function ProfitsAndWithdrawalsPanel() {
             </div>
 
             <p className="text-[11px] text-neutral-400 max-w-sm">
-              Earned from brand-approved posts and outfit sales. Withdraw directly to your local account.
+              Earned from brand-approved posts and outfit sales. Minimum threshold to withdraw is <strong className="text-rose-400">50.00 TND</strong>.
             </p>
+
+            {availableBalance < 50 && (
+              <div className="space-y-1.5 pt-1 max-w-xs">
+                <div className="flex items-center justify-between text-[10px] text-neutral-400 font-semibold">
+                  <span>Progress to withdrawal</span>
+                  <span className="font-mono text-rose-400">{availableBalance.toFixed(1)} / 50.0 TND</span>
+                </div>
+                <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-rose-500 to-orange-500 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, Math.max(0, (availableBalance / 50) * 100))}%` }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col sm:flex-row md:flex-col gap-2 shrink-0">
             <button
               onClick={() => setShowWithdrawModal(true)}
-              disabled={availableBalance < 5}
+              disabled={availableBalance < 50}
               className={`px-6 py-3.5 rounded-2xl font-black text-xs transition-all shadow-lg flex items-center justify-center gap-2 ${
-                availableBalance >= 5
+                availableBalance >= 50
                   ? "bg-gradient-to-r from-rose-500 via-rose-600 to-orange-500 text-white hover:opacity-95 hover:shadow-rose-500/25 active:scale-95"
                   : "bg-neutral-800 text-neutral-500 border border-neutral-700 cursor-not-allowed"
               }`}
             >
               <DollarSign className="h-4 w-4" />
-              {availableBalance >= 5 ? "Withdraw Profits" : "Min 5.00 TND to Withdraw"}
+              {availableBalance >= 50 ? "Withdraw Profits" : "Min 50.00 TND to Withdraw"}
             </button>
 
             {pendingWithdrawal > 0 && (
@@ -389,7 +404,7 @@ function ProfitsAndWithdrawalsPanel() {
                 <input
                   type="number"
                   step="0.1"
-                  min="5"
+                  min="50"
                   max={availableBalance}
                   placeholder="e.g. 50"
                   value={amount}

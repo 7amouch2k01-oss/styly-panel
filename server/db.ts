@@ -788,7 +788,13 @@ export async function createWithdrawalRequest(data: {
 
   // Validate balance
   if (data.type === "user") {
+    if (data.amount < 50) {
+      throw new Error("Minimum withdrawal amount for users is 50.00 TND");
+    }
     const financials = await getUserCommissionFinancials(data.userId);
+    if (financials.availableBalance < 50) {
+      throw new Error(`You must have at least 50.00 TND in available commission profits to withdraw (current: ${financials.availableBalance} TND)`);
+    }
     if (data.amount > financials.availableBalance) {
       throw new Error(`Insufficient balance. Available: ${financials.availableBalance} TND, Requested: ${data.amount} TND`);
     }
