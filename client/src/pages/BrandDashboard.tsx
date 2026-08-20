@@ -17,6 +17,12 @@ import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, Align
 import { saveAs } from "file-saver";
 import { Button } from "@/components/ui/button";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, Area, AreaChart
 } from "recharts";
@@ -1401,16 +1407,35 @@ interface ProfitsTabProps {
 
 function ProfitsTab({ revenueTND, setRevenueTND, activePaidTier, onUpgradeTier, taggedPosts, onSelectPost, isFeatureUnlocked, brandId }: ProfitsTabProps) {
   const { data: commissions = [], refetch: refetchCommissions } = trpc.commissions.brandCommissions.useQuery({ brandId });
+  const { data: brandFin, refetch: refetchFin, isLoading: isFinLoading } = trpc.withdrawals.brandFinancials.useQuery({ brandId });
   const updateStatusMutation = trpc.commissions.updateStatus.useMutation();
+  const requestBrandWithdrawalMutation = trpc.withdrawals.requestBrandWithdrawal.useMutation();
+
   // Live monthly revenue from real shipments
   const { data: monthlyChartData = [] } = trpc.delivery.brandMonthlyRevenue.useQuery({ brandId });
+
+  // Withdrawal modal state
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [withdrawMethod, setWithdrawMethod] = useState<"bank_transfer" | "flouci" | "d17">("bank_transfer");
+  const [brandBankName, setBrandBankName] = useState("");
+  const [brandRib, setBrandRib] = useState("");
+  const [brandBeneficiary, setBrandBeneficiary] = useState("");
+  const [brandPhone, setBrandPhone] = useState("");
+  const [withdrawNotes, setWithdrawNotes] = useState("");
+
+  const brandAvailableBalance = brandFin?.availableBalance ?? Math.max(0, revenueTND * 0.91);
+  const grossSales = brandFin?.grossSales ?? revenueTND;
+  const platformFee = brandFin?.platformFee ?? (revenueTND * 0.09);
+  const totalWithdrawn = brandFin?.totalWithdrawn ?? 0;
+  const pendingWithdrawal = brandFin?.pendingWithdrawal ?? 0;
+  const brandWithdrawals = brandFin?.withdrawals ?? [];
 
   // Real stats derived from commissions and shipments
   const pendingPayoutTND = commissions
     .filter((c: any) => c.status === "pending" || c.status === "approved")
     .reduce((sum: number, c: any) => sum + (c.amount || 0), 0);
   const totalRealOrders = monthlyChartData.reduce((sum: any, m: any) => sum + (m.orders || 0), 0);
-  const totalCompletedGross = monthlyChartData.reduce((sum: any, m: any) => sum + (m.revenue || 0), 0);
 
   const handleUpdateCommission = async (id: number, status: "approved" | "paid" | "rejected") => {
     try {
@@ -1419,6 +1444,51 @@ function ProfitsTab({ revenueTND, setRevenueTND, activePaidTier, onUpgradeTier, 
       refetchCommissions();
     } catch (e: any) {
       toast.error(e.message || "Failed to update commission");
+    }
+  };
+
+  const handleBrandWithdrawSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const num = parseFloat(withdrawAmount);
+    if (isNaN(num) || num < 10) {
+      toast.error("Minimum payout request is 10 TND");
+      return;
+    }
+    if (num > brandAvailableBalance) {
+      toast.error(`Amount exceeds available brand balance (${brandAvailableBalance.toFixed(2)} TND)`);
+      return;
+    }
+
+    if (withdrawMethod === "bank_transfer" && (!brandRib || !brandBankName)) {
+      toast.error("Please enter both bank name and 20-digit RIB");
+      return;
+    }
+    if ((withdrawMethod === "flouci" || withdrawMethod === "d17") && !brandPhone) {
+      toast.error("Please enter your account phone number");
+      return;
+    }
+
+    try {
+      await requestBrandWithdrawalMutation.mutateAsync({
+        brandId,
+        amount: num,
+        paymentMethod: withdrawMethod,
+        paymentDetails: {
+          bankName: brandBankName,
+          rib: brandRib,
+          beneficiaryName: brandBeneficiary,
+          phone: brandPhone,
+          flouciNumber: brandPhone,
+          notes: withdrawNotes,
+        },
+      });
+      toast.success("Brand profit payout request submitted! Admin will process it. 🏦");
+      setShowWithdrawModal(false);
+      setWithdrawAmount("");
+      setWithdrawNotes("");
+      await refetchFin();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to submit brand payout request");
     }
   };
 
@@ -1437,6 +1507,81 @@ function ProfitsTab({ revenueTND, setRevenueTND, activePaidTier, onUpgradeTier, 
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
+      {/* ── Brand Profits & Payout Wallet Card ── */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-neutral-900 via-[#181216] to-[#100a0e] text-white p-6 shadow-xl border border-primary/20">
+        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-48 h-48 bg-gradient-to-br from-primary/20 to-orange-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold tracking-widest text-primary uppercase flex items-center gap-1.5">
+                <Banknote className="h-3.5 w-3.5 text-primary" />
+                Brand Earnings & Profit Vault
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                Partner Store Live
+              </span>
+            </div>
+
+            <div>
+              <p className="text-xs text-neutral-400 font-medium">Available Profits for Withdrawal</p>
+              <div className="flex items-baseline gap-2 mt-0.5">
+                <span className="text-4xl font-black tracking-tight text-white font-mono">
+                  {brandAvailableBalance.toFixed(2)}
+                </span>
+                <span className="text-lg font-bold text-primary">TND</span>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-neutral-400 max-w-sm">
+              Net revenue generated from selling products on Styly, after platform service fee.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row md:flex-col gap-2 shrink-0">
+            <button
+              onClick={() => setShowWithdrawModal(true)}
+              disabled={brandAvailableBalance < 10}
+              className={`px-6 py-3.5 rounded-2xl font-black text-xs transition-all shadow-lg flex items-center justify-center gap-2 ${
+                brandAvailableBalance >= 10
+                  ? "bg-gradient-to-r from-primary to-orange-500 text-white hover:opacity-95 shadow-primary/25 active:scale-95"
+                  : "bg-neutral-800 text-neutral-500 border border-neutral-700 cursor-not-allowed"
+              }`}
+            >
+              <DollarSign className="h-4 w-4" />
+              {brandAvailableBalance >= 10 ? "Withdraw Brand Profits" : "Min 10.00 TND to Withdraw"}
+            </button>
+
+            {pendingWithdrawal > 0 && (
+              <div className="text-center md:text-right text-[11px] text-amber-400 font-semibold flex items-center justify-center md:justify-end gap-1">
+                <Clock className="h-3 w-3" />
+                {pendingWithdrawal.toFixed(2)} TND pending admin transfer
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 4 Financial Sub-metrics */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-6 pt-5 border-t border-white/10 text-center">
+          <div className="bg-white/5 rounded-2xl p-2.5 border border-white/5">
+            <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Gross Sales</p>
+            <p className="text-sm font-black text-emerald-400 font-mono mt-0.5">{grossSales.toFixed(1)} TND</p>
+          </div>
+          <div className="bg-white/5 rounded-2xl p-2.5 border border-white/5">
+            <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Platform Fee ({currentLevel.commissionRate}%)</p>
+            <p className="text-sm font-black text-rose-400 font-mono mt-0.5">-{platformFee.toFixed(1)} TND</p>
+          </div>
+          <div className="bg-white/5 rounded-2xl p-2.5 border border-white/5">
+            <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Total Withdrawn</p>
+            <p className="text-sm font-black text-white font-mono mt-0.5">{totalWithdrawn.toFixed(1)} TND</p>
+          </div>
+          <div className="bg-white/5 rounded-2xl p-2.5 border border-white/5">
+            <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Pending Payouts</p>
+            <p className="text-sm font-black text-amber-400 font-mono mt-0.5">{pendingWithdrawal.toFixed(1)} TND</p>
+          </div>
+        </div>
+      </div>
+
       {/* Brand Level Standing Progression Card */}
       <div className="p-6 rounded-3xl bg-card border border-border/60 shadow-sm relative overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -1498,41 +1643,6 @@ function ProfitsTab({ revenueTND, setRevenueTND, activePaidTier, onUpgradeTier, 
 
       {/* Brand XP Level Badge */}
       <BrandLevelBadge brandId={brandId} showDetails={true} />
-
-      {/* Primary Financial Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-2xl bg-card border border-border/60 hover:border-primary/40 transition-all duration-200">
-          <div className="h-8 w-8 rounded-xl bg-muted/60 flex items-center justify-center mb-3 text-foreground border border-border/40">
-            <DollarSign className="h-4 w-4" />
-          </div>
-          <p className="text-2xl font-black text-foreground">{revenueTND.toLocaleString()} TND</p>
-          <p className="text-xs text-muted-foreground mt-1 font-semibold">Total Revenue Volume</p>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-card border border-border/60 hover:border-primary/40 transition-all duration-200">
-          <div className="h-8 w-8 rounded-xl bg-muted/60 flex items-center justify-center mb-3 text-foreground border border-border/40">
-            <TrendingUp className="h-4 w-4" />
-          </div>
-          <p className="text-2xl font-black text-foreground">{(revenueTND * 0.14).toFixed(0)} TND</p>
-          <p className="text-xs text-muted-foreground mt-1 font-semibold">Estimated Monthly Run-Rate</p>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-card border border-border/60 hover:border-primary/40 transition-all duration-200">
-          <div className="h-8 w-8 rounded-xl bg-muted/60 flex items-center justify-center mb-3 text-foreground border border-border/40">
-            <Clock className="h-4 w-4" />
-          </div>
-          <p className="text-2xl font-black text-foreground">{pendingPayoutTND.toFixed(2)} TND</p>
-          <p className="text-xs text-muted-foreground mt-1 font-semibold">Pending Influencer Payout</p>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-card border border-border/60 hover:border-primary/40 transition-all duration-200">
-          <div className="h-8 w-8 rounded-xl bg-muted/60 flex items-center justify-center mb-3 text-foreground border border-border/40">
-            <ShoppingBag className="h-4 w-4" />
-          </div>
-          <p className="text-2xl font-black text-foreground">{totalRealOrders}</p>
-          <p className="text-xs text-muted-foreground mt-1 font-semibold">Total Fulfilled Orders</p>
-        </div>
-      </div>
 
       {/* Commission Estimator Calculator */}
       <CommissionCalculator commissionRate={currentLevel.commissionRate} />
@@ -1604,84 +1714,58 @@ function ProfitsTab({ revenueTND, setRevenueTND, activePaidTier, onUpgradeTier, 
         </div>
       </div>
 
-      {/* Influencer Referral Revenue Share Table — Real Live Data */}
-      <div className="bg-card border border-border/60 p-6 rounded-3xl space-y-4 shadow-sm">
+      {/* Brand Withdrawal Requests History */}
+      <div className="space-y-4 pt-2">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-              <Award className="h-4 w-4 text-primary" /> Influencer Referral Performance
+              <DollarSign className="h-4 w-4 text-emerald-500" /> Brand Payout & Withdrawal History
             </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Top performing fashion creators generating sales for your brand</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Track your profit disbursements to bank or mobile wallet</p>
           </div>
-          <span className="text-xs font-semibold text-muted-foreground font-mono">Commission Share</span>
+          <span className="text-xs text-muted-foreground font-mono">{brandWithdrawals.length} payouts</span>
         </div>
 
-        {(() => {
-          // Group approved posts by creator
-          const creatorMap = new Map<string, { name: string; avatar: string; orders: number; revenue: number }>();
-          approvedPosts.forEach((p) => {
-            const existing = creatorMap.get(p.posterName) || { name: p.posterName, avatar: p.posterAvatar, orders: 0, revenue: 0 };
-            existing.orders += p.orders || 0;
-            existing.revenue += p.revenue || 0;
-            creatorMap.set(p.posterName, existing);
-          });
-          const creators = Array.from(creatorMap.values()).sort((a, b) => b.revenue - a.revenue);
-
-          if (creators.length === 0) {
-            return (
-              <div className="p-8 bg-muted/20 border border-border/40 rounded-2xl text-center">
-                <p className="text-xs text-muted-foreground">No creator referral orders recorded yet. As influencers post looks tagging your brand, their conversion performance will appear here.</p>
-              </div>
-            );
-          }
-
-          return (
-            <div className="text-xs text-muted-foreground divide-y divide-border/30">
-              <div className="flex justify-between py-2.5 font-bold uppercase tracking-wider text-[10px] text-muted-foreground">
-                <span>Influencer Name</span>
-                <span>Orders Driven</span>
-                <span>Attributed Revenue</span>
-              </div>
-              {creators.map((c) => (
-                <div key={c.name} className="flex justify-between py-3 items-center text-foreground font-semibold">
-                  <span className="flex items-center gap-2">
-                    <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-[10px] overflow-hidden">
-                      {c.avatar ? <img src={c.avatar} alt={c.name} className="w-full h-full object-cover" /> : c.name.charAt(0).toUpperCase()}
-                    </div>
-                    {c.name}
-                  </span>
-                  <span className="font-mono text-muted-foreground">{c.orders} orders</span>
-                  <span className="font-mono font-bold text-foreground">{c.revenue.toLocaleString()} TND</span>
-                </div>
-              ))}
-            </div>
-          );
-        })()}
-      </div>
-
-      {/* Approved Tagged Posts Section */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <Tag className="h-4 w-4 text-primary" /> Verified Tagged Outfit Looks
-          </h3>
-          <span className="text-xs text-muted-foreground font-mono">{approvedPosts.length} posts live</span>
-        </div>
-
-        {approvedPosts.length === 0 ? (
+        {brandWithdrawals.length === 0 ? (
           <div className="p-8 bg-card border border-border/60 rounded-3xl text-center">
-            <p className="text-xs text-muted-foreground">No approved tagged posts found. Approve incoming look requests in the Store tab.</p>
+            <p className="text-xs text-muted-foreground">No profit withdrawal requests logged yet. Use the withdraw button above when you're ready to cash out.</p>
           </div>
         ) : (
-          <div className="bg-card border border-border/60 rounded-3xl p-4 space-y-1 shadow-sm">
-            {approvedPosts.map((post) => (
-              <TaggedPostRow key={post.id} post={post} isFeatureUnlocked={isFeatureUnlocked} onSelect={onSelectPost} />
+          <div className="bg-card border border-border/60 rounded-3xl p-5 space-y-3 shadow-sm divide-y divide-border/20">
+            {brandWithdrawals.map((w: any, idx: number) => (
+              <div key={w.id} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${idx > 0 ? "pt-3" : ""}`}>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-foreground">Withdrawal #{w.id}</span>
+                    <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-muted border border-border/40 font-bold">
+                      {w.paymentMethod}
+                    </span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
+                      w.status === "completed" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500" :
+                      w.status === "approved" ? "border-blue-500/30 bg-blue-500/10 text-blue-500" :
+                      w.status === "rejected" ? "border-destructive/30 bg-destructive/10 text-destructive" :
+                      "border-amber-500/30 bg-amber-500/10 text-amber-500"
+                    }`}>
+                      {w.status.toUpperCase()}
+                    </span>
+                  </div>
+                  <p className="text-muted-foreground">
+                    {w.paymentDetails?.bankName ? `${w.paymentDetails.bankName} • RIB ${w.paymentDetails.rib || ''}` : (w.paymentDetails?.phone || 'Direct payout')}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground font-mono">{new Date(w.createdAt).toLocaleString()}</p>
+                  {w.rejectionReason && <p className="text-[11px] text-red-500 font-semibold">Declined: {w.rejectionReason}</p>}
+                </div>
+
+                <div className="flex items-center gap-3 justify-between sm:justify-end">
+                  <span className="font-black text-sm text-foreground font-mono">{Number(w.amount).toFixed(2)} TND</span>
+                </div>
+              </div>
             ))}
           </div>
         )}
       </div>
 
-      {/* Brand Payout Ledger Section */}
+      {/* Influencer Commission Payout Ledger */}
       <div className="space-y-4 pt-2">
         <div className="flex items-center justify-between">
           <div>
@@ -1715,7 +1799,7 @@ function ProfitsTab({ revenueTND, setRevenueTND, activePaidTier, onUpgradeTier, 
                   <p className="text-muted-foreground">{comm.description || "Referral commission request"}</p>
                   <p className="text-[10px] text-muted-foreground font-mono">{new Date(comm.createdAt).toLocaleString()}</p>
                 </div>
-                
+
                 <div className="flex items-center gap-3 justify-between sm:justify-end">
                   <span className="font-black text-sm text-foreground font-mono">{Number(comm.amount).toFixed(2)} TND</span>
                   <div className="flex items-center gap-2">
@@ -1750,6 +1834,151 @@ function ProfitsTab({ revenueTND, setRevenueTND, activePaidTier, onUpgradeTier, 
           </div>
         )}
       </div>
+
+      {/* Brand Payout Request Modal */}
+      <Dialog open={showWithdrawModal} onOpenChange={setShowWithdrawModal}>
+        <DialogContent className="max-w-md rounded-3xl p-6 border border-border/60 bg-card">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-black flex items-center gap-2 text-foreground">
+              <DollarSign className="h-5 w-5 text-primary" />
+              Withdraw Brand Profits
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleBrandWithdrawSubmit} className="space-y-4 mt-3">
+            {/* Balance info banner */}
+            <div className="p-3.5 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-between text-xs">
+              <span className="text-muted-foreground font-semibold">Available Profit Balance:</span>
+              <span className="font-mono font-black text-primary text-sm">{brandAvailableBalance.toFixed(2)} TND</span>
+            </div>
+
+            {/* Amount input */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-foreground">Payout Amount (TND)</label>
+              <div className="relative">
+                <input
+                  type="number"
+                  step="0.1"
+                  min="10"
+                  max={brandAvailableBalance}
+                  placeholder="e.g. 250"
+                  value={withdrawAmount}
+                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                  className="w-full h-11 pl-4 pr-16 rounded-xl bg-muted border border-border/60 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  required
+                />
+                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">
+                  TND
+                </span>
+              </div>
+            </div>
+
+            {/* Payment Method Selector */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-foreground">Payout Destination</label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { id: "bank_transfer", label: "🏦 Bank (RIB)" },
+                  { id: "flouci", label: "💸 Flouci Pro" },
+                  { id: "d17", label: "📱 D17 Business" },
+                ].map((m) => (
+                  <button
+                    type="button"
+                    key={m.id}
+                    onClick={() => setWithdrawMethod(m.id as any)}
+                    className={`p-2.5 rounded-xl border text-xs font-bold transition-all text-center ${
+                      withdrawMethod === m.id
+                        ? "bg-primary/10 border-primary text-primary"
+                        : "bg-muted/40 border-border/40 text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Details */}
+            {withdrawMethod === "bank_transfer" ? (
+              <div className="space-y-2">
+                <div>
+                  <label className="text-xs font-bold text-foreground">Company Bank Name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. BIAT, Attijariwafa, Amen..."
+                    value={brandBankName}
+                    onChange={(e) => setBrandBankName(e.target.value)}
+                    className="w-full h-10 px-3 rounded-xl bg-muted border border-border/60 text-xs focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-foreground">20-Digit Bank RIB</label>
+                  <input
+                    type="text"
+                    maxLength={20}
+                    placeholder="08 000 0000000000000 00"
+                    value={brandRib}
+                    onChange={(e) => setBrandRib(e.target.value)}
+                    className="w-full h-10 px-3 rounded-xl bg-muted border border-border/60 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-foreground">Beneficiary / Business Name</label>
+                  <input
+                    type="text"
+                    placeholder="Brand legal account name"
+                    value={brandBeneficiary}
+                    onChange={(e) => setBrandBeneficiary(e.target.value)}
+                    className="w-full h-10 px-3 rounded-xl bg-muted border border-border/60 text-xs focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-foreground">Wallet Phone Number</label>
+                <input
+                  type="tel"
+                  placeholder="e.g. 50 123 456"
+                  value={brandPhone}
+                  onChange={(e) => setBrandPhone(e.target.value)}
+                  className="w-full h-10 px-3 rounded-xl bg-muted border border-border/60 text-xs focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  required
+                />
+              </div>
+            )}
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-muted-foreground">Invoice Reference / Notes</label>
+              <input
+                type="text"
+                placeholder="Optional billing reference..."
+                value={withdrawNotes}
+                onChange={(e) => setWithdrawNotes(e.target.value)}
+                className="w-full h-9 px-3 rounded-xl bg-muted/60 border border-border/40 text-xs focus:outline-none"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2.5 pt-3 border-t border-border/20">
+              <button
+                type="button"
+                onClick={() => setShowWithdrawModal(false)}
+                className="px-4 py-2.5 rounded-xl border border-border/60 text-xs font-bold hover:bg-muted transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={requestBrandWithdrawalMutation.isPending}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-primary to-orange-500 text-white text-xs font-black shadow-md hover:opacity-95 transition-all"
+              >
+                {requestBrandWithdrawalMutation.isPending ? "Submitting..." : "Confirm & Withdraw"}
+              </button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

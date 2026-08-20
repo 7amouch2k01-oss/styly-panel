@@ -29,13 +29,13 @@ import { Button } from "./ui/button";
 import { useTheme } from "@/contexts/ThemeContext";
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "Overview", path: "/admin" },
-  { icon: Users, label: "Users", path: "/admin/users" },
-  { icon: ImageIcon, label: "Posts", path: "/admin/products" },
-  { icon: ShoppingCart, label: "Orders", path: "/admin/orders" },
-  { icon: BarChart3, label: "Analytics", path: "/admin/analytics" },
-  { icon: Package, label: "Brands", path: "/admin/brands" },
-  { icon: Settings, label: "Settings", path: "/admin/settings" },
+  { icon: LayoutDashboard, label: "Overview", path: "/admin", perm: "dashboard" },
+  { icon: Users, label: "Users", path: "/admin/users", perm: "users" },
+  { icon: ImageIcon, label: "Posts", path: "/admin/products", perm: "products" },
+  { icon: ShoppingCart, label: "Orders", path: "/admin/orders", perm: "orders" },
+  { icon: BarChart3, label: "Analytics", path: "/admin/analytics", perm: "analytics" },
+  { icon: Package, label: "Brands", path: "/admin/brands", perm: "brands" },
+  { icon: Settings, label: "Settings", path: "/admin/settings", perm: "settings" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -212,7 +212,15 @@ function DashboardLayoutContent({
 
           <SidebarContent className="gap-0">
             <SidebarMenu className="px-2 py-1">
-              {menuItems.map(item => {
+              {menuItems
+                .filter(item => {
+                  // Owner or root admin (or user without restricted permissions) can see everything
+                  const currentUser = user as any;
+                  if (!currentUser || currentUser.isOwner || currentUser.id === 1) return true;
+                  const perms: string[] = currentUser.permissions || ["dashboard", "users", "products", "orders", "analytics", "brands", "settings"];
+                  return perms.includes(item.perm);
+                })
+                .map(item => {
                 if (item.path === "/admin/users") {
                   const isUsersActive = location.startsWith("/admin/users");
                   return (
@@ -236,23 +244,29 @@ function DashboardLayoutContent({
                             Account Types
                           </div>
                           <DropdownMenuItem
-                            onClick={() => setLocation("/admin/users?tab=app")}
+                            onClick={() => {
+                              setLocation("/admin/users?tab=app");
+                              window.dispatchEvent(new CustomEvent("styly_users_tab_change", { detail: "app" }));
+                            }}
                             className="flex items-center gap-2 rounded-xl text-xs font-semibold py-2 cursor-pointer"
                           >
                             <Users className="h-4 w-4 text-blue-500" />
                             <div className="flex flex-col">
                               <span>App Users</span>
-                              <span className="text-[10px] text-muted-foreground font-normal">Brands, Creators & Shoppers</span>
+                              <span className="text-[10px] text-muted-foreground font-normal">Brands, Creators & Shoppers only</span>
                             </div>
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={() => setLocation("/admin/users?tab=team")}
+                            onClick={() => {
+                              setLocation("/admin/users?tab=team");
+                              window.dispatchEvent(new CustomEvent("styly_users_tab_change", { detail: "team" }));
+                            }}
                             className="flex items-center gap-2 rounded-xl text-xs font-semibold py-2 cursor-pointer"
                           >
                             <Settings className="h-4 w-4 text-purple-500" />
                             <div className="flex flex-col">
                               <span>Styly Members</span>
-                              <span className="text-[10px] text-muted-foreground font-normal">Admin team & permissions</span>
+                              <span className="text-[10px] text-muted-foreground font-normal">Admins only & permissions</span>
                             </div>
                           </DropdownMenuItem>
                         </DropdownMenuContent>
