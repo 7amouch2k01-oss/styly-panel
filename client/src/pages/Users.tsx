@@ -230,12 +230,12 @@ export default function Users() {
     }
   };
 
-  // Withdrawals metric calculations
-  const pendingWithdrawalsCount = withdrawals.filter((w: any) => w.status === "pending").length;
-  const pendingAmount = withdrawals.filter((w: any) => w.status === "pending" || w.status === "approved").reduce((sum: number, w: any) => sum + (w.amount || 0), 0);
-  const completedAmount = withdrawals.filter((w: any) => w.status === "completed").reduce((sum: number, w: any) => sum + (w.amount || 0), 0);
-  const userWithdrawalsTotal = withdrawals.filter((w: any) => w.type === "user" && w.status === "completed").reduce((sum: number, w: any) => sum + (w.amount || 0), 0);
-  const brandWithdrawalsTotal = withdrawals.filter((w: any) => w.type === "brand" && w.status === "completed").reduce((sum: number, w: any) => sum + (w.amount || 0), 0);
+  // User Withdrawals filtering and calculations
+  const userWithdrawals = withdrawals.filter((w: any) => w.type === "user");
+  const pendingWithdrawalsCount = userWithdrawals.filter((w: any) => w.status === "pending").length;
+  const pendingAmount = userWithdrawals.filter((w: any) => w.status === "pending" || w.status === "approved").reduce((sum: number, w: any) => sum + (w.amount || 0), 0);
+  const completedAmount = userWithdrawals.filter((w: any) => w.status === "completed").reduce((sum: number, w: any) => sum + (w.amount || 0), 0);
+  const totalApprovedCommissions = appUsers.reduce((sum: number, u: any) => sum + (u.totalEarned || 0), 0);
 
   // Filter based on active tab and search
   const currentList = activeTab === "team" ? stylyMembers : appUsers;
@@ -256,8 +256,7 @@ export default function Users() {
     return true;
   });
 
-  const filteredWithdrawals = withdrawals.filter((w: any) => {
-    if (withdrawalTypeFilter !== "all" && w.type !== withdrawalTypeFilter) return false;
+  const filteredWithdrawals = userWithdrawals.filter((w: any) => {
     if (withdrawalStatusFilter !== "all" && w.status !== withdrawalStatusFilter) return false;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -281,9 +280,9 @@ export default function Users() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-black tracking-tight">Users & Finance Management</h1>
+          <h1 className="text-3xl font-black tracking-tight">Users & Staff Management</h1>
           <p className="text-sm text-muted-foreground">
-            Segmented directory for shoppers, staff permissions, and creator/brand withdrawal disbursements.
+            Segmented directory for shoppers, staff permissions, and creator commission disbursements.
           </p>
         </div>
 
@@ -329,7 +328,7 @@ export default function Users() {
             }`}
           >
             <DollarSign className="h-4 w-4 text-emerald-500" />
-            Withdrawals ({withdrawals.length})
+            User Withdrawals ({userWithdrawals.length})
             {pendingWithdrawalsCount > 0 && (
               <span className="px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-black animate-pulse">
                 {pendingWithdrawalsCount}
@@ -345,7 +344,7 @@ export default function Users() {
           <Card className="border border-border/50 bg-card/50 backdrop-blur rounded-2xl">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-xs font-semibold text-muted-foreground uppercase">Pending Payouts</CardTitle>
+                <CardTitle className="text-xs font-semibold text-muted-foreground uppercase">Pending Creator Payouts</CardTitle>
                 <Clock className="h-4 w-4 text-amber-500" />
               </div>
             </CardHeader>
@@ -353,14 +352,14 @@ export default function Users() {
               <div className="text-2xl font-black text-amber-500 font-mono">
                 {isWithdrawalsLoading ? <Skeleton className="h-8 w-16" /> : `${pendingAmount.toFixed(2)} TND`}
               </div>
-              <p className="text-[11px] text-muted-foreground mt-1">{pendingWithdrawalsCount} requests awaiting transfer</p>
+              <p className="text-[11px] text-muted-foreground mt-1">{pendingWithdrawalsCount} creator requests awaiting transfer</p>
             </CardContent>
           </Card>
 
           <Card className="border border-border/50 bg-card/50 backdrop-blur rounded-2xl">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-xs font-semibold text-muted-foreground uppercase">Total Paid Out</CardTitle>
+                <CardTitle className="text-xs font-semibold text-muted-foreground uppercase">Total Paid to Creators</CardTitle>
                 <DollarSign className="h-4 w-4 text-emerald-500" />
               </div>
             </CardHeader>
@@ -368,37 +367,37 @@ export default function Users() {
               <div className="text-2xl font-black text-emerald-500 font-mono">
                 {isWithdrawalsLoading ? <Skeleton className="h-8 w-16" /> : `${completedAmount.toFixed(2)} TND`}
               </div>
-              <p className="text-[11px] text-muted-foreground mt-1">Disbursed to creators & brands</p>
+              <p className="text-[11px] text-muted-foreground mt-1">Successfully disbursed commissions</p>
             </CardContent>
           </Card>
 
           <Card className="border border-border/50 bg-card/50 backdrop-blur rounded-2xl">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-xs font-semibold text-muted-foreground uppercase">Creator Commissions</CardTitle>
+                <CardTitle className="text-xs font-semibold text-muted-foreground uppercase">Active Brand Creators</CardTitle>
                 <Award className="h-4 w-4 text-rose-500" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-black text-rose-500 font-mono">
-                {isWithdrawalsLoading ? <Skeleton className="h-8 w-16" /> : `${userWithdrawalsTotal.toFixed(2)} TND`}
+              <div className="text-2xl font-black text-rose-500">
+                {isLoading ? <Skeleton className="h-8 w-16" /> : brandCreatorsCount}
               </div>
-              <p className="text-[11px] text-muted-foreground mt-1">From brand-approved posts</p>
+              <p className="text-[11px] text-muted-foreground mt-1">Eligible to tag outfits & earn</p>
             </CardContent>
           </Card>
 
           <Card className="border border-border/50 bg-card/50 backdrop-blur rounded-2xl">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-xs font-semibold text-muted-foreground uppercase">Brand Store Profits</CardTitle>
-                <Building2 className="h-4 w-4 text-purple-500" />
+                <CardTitle className="text-xs font-semibold text-muted-foreground uppercase">Total Commissions Awarded</CardTitle>
+                <Sparkles className="h-4 w-4 text-orange-500" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-black text-purple-500 font-mono">
-                {isWithdrawalsLoading ? <Skeleton className="h-8 w-16" /> : `${brandWithdrawalsTotal.toFixed(2)} TND`}
+              <div className="text-2xl font-black text-orange-500 font-mono">
+                {isLoading ? <Skeleton className="h-8 w-16" /> : `${totalApprovedCommissions.toFixed(2)} TND`}
               </div>
-              <p className="text-[11px] text-muted-foreground mt-1">Product checkout sales revenue</p>
+              <p className="text-[11px] text-muted-foreground mt-1">Platform-wide creator earnings</p>
             </CardContent>
           </Card>
         </div>
@@ -504,60 +503,31 @@ export default function Users() {
         )}
 
         {activeTab === "withdrawals" && (
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-xl border border-border/40 text-xs font-semibold">
-              <button
-                onClick={() => setWithdrawalTypeFilter("all")}
-                className={`px-2.5 py-1 rounded-lg transition-all ${
-                  withdrawalTypeFilter === "all" ? "bg-background shadow-sm font-bold" : "text-muted-foreground"
-                }`}
-              >
-                All Sources
-              </button>
-              <button
-                onClick={() => setWithdrawalTypeFilter("user")}
-                className={`px-2.5 py-1 rounded-lg transition-all ${
-                  withdrawalTypeFilter === "user" ? "bg-background shadow-sm font-bold text-rose-500" : "text-muted-foreground"
-                }`}
-              >
-                Creators
-              </button>
-              <button
-                onClick={() => setWithdrawalTypeFilter("brand")}
-                className={`px-2.5 py-1 rounded-lg transition-all ${
-                  withdrawalTypeFilter === "brand" ? "bg-background shadow-sm font-bold text-purple-500" : "text-muted-foreground"
-                }`}
-              >
-                Brands
-              </button>
-            </div>
-
-            <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-xl border border-border/40 text-xs font-semibold">
-              <button
-                onClick={() => setWithdrawalStatusFilter("all")}
-                className={`px-2.5 py-1 rounded-lg transition-all ${
-                  withdrawalStatusFilter === "all" ? "bg-background shadow-sm font-bold" : "text-muted-foreground"
-                }`}
-              >
-                All Status
-              </button>
-              <button
-                onClick={() => setWithdrawalStatusFilter("pending")}
-                className={`px-2.5 py-1 rounded-lg transition-all ${
-                  withdrawalStatusFilter === "pending" ? "bg-background shadow-sm font-bold text-amber-500" : "text-muted-foreground"
-                }`}
-              >
-                Pending
-              </button>
-              <button
-                onClick={() => setWithdrawalStatusFilter("completed")}
-                className={`px-2.5 py-1 rounded-lg transition-all ${
-                  withdrawalStatusFilter === "completed" ? "bg-background shadow-sm font-bold text-emerald-500" : "text-muted-foreground"
-                }`}
-              >
-                Completed
-              </button>
-            </div>
+          <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-xl border border-border/40 text-xs font-semibold">
+            <button
+              onClick={() => setWithdrawalStatusFilter("all")}
+              className={`px-2.5 py-1 rounded-lg transition-all ${
+                withdrawalStatusFilter === "all" ? "bg-background shadow-sm font-bold" : "text-muted-foreground"
+              }`}
+            >
+              All Status
+            </button>
+            <button
+              onClick={() => setWithdrawalStatusFilter("pending")}
+              className={`px-2.5 py-1 rounded-lg transition-all ${
+                withdrawalStatusFilter === "pending" ? "bg-background shadow-sm font-bold text-amber-500" : "text-muted-foreground"
+              }`}
+            >
+              Pending ({pendingWithdrawalsCount})
+            </button>
+            <button
+              onClick={() => setWithdrawalStatusFilter("completed")}
+              className={`px-2.5 py-1 rounded-lg transition-all ${
+                withdrawalStatusFilter === "completed" ? "bg-background shadow-sm font-bold text-emerald-500" : "text-muted-foreground"
+              }`}
+            >
+              Completed
+            </button>
           </div>
         )}
 

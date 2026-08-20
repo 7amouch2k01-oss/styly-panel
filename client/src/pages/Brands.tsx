@@ -3,9 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Search, Plus, MoreHorizontal, Check, X, Building2, Store, Eye,
-  Award, Globe, Package, Trash2, CheckCircle2, ShieldCheck, MapPin, Tag
+  Award, Globe, Package, Trash2, CheckCircle2, ShieldCheck, MapPin, Tag,
+  DollarSign, Clock, CreditCard, Ban, ArrowUpRight
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useState } from "react";
@@ -26,7 +28,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
@@ -40,13 +42,21 @@ export default function Brands() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [brandToDelete, setBrandToDelete] = useState<any>(null);
 
+  // Brand Withdrawal status filtering and rejection dialog
+  const [withdrawalStatusFilter, setWithdrawalStatusFilter] = useState<"all" | "pending" | "completed" | "rejected">("all");
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [selectedWithdrawalForReject, setSelectedWithdrawalForReject] = useState<any>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
+
   const { data: brands = [], isLoading: brandsLoading, refetch: refetchBrands } = trpc.brands.list.useQuery();
   const { data: devices = [], isLoading: devicesLoading } = trpc.devices.list.useQuery();
   const { data: pendingRequests = [], isLoading: requestsLoading, refetch: refetchRequests } = trpc.brandStore.listPending.useQuery();
+  const { data: withdrawals = [], isLoading: isWithdrawalsLoading, refetch: refetchWithdrawals } = trpc.withdrawals.adminList.useQuery();
 
   const approveMutation = trpc.brandStore.approve.useMutation();
   const deleteMutation = trpc.brands.delete.useMutation();
   const updateBrandMutation = trpc.brands.update.useMutation();
+  const updateWithdrawalStatusMutation = trpc.withdrawals.adminUpdateStatus.useMutation();
   const utils = trpc.useUtils();
 
   const isLoading = brandsLoading || devicesLoading || requestsLoading;
@@ -104,6 +114,75 @@ export default function Brands() {
     }
   };
 
+  // Brand Withdrawals calculations
+  const brandWithdrawals = withdrawals.filter((w: any) => w.type === "brand");
+  const pendingBrandWithdrawalsCount = brandWithdrawals.filter((w: any) => w.status === "pending").length;
+  const pendingBrandAmount = brandWithdrawals.filter((w: any) => w.status === "pending" || w.status === "approved").reduce((sum: number, w: any) => sum + (w.amount || 0), 0);
+  const completedBrandAmount = brandWithdrawals.filter((w: any) => w.status === "completed").reduce((sum: number, w: any) => sum + (w.amount || 0), 0);
+
+  const filteredBrandWithdrawals = brandWithdrawals.filter((w: any) => {
+    if (withdrawalStatusFilter !== "all" && w.status !== withdrawalStatusFilter) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const match = (w.requesterName || "").toLowerCase().includes(q) ||
+                    (w.requesterEmail || "").toLowerCase().includes(q) ||
+                    String(w.id).includes(q) ||
+                    (w.paymentMethod || "").toLowerCase().includes(q);
+      if (!match) return false;
+    }
+    return true;
+  });
+
+  const handleApproveWithdrawal = async (w: any) => {
+    try {
+      await updateWithdrawalStatusMutation.mutateAsync({
+        id: w.id,
+        status: "approved",
+        adminNotes: "Approved by admin, scheduled for brand bank transfer",
+      });
+      await refetchWithdrawals();
+      toast.success(`Brand payout #${w.id} approved & moved to processing`);
+    } catch {
+      toast.error("Failed to update payout status");
+    }
+  };
+
+  const handleCompleteWithdrawal = async (w: any) => {
+    try {
+      await updateWithdrawalStatusMutation.mutateAsync({
+        id: w.id,
+        status: "completed",
+        adminNotes: `Transferred via ${w.paymentMethod.toUpperCase()}`,
+      });
+      await refetchWithdrawals();
+      toast.success(`Brand payout #${w.id} of ${w.amount} TND marked as completed! 💰`);
+    } catch {
+      toast.error("Failed to complete payout");
+    }
+  };
+
+  const handleOpenRejectDialog = (w: any) => {
+    setSelectedWithdrawalForReject(w);
+    setRejectionReason("");
+    setRejectModalOpen(true);
+  };
+
+  const handleConfirmReject = async () => {
+    if (!selectedWithdrawalForReject) return;
+    try {
+      await updateWithdrawalStatusMutation.mutateAsync({
+        id: selectedWithdrawalForReject.id,
+        status: "rejected",
+        rejectionReason: rejectionReason || "Declined by platform administrator",
+      });
+      await refetchWithdrawals();
+      toast.success(`Brand withdrawal #${selectedWithdrawalForReject.id} rejected. Balance refunded.`);
+      setRejectModalOpen(false);
+    } catch {
+      toast.error("Failed to reject withdrawal request");
+    }
+  };
+
   const handleApproveStore = async (storeId: number, approve: boolean) => {
     try {
       await approveMutation.mutateAsync({ storeId, approve });
@@ -119,9 +198,9 @@ export default function Brands() {
     <div className="space-y-8 animate-in fade-in duration-300">
       {/* Header */}
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-black tracking-tight">Fashion Brands Management</h1>
+        <h1 className="text-3xl font-black tracking-tight">Fashion Brands & Payouts</h1>
         <p className="text-sm text-muted-foreground">
-          Review official brand partner registrations, toggle partner active status, and inspect catalog products.
+          Review official brand registrations, manage store approvals, and disburse brand profit withdrawals.
         </p>
       </div>
 
@@ -156,33 +235,37 @@ export default function Brands() {
         <Card className="border border-border/50 bg-card/50 backdrop-blur rounded-2xl">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-xs font-semibold text-muted-foreground uppercase">Pending Applications</CardTitle>
-              <Store className="h-4 w-4 text-amber-500" />
+              <CardTitle className="text-xs font-semibold text-muted-foreground uppercase">Pending Brand Payouts</CardTitle>
+              <Clock className="h-4 w-4 text-amber-500" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-black text-amber-500">{isLoading ? <Skeleton className="h-8 w-16" /> : pendingCount}</div>
-            <p className="text-[11px] text-muted-foreground mt-1">Owner approvals needed</p>
+            <div className="text-2xl font-black text-amber-500 font-mono">
+              {isWithdrawalsLoading ? <Skeleton className="h-8 w-16" /> : `${pendingBrandAmount.toFixed(2)} TND`}
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1">{pendingBrandWithdrawalsCount} payout requests pending</p>
           </CardContent>
         </Card>
 
         <Card className="border border-border/50 bg-card/50 backdrop-blur rounded-2xl">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-xs font-semibold text-muted-foreground uppercase">Catalog Items</CardTitle>
-              <Package className="h-4 w-4 text-blue-500" />
+              <CardTitle className="text-xs font-semibold text-muted-foreground uppercase">Total Brand Profits Paid</CardTitle>
+              <DollarSign className="h-4 w-4 text-purple-500" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-black text-blue-500">{isLoading ? <Skeleton className="h-8 w-16" /> : totalProducts}</div>
-            <p className="text-[11px] text-muted-foreground mt-1">Products across all brands</p>
+            <div className="text-2xl font-black text-purple-500 font-mono">
+              {isWithdrawalsLoading ? <Skeleton className="h-8 w-16" /> : `${completedBrandAmount.toFixed(2)} TND`}
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1">Disbursed store profits</p>
           </CardContent>
         </Card>
       </div>
 
       <Tabs defaultValue="all" className="space-y-6">
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-          <TabsList className="rounded-xl p-1 bg-muted/60">
+          <TabsList className="rounded-xl p-1 bg-muted/60 overflow-x-auto max-w-full">
             <TabsTrigger value="all" className="rounded-lg text-xs font-bold">
               All Brands ({brands.length})
             </TabsTrigger>
@@ -194,13 +277,22 @@ export default function Brands() {
                 </span>
               )}
             </TabsTrigger>
+            <TabsTrigger value="withdrawals" className="rounded-lg text-xs font-bold relative">
+              <DollarSign className="h-3.5 w-3.5 text-purple-500 mr-1 inline" />
+              Brand Withdrawals ({brandWithdrawals.length})
+              {pendingBrandWithdrawalsCount > 0 && (
+                <span className="ml-1.5 px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-black animate-pulse">
+                  {pendingBrandWithdrawalsCount}
+                </span>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           <div className="flex gap-3 w-full sm:w-auto">
             <div className="relative flex-1 sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search brands..."
+                placeholder="Search brands or payouts..."
                 className="pl-10 rounded-xl"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -345,7 +437,268 @@ export default function Brands() {
             )}
           </div>
         </TabsContent>
+
+        {/* ── Brand Withdrawals Tab ── */}
+        <TabsContent value="withdrawals" className="space-y-4">
+          <div className="flex items-center justify-between gap-2 flex-wrap pb-2">
+            <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-xl border border-border/40 text-xs font-semibold">
+              <button
+                onClick={() => setWithdrawalStatusFilter("all")}
+                className={`px-3 py-1.5 rounded-lg transition-all ${
+                  withdrawalStatusFilter === "all" ? "bg-background shadow-sm font-bold text-foreground" : "text-muted-foreground"
+                }`}
+              >
+                All ({brandWithdrawals.length})
+              </button>
+              <button
+                onClick={() => setWithdrawalStatusFilter("pending")}
+                className={`px-3 py-1.5 rounded-lg transition-all ${
+                  withdrawalStatusFilter === "pending" ? "bg-background shadow-sm font-bold text-amber-500" : "text-muted-foreground"
+                }`}
+              >
+                Pending ({pendingBrandWithdrawalsCount})
+              </button>
+              <button
+                onClick={() => setWithdrawalStatusFilter("completed")}
+                className={`px-3 py-1.5 rounded-lg transition-all ${
+                  withdrawalStatusFilter === "completed" ? "bg-background shadow-sm font-bold text-emerald-500" : "text-muted-foreground"
+                }`}
+              >
+                Completed
+              </button>
+              <button
+                onClick={() => setWithdrawalStatusFilter("rejected")}
+                className={`px-3 py-1.5 rounded-lg transition-all ${
+                  withdrawalStatusFilter === "rejected" ? "bg-background shadow-sm font-bold text-rose-500" : "text-muted-foreground"
+                }`}
+              >
+                Rejected
+              </button>
+            </div>
+          </div>
+
+          <Card className="border border-border/50 bg-card/50 backdrop-blur rounded-3xl overflow-hidden shadow-sm">
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-border/50 hover:bg-transparent">
+                    <TableHead className="w-[80px]">ID</TableHead>
+                    <TableHead className="w-[240px]">Brand Partner</TableHead>
+                    <TableHead>Profit Amount</TableHead>
+                    <TableHead>Disbursement Account</TableHead>
+                    <TableHead>Requested Date</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isWithdrawalsLoading ? (
+                    [...Array(4)].map((_, i) => (
+                      <TableRow key={i} className="border-border/50">
+                        <TableCell><Skeleton className="h-6 w-12 rounded-lg" /></TableCell>
+                        <TableCell><Skeleton className="h-10 w-44 rounded-lg" /></TableCell>
+                        <TableCell><Skeleton className="h-6 w-24 rounded-full" /></TableCell>
+                        <TableCell><Skeleton className="h-6 w-32 rounded-full" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                        <TableCell><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
+                        <TableCell><Skeleton className="h-8 w-24 ml-auto rounded-lg" /></TableCell>
+                      </TableRow>
+                    ))
+                  ) : filteredBrandWithdrawals.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                        No brand profit withdrawal requests found matching your filter criteria.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredBrandWithdrawals.map((w: any) => {
+                      return (
+                        <TableRow key={w.id} className="border-border/50 hover:bg-muted/30 transition">
+                          <TableCell className="font-mono text-xs font-bold text-muted-foreground">
+                            #{w.id}
+                          </TableCell>
+
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <div className="h-9 w-9 rounded-2xl bg-purple-500/10 text-purple-500 border border-purple-500/20 flex items-center justify-center font-bold text-xs shrink-0">
+                                <Building2 className="h-4 w-4" />
+                              </div>
+                              <div>
+                                <p className="font-bold text-sm text-foreground">{w.requesterName || `Brand #${w.brandId}`}</p>
+                                <p className="text-xs text-muted-foreground font-mono mt-0.5">{w.requesterEmail}</p>
+                              </div>
+                            </div>
+                          </TableCell>
+
+                          <TableCell>
+                            <span className="font-black text-sm font-mono text-foreground">
+                              {Number(w.amount).toFixed(2)} TND
+                            </span>
+                          </TableCell>
+
+                          <TableCell>
+                            <div className="space-y-0.5 text-xs">
+                              <span className="inline-block px-1.5 py-0.5 rounded bg-muted border border-border/40 font-mono text-[10px] uppercase font-bold text-purple-400">
+                                {w.paymentMethod}
+                              </span>
+                              <p className="text-muted-foreground font-mono text-[11px]">
+                                {w.paymentDetails?.bankName && `${w.paymentDetails.bankName} • `}
+                                {w.paymentDetails?.rib ? `RIB: ${w.paymentDetails.rib}` : (w.paymentDetails?.phone || w.paymentDetails?.flouciNumber || 'Direct Transfer')}
+                              </p>
+                              {w.paymentDetails?.beneficiaryName && (
+                                <p className="text-[10px] text-muted-foreground">Beneficiary: {w.paymentDetails.beneficiaryName}</p>
+                              )}
+                            </div>
+                          </TableCell>
+
+                          <TableCell className="text-xs text-muted-foreground font-mono">
+                            {w.createdAt ? new Date(w.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "-"}
+                          </TableCell>
+
+                          <TableCell>
+                            <Badge
+                              variant="outline"
+                              className={
+                                w.status === "completed"
+                                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 font-bold"
+                                  : w.status === "approved"
+                                  ? "bg-blue-500/10 text-blue-400 border-blue-500/30 font-bold"
+                                  : w.status === "rejected"
+                                  ? "bg-rose-500/10 text-rose-400 border-rose-500/30 font-bold"
+                                  : "bg-amber-500/10 text-amber-400 border-amber-500/30 font-bold animate-pulse"
+                              }
+                            >
+                              {w.status.toUpperCase()}
+                            </Badge>
+                            {w.rejectionReason && (
+                              <p className="text-[10px] text-rose-500 font-medium mt-0.5 max-w-xs truncate">
+                                {w.rejectionReason}
+                              </p>
+                            )}
+                          </TableCell>
+
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {w.status === "pending" && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleApproveWithdrawal(w)}
+                                    disabled={updateWithdrawalStatusMutation.isPending}
+                                    className="h-8 rounded-xl text-xs font-bold border-blue-500/30 text-blue-500 hover:bg-blue-500/10"
+                                  >
+                                    Process
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleCompleteWithdrawal(w)}
+                                    disabled={updateWithdrawalStatusMutation.isPending}
+                                    className="h-8 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm"
+                                  >
+                                    <Check className="h-3.5 w-3.5 mr-1" />
+                                    Mark Paid
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => handleOpenRejectDialog(w)}
+                                    className="h-8 rounded-xl text-xs font-bold text-rose-500 hover:bg-rose-500/10 hover:text-rose-600"
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                  </Button>
+                                </>
+                              )}
+                              {w.status === "approved" && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleCompleteWithdrawal(w)}
+                                    disabled={updateWithdrawalStatusMutation.isPending}
+                                    className="h-8 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm"
+                                  >
+                                    <Check className="h-3.5 w-3.5 mr-1" />
+                                    Mark Paid
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => handleOpenRejectDialog(w)}
+                                    className="h-8 rounded-xl text-xs font-bold text-rose-500 hover:bg-rose-500/10"
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                  </Button>
+                                </>
+                              )}
+                              {w.status === "completed" && (
+                                <span className="text-[11px] font-bold text-emerald-500 flex items-center gap-1">
+                                  <CheckCircle2 className="h-3.5 w-3.5" /> Settled
+                                </span>
+                              )}
+                              {w.status === "rejected" && (
+                                <span className="text-[11px] font-bold text-rose-500 flex items-center gap-1">
+                                  <Ban className="h-3.5 w-3.5" /> Declined
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
+
+      {/* Brand Rejection Dialog */}
+      <Dialog open={rejectModalOpen} onOpenChange={setRejectModalOpen}>
+        <DialogContent className="max-w-md rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold flex items-center gap-2 text-rose-500">
+              <Ban className="h-5 w-5" />
+              Reject Brand Payout #{selectedWithdrawalForReject?.id}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Please provide the reason for declining this brand store profit withdrawal of {selectedWithdrawalForReject?.amount} TND. The amount will be refunded to the brand's balance.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 mt-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-foreground">Rejection Reason</label>
+              <textarea
+                rows={3}
+                placeholder="e.g. Invalid bank RIB or company tax ID discrepancy..."
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                className="w-full p-3 rounded-xl bg-muted border border-border/60 text-xs focus:outline-none focus:ring-2 focus:ring-rose-500/30 resize-none"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2.5 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setRejectModalOpen(false)}
+                className="rounded-xl text-xs font-bold"
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleConfirmReject}
+                disabled={updateWithdrawalStatusMutation.isPending}
+                className="rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white"
+              >
+                {updateWithdrawalStatusMutation.isPending ? "Rejecting..." : "Confirm Rejection"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Brand Detailed Modal */}
       {viewBrandModal && (
