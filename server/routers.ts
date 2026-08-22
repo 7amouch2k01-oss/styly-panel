@@ -860,6 +860,7 @@ export const appRouter = router({
       const { OrderModel } = await import("./mongodb");
       // Aggregate total order revenue grouped by YYYY-MM
       const agg = await OrderModel.aggregate([
+        { $match: { status: { $ne: "canceled" } } },
         { $group: {
           _id: { $substr: ["$createdAt", 0, 7] },
           sales: { $sum: "$totalAmount" },
@@ -887,15 +888,35 @@ export const appRouter = router({
         return { month: r._id, users: cumulative, newUsers: r.users };
       });
     }),
-    // New: full admin analytics — revenue, orders, users grouped by month
+    // Full admin analytics — revenue, refunds, orders, users grouped by month
     full: adminProcedure.query(async () => {
-      const { OrderModel, UserModel } = await import("./mongodb");
-      const [revenueAgg, userAgg] = await Promise.all([
+      const { OrderModel, UserModel, ShipmentModel, toPlain } = await import("./mongodb");
+      
+      const refundedShipments = toPlain(await ShipmentModel.find({ status: "refunded" }));
+      const refundedShipmentOrderIds = Array.from(new Set(refundedShipments.map((s: any) => s.orderId)));
+
+      const [revenueAgg, refundAgg, userAgg] = await Promise.all([
         OrderModel.aggregate([
+          { $match: { status: { $ne: "canceled" } } },
           { $group: {
             _id: { $substr: ["$createdAt", 0, 7] },
             revenue: { $sum: "$totalAmount" },
             orders: { $sum: 1 },
+          }},
+          { $sort: { _id: 1 } },
+          { $limit: 12 },
+        ]),
+        OrderModel.aggregate([
+          { $match: {
+            $or: [
+              { status: "refunded" },
+              { id: { $in: refundedShipmentOrderIds } }
+            ]
+          }},
+          { $group: {
+            _id: { $substr: ["$createdAt", 0, 7] },
+            refunds: { $sum: "$totalAmount" },
+            refundsCount: { $sum: 1 },
           }},
           { $sort: { _id: 1 } },
           { $limit: 12 },
@@ -909,26 +930,47 @@ export const appRouter = router({
           { $limit: 12 },
         ]),
       ]);
+
       // Merge by month key
       const monthMap: Record<string, any> = {};
       for (const r of revenueAgg as any[]) {
-        monthMap[r._id] = { month: r._id, revenue: r.revenue, orders: r.orders, newUsers: 0 };
+        monthMap[r._id] = { month: r._id, revenue: r.revenue, refunds: 0, netRevenue: r.revenue, orders: r.orders, newUsers: 0 };
+      }
+      for (const r of refundAgg as any[]) {
+        if (monthMap[r._id]) {
+          monthMap[r._id].refunds = r.refunds;
+          monthMap[r._id].netRevenue = Math.max(0, (monthMap[r._id].revenue || 0) - r.refunds);
+        } else {
+          monthMap[r._id] = { month: r._id, revenue: 0, refunds: r.refunds, netRevenue: 0, orders: 0, newUsers: 0 };
+        }
       }
       for (const r of userAgg as any[]) {
-        if (monthMap[r._id]) monthMap[r._id].newUsers = r.newUsers;
-        else monthMap[r._id] = { month: r._id, revenue: 0, orders: 0, newUsers: r.newUsers };
+        if (monthMap[r._id]) {
+          monthMap[r._id].newUsers = r.newUsers;
+        } else {
+          monthMap[r._id] = { month: r._id, revenue: 0, refunds: 0, netRevenue: 0, orders: 0, newUsers: r.newUsers };
+        }
       }
       return Object.values(monthMap).sort((a: any, b: any) => a.month.localeCompare(b.month));
     }),
     financialSummary: adminProcedure.query(async () => {
-      const { OrderModel, CommissionModel } = await import("./mongodb");
+      const { OrderModel, CommissionModel, ShipmentModel, toPlain } = await import("./mongodb");
+
+      const refundedShipments = toPlain(await ShipmentModel.find({ status: "refunded" }));
+      const refundedShipmentOrderIds = Array.from(new Set(refundedShipments.map((s: any) => s.orderId)));
+
       const [orderStats, refundStats, commissionStats] = await Promise.all([
         OrderModel.aggregate([
           { $match: { status: { $ne: "canceled" } } },
           { $group: { _id: null, totalGross: { $sum: "$totalAmount" }, count: { $sum: 1 } } }
         ]),
         OrderModel.aggregate([
-          { $match: { status: "refunded" } },
+          { $match: {
+            $or: [
+              { status: "refunded" },
+              { id: { $in: refundedShipmentOrderIds } }
+            ]
+          }},
           { $group: { _id: null, totalRefunded: { $sum: "$totalAmount" }, count: { $sum: 1 } } }
         ]),
         CommissionModel.aggregate([

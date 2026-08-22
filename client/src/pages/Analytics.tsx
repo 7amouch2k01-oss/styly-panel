@@ -110,8 +110,8 @@ export default function Analytics() {
         {/* Revenue & Orders Trends */}
         <Card className="border-border/50 bg-card/50 backdrop-blur rounded-3xl">
           <CardHeader>
-            <CardTitle className="text-base font-bold">Monthly Sales vs Orders</CardTitle>
-            <CardDescription className="text-xs">Direct database monthly aggregation of consumer checkouts (TND)</CardDescription>
+            <CardTitle className="text-base font-bold">Monthly Sales & Net Revenue</CardTitle>
+            <CardDescription className="text-xs">Gross checkouts vs customer refunds and net retained volume (TND)</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={280}>
@@ -124,8 +124,9 @@ export default function Analytics() {
                   labelStyle={{ color: "#fff", fontWeight: "bold" }}
                 />
                 <Legend wrapperStyle={{ fontSize: "11px" }} />
-                <Line type="monotone" dataKey="revenue" stroke="#f43f5e" strokeWidth={2.5} dot={false} name="Gross Revenue (TND)" />
-                <Line type="monotone" dataKey="orders" stroke="#10b981" strokeWidth={2.5} dot={false} name="Orders Placed" />
+                <Line type="monotone" dataKey="revenue" stroke="#f43f5e" strokeWidth={2} dot={false} name="Gross Sales (TND)" />
+                <Line type="monotone" dataKey="refunds" stroke="#a855f7" strokeWidth={2} dot={false} name="Refunds Processed (TND)" strokeDasharray="4 4" />
+                <Line type="monotone" dataKey="netRevenue" stroke="#10b981" strokeWidth={2.5} dot={false} name="Net Revenue (TND)" />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
